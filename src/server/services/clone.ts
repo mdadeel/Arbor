@@ -26,11 +26,26 @@ export async function cloneRepo(opts: {
     ? opts.repoUrl.replace('https://', `https://x-access-token:${opts.token}@`)
     : opts.repoUrl
 
-  await git.clone(authUrl, opts.destination, [
-    '--depth', '1',
-    '--single-branch',
-    '--branch', opts.branch,
-  ])
+  try {
+    await git.clone(authUrl, opts.destination, [
+      '--depth', '1',
+      '--single-branch',
+      '--branch', opts.branch,
+    ])
+  } catch (err) {
+    if (opts.token) {
+      // If authenticated clone fails (e.g. expired OAuth token), retry unauthenticated
+      fs.rmSync(opts.destination, { recursive: true, force: true })
+      fs.mkdirSync(opts.destination, { recursive: true })
+      await git.clone(opts.repoUrl, opts.destination, [
+        '--depth', '1',
+        '--single-branch',
+        '--branch', opts.branch,
+      ])
+    } else {
+      throw err
+    }
+  }
 
   let sha = 'unknown'
   try {

@@ -27,6 +27,64 @@ enum AnalysisStatus {
   failed
 }
 
+enum EnvVariableStatus {
+  set
+  missing
+  different
+  unknown
+}
+
+enum EnvVariableCategory {
+  database
+  api_key
+  auth
+  config
+  storage
+  other
+}
+
+enum EnvironmentType {
+  development
+  staging
+  production
+  custom
+}
+
+enum ApiType {
+  rest
+  graphql
+}
+
+enum SpecFormat {
+  openapi3
+  openapi2
+  graphql_schema
+  manual
+}
+
+enum DocCategory {
+  guide
+  architecture
+  api
+  runbook
+  adr
+  onboarding
+  general
+}
+
+enum WorkspaceRole {
+  owner
+  admin
+  member
+  viewer
+}
+
+enum InvitationStatus {
+  pending
+  accepted
+  revoked
+}
+
 // ─────────────────────────────────────────────
 // IDENTITY CONTEXT
 // ─────────────────────────────────────────────
@@ -44,7 +102,15 @@ model User {
   tokenExpiresAt    DateTime?
   tokenScope        String?
 
-  projects Project[]
+  projects       Project[]
+  memberships    WorkspaceMember[]
+  auditLogs      AuditLog[]
+  githubAccounts GitHubAccount[]
+
+  // AI Integration (BYOK)
+  openaiApiKey    String?
+  anthropicApiKey String?
+  aiModel         String? @default("gpt-4o")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -55,11 +121,13 @@ model User {
 // ─────────────────────────────────────────────
 
 model Project {
-  id          String  @id @default(cuid())
-  userId      String
-  name        String
-  slug        String
-  description String?
+  id              String  @id @default(cuid())
+  userId          String
+  workspaceId     String?
+  githubAccountId String?
+  name            String
+  slug            String
+  description     String?
 
   // Repository info
   repoFullName  String // "owner/repo"
@@ -72,12 +140,20 @@ model Project {
   latestScores  Json? // { overall, architecture, techDebt, ... }
 
   // Status
-  status         ProjectStatus @default(active)
-  lastAnalyzedAt DateTime?
+  status           ProjectStatus @default(active)
+  lastAnalyzedAt   DateTime?
+  healthData       Json?         // Cached repository health metrics & score
+  lastHealthSyncAt DateTime?
 
   // Relations
-  user     User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  analyses Analysis[]
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspace     Workspace?     @relation(fields: [workspaceId], references: [id], onDelete: SetNull)
+  githubAccount GitHubAccount? @relation(fields: [githubAccountId], references: [id], onDelete: SetNull)
+  analyses      Analysis[]
+  environments  Environment[]
+  apiSpecs      ApiSpec[]
+  documents     Document[]
+  auditLogs     AuditLog[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -85,6 +161,32 @@ model Project {
   @@unique([userId, slug])
   @@unique([userId, repoFullName])
   @@index([userId, status])
+  @@index([workspaceId])
+  @@index([githubAccountId])
+}
+
+// ─────────────────────────────────────────────
+// GITHUB MULTI-ACCOUNT INTEGRATION
+// ─────────────────────────────────────────────
+
+model GitHubAccount {
+  id          String    @id @default(cuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  username    String
+  accountName String?   // e.g. "Personal", "Work", "Acme Org"
+  accessToken String    // Encrypted AES-256-GCM
+  tokenType   String    @default("oauth") // "oauth" | "pat"
+  avatarUrl   String?
+  scope       String?
+  isDefault   Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  projects    Project[]
+
+  @@unique([userId, username])
+  @@index([userId])
 }
 
 // ─────────────────────────────────────────────
@@ -110,6 +212,7 @@ model Analysis {
   performanceScore   Int?
   documentationScore Int?
   securityScore      Int?
+  designSystemScore  Int?
 
   // Detailed results (JSON, null until completed)
   techStack       Json? // DetectedTechStack
@@ -117,6 +220,7 @@ model Analysis {
   findings        Json? // Finding[]
   dependencyGraph Json? // { nodes: [], edges: [] }
   metrics         Json? // { files, loc, components, hooks, routes, ... }
+  designSystem    Json? // DesignSystemAudit
 
   // Timing
   durationMs   Int?
@@ -134,3 +238,202 @@ model Analysis {
   @@index([projectId, status])
   @@index([status])
 }
+
+// ─────────────────────────────────────────────
+// ENVIRONMENT MANAGER (Phase 4)
+// ─────────────────────────────────────────────
+
+model Environment {
+  id        String          @id @default(cuid())
+  projectId String
+  name      String          // "development", "staging", "production"
+  type      EnvironmentType @default(development)
+  url       String?
+
+  variables EnvVariable[]
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([projectId, name])
+  @@index([projectId])
+}
+
+model EnvVariable {
+  id            String             @id @default(cuid())
+  environmentId String
+  key           String
+  status        EnvVariableStatus  @default(unknown)
+  required      Boolean            @default(true)
+  category      EnvVariableCategory @default(other)
+  description   String?
+
+  environment Environment @relation(fields: [environmentId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([environmentId, key])
+  @@index([environmentId])
+}
+
+// ─────────────────────────────────────────────
+// API EXPLORER (Phase 4)
+// ─────────────────────────────────────────────
+
+model ApiSpec {
+  id        String     @id @default(cuid())
+  projectId String
+  name      String
+  version   String
+  type      ApiType    @default(rest)
+
+  specFormat  SpecFormat @default(openapi3)
+  rawSpec     String     @db.Text
+
+  parsedEndpoints Json?
+  parsedSchemas   Json?
+  baseUrls        Json?
+  endpointCount   Int     @default(0)
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([projectId])
+}
+
+// ─────────────────────────────────────────────
+// DOCUMENTATION HUB (Phase 5)
+// ─────────────────────────────────────────────
+
+model Document {
+  id          String      @id @default(cuid())
+  projectId   String
+  title       String
+  slug        String
+  content     String      @db.Text
+  category    DocCategory @default(general)
+
+  parentId    String?
+  sortOrder   Int         @default(0)
+  version     Int         @default(1)
+
+  // Staleness tracking
+  isStale     Boolean     @default(false)
+  reviewDate  DateTime?
+  staleReason String?
+
+  project     Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  parent      Document?   @relation("DocTree", fields: [parentId], references: [id], onDelete: SetNull)
+  children    Document[]  @relation("DocTree")
+  versions    DocVersion[]
+
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  @@unique([projectId, slug])
+  @@index([projectId])
+  @@index([parentId])
+}
+
+model DocVersion {
+  id         String   @id @default(cuid())
+  documentId String
+  version    Int
+  title      String
+  content    String   @db.Text
+  changeNote String?
+
+  document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+
+  @@unique([documentId, version])
+  @@index([documentId])
+}
+
+// ─────────────────────────────────────────────
+// WORKSPACES & RBAC (Phase 8 / v2)
+// ─────────────────────────────────────────────
+
+model Workspace {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+  avatarUrl   String?
+  ownerId     String
+
+  members     WorkspaceMember[]
+  invitations WorkspaceInvitation[]
+  projects    Project[]
+  auditLogs   AuditLog[]
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([ownerId])
+}
+
+model WorkspaceMember {
+  id          String        @id @default(cuid())
+  workspaceId String
+  userId      String
+  role        WorkspaceRole @default(member)
+
+  workspace   Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  @@unique([workspaceId, userId])
+  @@index([workspaceId])
+  @@index([userId])
+}
+
+model WorkspaceInvitation {
+  id          String           @id @default(cuid())
+  workspaceId String
+  email       String
+  role        WorkspaceRole    @default(member)
+  token       String           @unique
+  status      InvitationStatus @default(pending)
+  expiresAt   DateTime
+
+  workspace   Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  @@index([workspaceId])
+  @@index([email])
+}
+
+// ─────────────────────────────────────────────
+// AUDIT LOGGING (Phase 8 / v2)
+// ─────────────────────────────────────────────
+
+model AuditLog {
+  id          String    @id @default(cuid())
+  userId      String
+  workspaceId String?
+  projectId   String?
+  action      String    // e.g. "project.created", "analysis.triggered", "env.updated", "member.invited"
+  entityType  String    // e.g. "project", "analysis", "env", "document", "member"
+  entityId    String
+  metadata    Json?     // payload or before/after diff
+
+  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspace   Workspace? @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  project     Project?   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  createdAt   DateTime  @default(now())
+
+  @@index([workspaceId, createdAt(sort: Desc)])
+  @@index([projectId, createdAt(sort: Desc)])
+  @@index([userId, createdAt(sort: Desc)])
+}
+

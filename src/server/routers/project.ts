@@ -3,6 +3,8 @@ import { TRPCError } from '@trpc/server'
 import { router, protectedProcedure } from '@/server/trpc'
 import { prisma } from '@/lib/prisma'
 import { getAnalysisQueue } from '@/server/queue'
+import { checkRateLimit } from '@/lib/redis'
+import { logAuditEvent } from '@/server/services/audit'
 import {
   createProject,
   getProjectBySlug,
@@ -31,10 +33,30 @@ export const projectRouter = router({
         message: 'This repository has already been added.',
       })
     }
-    return createProject(userId, input)
+    const project = await createProject(userId, input)
+    logAuditEvent({
+      userId,
+      projectId: project.id,
+      action: 'project.created',
+      entityType: 'project',
+      entityId: project.id,
+      metadata: { name: project.name, repoFullName: project.repoFullName },
+    }).catch(() => {})
+    return project
   }),
 
   list: protectedProcedure.query(({ ctx }) => listProjects(ctx.session.user.id)),
+
+  recentAnalyses: protectedProcedure.query(async ({ ctx }) => {
+    return prisma.analysis.findMany({
+      where: { project: { userId: ctx.session.user.id } },
+      orderBy: { createdAt: 'desc' },
+      take: 6,
+      include: {
+        project: { select: { name: true, slug: true, repoFullName: true } },
+      },
+    })
+  }),
 
   bySlug: protectedProcedure
     .input(z.object({ slug: z.string() }))
@@ -70,10 +92,18 @@ export const projectRouter = router({
         select: { id: true },
       })
       if (!project) throw new TRPCError({ code: 'NOT_FOUND' })
-      return prisma.project.update({
+      const updated = await prisma.project.update({
         where: { id: project.id },
         data: { status: 'archived' },
       })
+      logAuditEvent({
+        userId: ctx.session.user.id,
+        projectId: project.id,
+        action: 'project.archived',
+        entityType: 'project',
+        entityId: project.id,
+      }).catch(() => {})
+      return updated
     }),
 
   analyze: protectedProcedure
@@ -84,6 +114,17 @@ export const projectRouter = router({
         select: { id: true, defaultBranch: true },
       })
       if (!project) throw new TRPCError({ code: 'NOT_FOUND' })
+
+      // Rate limit: max 10 analyses per hour per user
+      const rateLimitKey = `rate:analyze:${ctx.session.user.id}`
+      const { allowed } = await checkRateLimit(rateLimitKey, 10, 3600)
+      if (!allowed) {
+        throw new TRPCError({
+          code: 'TOO_MANY_REQUESTS',
+          message: 'Rate limit exceeded: maximum 10 analyses per hour. Please wait before triggering another analysis.',
+        })
+      }
+
       if (
         await prisma.analysis.findFirst({
           where: { projectId: project.id, status: { in: ['queued', 'cloning', 'analyzing'] } },
@@ -96,6 +137,16 @@ export const projectRouter = router({
         data: { projectId: project.id, branch: project.defaultBranch, status: 'queued' },
       })
       await getAnalysisQueue().add('analyze', { analysisId: analysis.id })
+
+      logAuditEvent({
+        userId: ctx.session.user.id,
+        projectId: project.id,
+        action: 'analysis.triggered',
+        entityType: 'analysis',
+        entityId: analysis.id,
+        metadata: { branch: project.defaultBranch },
+      }).catch(() => {})
+
       return analysis
     }),
 })
