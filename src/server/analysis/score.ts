@@ -20,6 +20,10 @@ export interface ScoreInput {
   secrets: number
   missingEnvDocs: number
   hasEnvExample: boolean
+  dsComponentFiles: number
+  dsTokens: boolean
+  dsHardcodedColors: number
+  dsVariantRatio: number
 }
 
 const clamp = (n: number) => Math.max(0, Math.min(100, Math.round(n)))
@@ -58,18 +62,31 @@ export function computeScores(i: ScoreInput): Scores {
   else if (i.missingEnvDocs > 4) security -= 20
   if (!i.hasEnvExample) security -= 10
 
+  let designSystem = 0
+  if (i.dsComponentFiles > 0) {
+    designSystem = 30
+    if (i.dsTokens) designSystem += 35
+    designSystem += i.dsVariantRatio * 20
+    designSystem -= Math.min(25, i.dsHardcodedColors * 2)
+  } else {
+    // not a UI project (no components) — neutral, don't drag other signals
+    designSystem = 50
+  }
+
   const architecture2 = clamp(architecture)
   const techDebt2 = clamp(techDebt)
   const performance2 = clamp(performance)
   const documentation2 = clamp(documentation)
   const security2 = clamp(security)
+  const designSystem2 = clamp(designSystem)
 
   const overall = clamp(
-    architecture2 * 0.25 +
+    architecture2 * 0.2 +
       techDebt2 * 0.15 +
       performance2 * 0.2 +
       documentation2 * 0.2 +
-      security2 * 0.2
+      security2 * 0.2 +
+      designSystem2 * 0.05
   )
 
   return {
@@ -78,6 +95,7 @@ export function computeScores(i: ScoreInput): Scores {
     performance: performance2,
     documentation: documentation2,
     security: security2,
+    designSystem: designSystem2,
     overall,
   }
 }

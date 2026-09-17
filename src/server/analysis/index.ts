@@ -4,6 +4,7 @@ import { listFiles, isSourceFile, readText } from './walk'
 import { parseFile } from './ast'
 import { analyzeStructure } from './structure'
 import { detectTechStack } from './stack'
+import { auditDesignSystem, designSystemFindings } from './designSystem'
 import { computeScores, type ScoreInput } from './score'
 import {
   scanSecrets,
@@ -143,6 +144,7 @@ export function runAnalysis(repoDir: string): AnalysisReport {
   const circularDeps = findCircularDeps(graph)
   const unusedDeps = detectUnusedDeps(repoDir)
   const deadExports = detectDeadExports(exportedByFile, importsBySource)
+  const designSystem = auditDesignSystem(repoDir)
   const secrets = secretFindings.filter((f) => f.severity === 'critical')
   const env = envCheck(repoDir, sourceEnvSet)
   const readmeExists = fs.existsSync(path.join(repoDir, 'README.md')) || fs.existsSync(path.join(repoDir, 'readme.md'))
@@ -161,6 +163,7 @@ export function runAnalysis(repoDir: string): AnalysisReport {
     ...debtFindings({ circularDeps, unusedDeps, deadExports, anyTypes, consoleLogs }),
     ...perfFindings({ reactFiles, clientFiles, imgTags, nextImage, avgFileLines: structure.avgFileLines }),
     ...docFindings(readmeExists, metrics.commentRatio, jsdocCount),
+    ...designSystemFindings(designSystem),
   ]
 
   if (env.missingFromExample.length) {
@@ -212,6 +215,13 @@ export function runAnalysis(repoDir: string): AnalysisReport {
     secrets: secrets.length,
     missingEnvDocs: env.missingFromExample.length,
     hasEnvExample: env.hasExample,
+    dsComponentFiles: designSystem.componentFiles,
+    dsTokens: designSystem.tokenType != null,
+    dsHardcodedColors: designSystem.hardcodedColors,
+    dsVariantRatio:
+      designSystem.componentFiles > 0
+        ? designSystem.variantComponents / designSystem.componentFiles
+        : 0,
   })
 
   return {
@@ -239,6 +249,7 @@ export function runAnalysis(repoDir: string): AnalysisReport {
       sourceEnvVars: [...sourceEnvSet].sort(),
     },
     importGraph: graph,
+    designSystem,
     findings: findings.slice(0, 50),
     scores,
   }
