@@ -1,0 +1,136 @@
+// DevHub v1 — Minimal Schema (User + Project + Analysis)
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["fullTextSearch"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────────────────────────
+// ENUMS
+// ─────────────────────────────────────────────
+
+enum ProjectStatus {
+  active
+  archived
+}
+
+enum AnalysisStatus {
+  queued
+  cloning
+  analyzing
+  completed
+  failed
+}
+
+// ─────────────────────────────────────────────
+// IDENTITY CONTEXT
+// ─────────────────────────────────────────────
+
+model User {
+  id             String  @id @default(cuid())
+  email          String  @unique
+  name           String
+  avatarUrl      String?
+  githubId       Int     @unique
+  githubUsername String
+
+  // GitHub OAuth token (encrypted at application layer)
+  githubAccessToken String?
+  tokenExpiresAt    DateTime?
+  tokenScope        String?
+
+  projects Project[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ─────────────────────────────────────────────
+// PROJECT CONTEXT
+// ─────────────────────────────────────────────
+
+model Project {
+  id          String  @id @default(cuid())
+  userId      String
+  name        String
+  slug        String
+  description String?
+
+  // Repository info
+  repoFullName  String // "owner/repo"
+  repoUrl       String
+  defaultBranch String  @default("main")
+  repoPrivate   Boolean @default(false)
+
+  // Denormalized from latest analysis (for dashboard performance)
+  detectedStack Json? // { framework, language, database, ... }
+  latestScores  Json? // { overall, architecture, techDebt, ... }
+
+  // Status
+  status         ProjectStatus @default(active)
+  lastAnalyzedAt DateTime?
+
+  // Relations
+  user     User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  analyses Analysis[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, slug])
+  @@unique([userId, repoFullName])
+  @@index([userId, status])
+}
+
+// ─────────────────────────────────────────────
+// ANALYSIS CONTEXT
+// ─────────────────────────────────────────────
+
+model Analysis {
+  id        String @id @default(cuid())
+  projectId String
+
+  // Status
+  status AnalysisStatus @default(queued)
+
+  // Git info (populated after clone)
+  commitSha     String?
+  commitMessage String?
+  branch        String
+
+  // Scores (0-100, null until completed)
+  overallScore       Int?
+  architectureScore  Int?
+  techDebtScore      Int?
+  performanceScore   Int?
+  documentationScore Int?
+  securityScore      Int?
+
+  // Detailed results (JSON, null until completed)
+  techStack       Json? // DetectedTechStack
+  structure       Json? // ProjectStructure
+  findings        Json? // Finding[]
+  dependencyGraph Json? // { nodes: [], edges: [] }
+  metrics         Json? // { files, loc, components, hooks, routes, ... }
+
+  // Timing
+  durationMs   Int?
+  errorMessage String?
+
+  // Relations
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  startedAt   DateTime?
+  completedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([projectId, createdAt(sort: Desc)])
+  @@index([projectId, status])
+  @@index([status])
+}

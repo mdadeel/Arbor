@@ -1,0 +1,48 @@
+#!/bin/sh
+# ─────────────────────────────────────────────────────────────────────────────
+# Pre-commit hook: Memory Freshness Check
+# Installed via scripts/install-hooks.sh
+#
+# Runs the memory freshness checker when .ai/memory.md has staged changes.
+# Aborts the commit if stale entries are found.
+#
+# To bypass: git commit --no-verify (or -n)
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Resolve project root (where .git lives) BEFORE enabling set -e
+PROJECT_ROOT=$(git rev-parse --show-toplevel 2>/dev/null) || {
+    echo "pre-commit: ⚠️  Not a git repository. Skipping memory freshness check."
+    exit 0
+}
+
+set -e
+
+MEMORY_FILE="$PROJECT_ROOT/.ai/memory.md"
+CHECK_SCRIPT="$PROJECT_ROOT/scripts/check-memory-freshness.py"
+
+# Quick exit: only run if .ai/memory.md has staged changes (including renames)
+if ! git diff --cached --name-only --diff-filter=ACMR | grep -q '\.ai/memory\.md$'; then
+    exit 0
+fi
+
+# Quick exit: if the checker script doesn't exist, warn but don't block
+if [ ! -f "$CHECK_SCRIPT" ]; then
+    echo "pre-commit: ⚠️  $CHECK_SCRIPT not found. Install it or remove this hook."
+    echo "pre-commit: Skipping memory freshness check."
+    exit 0
+fi
+
+# Run the checker in CI mode
+echo "pre-commit: 🔍 Checking memory freshness..."
+if ! python3 "$CHECK_SCRIPT" --path "$MEMORY_FILE" --days 30 --ci; then
+    echo ""
+    echo "pre-commit: ❌ Stale entries found in .ai/memory.md."
+    echo "pre-commit:   1. Run 'python3 scripts/check-memory-freshness.py --fix --dry-run' to preview."
+    echo "pre-commit:   2. Run 'python3 scripts/check-memory-freshness.py --fix' to auto-tag stale entries."
+    echo "pre-commit:   3. Review and update the affected sections, then commit again."
+    echo "pre-commit:   4. To bypass this check: git commit --no-verify"
+    exit 1
+fi
+
+echo "pre-commit: ✅ Memory is fresh."
+exit 0

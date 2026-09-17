@@ -1,0 +1,63 @@
+# dependencies
+node_modules
+.next
+dist
+build
+.pnpm-store
+*.tsbuildinfo
+
+# environment
+.env
+.env*.local
+.env*.example
+
+# analysis artifacts
+/tmp/devhub-clones
+*.log
+nohup.out
+
+# runtime / deploy
+/.vercel
+/.netlify
+cache
+tmp
+
+# python (some aux scripts are py)
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# secrets & keys
+*.pem
+*.key
+*.p12
+
+# testing
+coverage
+playwright-report
+test-results
+
+# os
+.DS_Store
+Thumbs.db
+
+# editors
+*~
+*.swp
+*.swo
+*.eslintcache
+
+# ide
+.idea
+.vscode
+
+# stitch
+.stitch/designs
+docs
+.ai 
+.claude
+.stitch
+project plans
+CLAUDE.md 
+AGENTS.md
