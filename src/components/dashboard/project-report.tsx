@@ -2,9 +2,23 @@
 
 import { useRouter } from 'next/navigation'
 import { useEffect, useMemo, useState } from 'react'
-import { Loader2, Play } from 'lucide-react'
+import {
+  AlertTriangle,
+  ArrowUpRight,
+  Boxes,
+  Code2,
+  FileCode,
+  History,
+  Layers,
+  Loader2,
+  Play,
+  Shield,
+  Sparkles,
+  Globe,
+  BookOpen,
+  Activity,
+} from 'lucide-react'
 import { trpc } from '@/lib/trpc'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
   Card,
@@ -13,27 +27,31 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
-import { Separator } from '@/components/ui/separator'
 import {
   Tabs,
   TabsContent,
   TabsList,
   TabsTrigger,
 } from '@/components/ui/tabs'
+import GraphCanvas from '@/components/dashboard/architecture/graph-canvas'
+import { buildModuleGraph } from '@/components/dashboard/architecture/module-graph'
+import { EnvironmentMatrix } from '@/components/dashboard/environment-matrix'
+import { ApiExplorer } from '@/components/dashboard/api-explorer'
+import { DocHub } from '@/components/dashboard/docs/doc-hub'
+import { ProjectHealthView } from '@/components/dashboard/health/project-health-view'
+import { ScoreRow, AuditScores } from '@/components/dashboard/score-row'
+import { ScoreBadge } from '@/components/dashboard/score-badge'
+import { StatusBadge } from '@/components/dashboard/status-badge'
+import { TechStackGroup } from '@/components/dashboard/tech-stack-badge'
+import { FindingItem, FindingData } from '@/components/dashboard/finding-item'
 
-type Severity = 'info' | 'warning' | 'critical'
-type Finding = {
-  id: string
-  category: string
-  severity: Severity
-  title: string
-  detail: string
-  file?: string
-  line?: number
-  count?: number
-  paths?: string[]
+type StructureNode = {
+  name: string
+  type: 'dir' | 'file'
+  lines?: number
+  children?: StructureNode[]
 }
-type Scores = { overall?: number; architecture?: number; techDebt?: number; performance?: number; documentation?: number; security?: number }
+
 type TechStack = {
   framework?: string | null
   languages?: string[]
@@ -54,10 +72,13 @@ type AnalysisRow = {
   performanceScore: number | null
   documentationScore: number | null
   securityScore: number | null
+  designSystemScore: number | null
   techStack: TechStack | null
   structure: Record<string, unknown> | null
-  findings: Finding[] | null
+  findings: FindingData[] | null
   metrics: Record<string, unknown> | null
+  dependencyGraph?: { nodes: string[]; edges: [string, string][] } | null
+  designSystem?: unknown
   durationMs: number | null
   errorMessage: string | null
   createdAt: string
@@ -72,257 +93,481 @@ type ProjectRow = {
   repoPrivate: boolean
   repoUrl: string
   description: string | null
-  latestScores: Scores | null
+  latestScores: AuditScores | null
   detectedStack: TechStack | null
   lastAnalyzedAt: string | null
   analyses: AnalysisRow[]
 }
 
-const RUNNING = ['queued', 'cloning', 'analyzing']
-
-function scoreColor(n?: number | null): string {
-  if (n == null) return 'text-muted-foreground'
-  if (n >= 80) return 'text-emerald-500'
-  if (n >= 50) return 'text-amber-500'
-  return 'text-red-500'
-}
-
-function sevClass(s: Severity): string {
-  if (s === 'critical') return 'bg-red-500/15 text-red-500'
-  if (s === 'warning') return 'bg-amber-500/15 text-amber-500'
-  return 'bg-sky-500/15 text-sky-500'
-}
+const RUNNING_STATUSES = ['queued', 'cloning', 'analyzing']
 
 export function ProjectReport({ slug, project }: { slug: string; project: ProjectRow }) {
   const router = useRouter()
   const [tab, setTab] = useState('overview')
 
   const latest = project.analyses[0]
-  const running = latest ? RUNNING.includes(latest.status) : false
+  const isRunning = latest ? RUNNING_STATUSES.includes(latest.status) : false
 
   const analyze = trpc.project.analyze.useMutation({
     onSuccess: () => router.refresh(),
     onError: (e) => window.alert(e.message),
   })
 
-  // poll the server component while an analysis is in flight
+  // Poll while analysis is actively in flight
   useEffect(() => {
-    if (!running) return
-    const t = window.setTimeout(() => router.refresh(), 2500)
-    return () => window.clearTimeout(t)
-  }, [running, router, latest?.status])
+    if (!isRunning) return
+    const interval = window.setTimeout(() => router.refresh(), 2500)
+    return () => window.clearTimeout(interval)
+  }, [isRunning, router, latest?.status])
 
   const completed = useMemo(
     () => project.analyses.find((a) => a.status === 'completed'),
     [project.analyses]
   )
 
-  const scores: Scores = completed
+  const scores: AuditScores = completed
     ? {
-        overall: completed.overallScore ?? undefined,
-        architecture: completed.architectureScore ?? undefined,
-        techDebt: completed.techDebtScore ?? undefined,
-        performance: completed.performanceScore ?? undefined,
-        documentation: completed.documentationScore ?? undefined,
-        security: completed.securityScore ?? undefined,
+        overall: completed.overallScore,
+        architecture: completed.architectureScore,
+        techDebt: completed.techDebtScore,
+        performance: completed.performanceScore,
+        documentation: completed.documentationScore,
+        security: completed.securityScore,
+        designSystem: completed.designSystemScore,
       }
     : (project.latestScores ?? {})
 
   const stack = completed?.techStack ?? project.detectedStack ?? null
   const metrics = completed?.metrics ?? null
-  const structure: Record<string, unknown> | null = completed?.structure ?? null
+  const structure = completed?.structure ?? null
   const findings = completed?.findings ?? []
-  const graphCycles = (completed?.metrics?.circularDeps as string[][] | undefined) ?? []
+
+  const graphCycles = useMemo(
+    () => (completed?.metrics?.circularDeps as string[][] | undefined) ?? [],
+    [completed?.metrics?.circularDeps]
+  )
+
+  const moduleGraph = useMemo(() => {
+    const g = completed?.dependencyGraph
+    if (!g || !Array.isArray(g.nodes)) return null
+    return buildModuleGraph({ nodes: g.nodes, edges: g.edges ?? [] }, graphCycles)
+  }, [completed?.dependencyGraph, graphCycles])
+
+  const designSystem = completed?.designSystem as
+    | {
+        componentFiles: number
+        components: number
+        componentDirs: string[]
+        tokenFiles: string[]
+        tokenType: string | null
+        hardcodedColors: number
+        variantComponents: number
+      }
+    | null
+    | undefined
 
   const stat = (k: string, fallback?: number) =>
     (metrics?.[k] as number) ?? fallback
 
+  // Group findings by severity
+  const criticalFindings = findings.filter((f) => f.severity === 'critical')
+  const warningFindings = findings.filter((f) => f.severity === 'warning')
+  const infoFindings = findings.filter((f) => f.severity === 'info')
+
+  const stackItems = [
+    stack?.framework,
+    stack?.packageManager,
+    ...(stack?.languages ?? []),
+    ...(stack?.databases ?? []),
+    ...(stack?.testing ?? []),
+    ...(stack?.ui ?? []),
+  ].filter(Boolean)
+
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <Badge
-            variant={running ? 'secondary' : latest?.status === 'failed' ? 'destructive' : 'default'}
-            className="capitalize"
-          >
-            {running && <Loader2 className="mr-1 h-3 w-3 animate-spin" />}
-            {latest?.status ?? 'no-analysis'}
-            {running}
-          </Badge>
+      {/* Action Toolbar */}
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-card/40 p-3">
+        <div className="flex items-center gap-3">
+          <StatusBadge
+            status={isRunning ? latest?.status ?? 'running' : latest?.status ?? 'no-analysis'}
+          />
           {completed?.durationMs && (
             <span className="font-mono text-xs text-muted-foreground">
-              {Math.round(completed.durationMs / 1000)}s
+              {Math.round(completed.durationMs / 1000)}s duration
             </span>
           )}
           {completed?.commitSha && (
             <span className="font-mono text-xs text-muted-foreground">
-              {completed.commitSha.slice(0, 7)}
+              commit: {completed.commitSha.slice(0, 7)}
             </span>
           )}
         </div>
-        <Button size="sm" disabled={running || analyze.isPending} onClick={() => analyze.mutate({ slug })}>
-          {running || analyze.isPending ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <Play className="mr-1 h-3 w-3" />}
-          {latest ? 'Re-analyze' : 'Analyze'}
+
+        <Button
+          size="sm"
+          disabled={isRunning || analyze.isPending}
+          onClick={() => analyze.mutate({ slug })}
+          className="h-8 gap-1.5 text-xs font-medium"
+        >
+          {isRunning || analyze.isPending ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          ) : (
+            <Play className="h-3.5 w-3.5" />
+          )}
+          <span>{latest ? 'Re-analyze' : 'Run First Analysis'}</span>
         </Button>
       </div>
 
       {latest?.status === 'failed' && (
-        <Card className="border-red-500/40">
-          <CardContent className="py-3 text-sm text-red-500">{latest.errorMessage}</CardContent>
-        </Card>
+        <div className="rounded-lg border border-red-500/40 bg-red-500/10 p-4 text-xs text-red-400">
+          <p className="font-semibold">Analysis Failed</p>
+          <p className="mt-1 font-mono">{latest.errorMessage ?? 'An error occurred during analysis.'}</p>
+        </div>
       )}
 
-      {!completed && !running && (
-        <Card>
-          <CardContent className="py-10 text-center text-sm text-muted-foreground">
-            No completed analysis yet.{' '}
-            {latest ? '' : 'The analysis engine clones the repo, inspects the code, and scores it in about 10–30 seconds.'}
+      {!completed && !isRunning && (
+        <Card className="border-dashed">
+          <CardContent className="py-12 text-center text-xs text-muted-foreground space-y-2">
+            <p className="font-medium text-foreground text-sm">No analysis completed yet.</p>
+            <p className="max-w-md mx-auto">
+              DevHub clones the repository shallowly, parses your files using an AST engine, detects frameworks, imports, and debt, and scores your architecture in under 30 seconds.
+            </p>
+            <div className="pt-2">
+              <Button
+                size="sm"
+                onClick={() => analyze.mutate({ slug })}
+                disabled={analyze.isPending}
+                className="gap-1.5"
+              >
+                <Play className="h-3.5 w-3.5" />
+                <span>Start Analysis</span>
+              </Button>
+            </div>
           </CardContent>
         </Card>
       )}
 
-      {(completed || running) && (
-        <>
-          <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6">
-            <ScoreCard label="Overall" value={scores.overall} running={running} />
-            <ScoreCard label="Architecture" value={scores.architecture} running={running} />
-            <ScoreCard label="Tech Debt" value={scores.techDebt} running={running} />
-            <ScoreCard label="Performance" value={scores.performance} running={running} />
-            <ScoreCard label="Docs" value={scores.documentation} running={running} />
-            <ScoreCard label="Security" value={scores.security} running={running} />
-          </div>
+      {(completed || isRunning) && (
+        <div className="space-y-6">
+          {/* Reusable Horizontal Score Row */}
+          <ScoreRow scores={scores} running={isRunning} />
 
-          <Tabs value={tab} onValueChange={setTab}>
-            <TabsList>
-              <TabsTrigger value="overview">Overview</TabsTrigger>
-              <TabsTrigger value="findings">Findings ({findings.length})</TabsTrigger>
-              <TabsTrigger value="history">History</TabsTrigger>
+          {/* Workbench Tabs */}
+          <Tabs value={tab} onValueChange={setTab} className="space-y-4">
+            <TabsList className="h-9">
+              <TabsTrigger value="overview" className="text-xs gap-1.5">
+                <Layers className="h-3.5 w-3.5" />
+                Overview
+              </TabsTrigger>
+              <TabsTrigger value="architecture" className="text-xs gap-1.5">
+                <Boxes className="h-3.5 w-3.5" />
+                Architecture
+              </TabsTrigger>
+              <TabsTrigger value="findings" className="text-xs gap-1.5">
+                <AlertTriangle className="h-3.5 w-3.5" />
+                Findings ({findings.length})
+              </TabsTrigger>
+              <TabsTrigger value="environment" className="text-xs gap-1.5">
+                <FileCode className="h-3.5 w-3.5" />
+                Environment
+              </TabsTrigger>
+              <TabsTrigger value="api" className="text-xs gap-1.5">
+                <Globe className="h-3.5 w-3.5" />
+                API
+              </TabsTrigger>
+              <TabsTrigger value="docs" className="text-xs gap-1.5">
+                <BookOpen className="h-3.5 w-3.5" />
+                Docs
+              </TabsTrigger>
+              <TabsTrigger value="health" className="text-xs gap-1.5">
+                <Activity className="h-3.5 w-3.5" />
+                Health
+              </TabsTrigger>
+              <TabsTrigger value="history" className="text-xs gap-1.5">
+                <History className="h-3.5 w-3.5" />
+                History ({project.analyses.length})
+              </TabsTrigger>
             </TabsList>
 
-            <TabsContent value="overview" className="mt-4 space-y-4">
-              {stack && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-sm">Tech stack</CardTitle>
+            {/* TAB: Overview */}
+            <TabsContent value="overview" className="space-y-4">
+              {/* Tech stack badges */}
+              {stackItems.length > 0 && (
+                <Card className="border-border">
+                  <CardHeader className="py-3 px-4 border-b border-border/80">
+                    <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                      Detected Tech Stack
+                    </CardTitle>
                   </CardHeader>
-                  <CardContent className="flex flex-wrap gap-2">
-                    {[
-                      stack.framework,
-                      stack.packageManager,
-                      ...(stack.languages ?? []),
-                      ...(stack.databases ?? []),
-                      ...(stack.testing ?? []),
-                      ...(stack.ui ?? []),
-                    ]
-                      .filter(Boolean)
-                      .map((c) => (
-                        <Badge key={c as string} variant="secondary">
-                          {c as string}
-                        </Badge>
-                      ))}
+                  <CardContent className="p-4">
+                    <TechStackGroup items={stackItems} />
                   </CardContent>
                 </Card>
               )}
 
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-sm">Codebase stats</CardTitle>
+              {/* Codebase statistics */}
+              <Card className="border-border">
+                <CardHeader className="py-3 px-4 border-b border-border/80">
+                  <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    Codebase Metrics
+                  </CardTitle>
                 </CardHeader>
-                <CardContent className="flex flex-wrap gap-x-6 gap-y-2 text-sm">
-                  <span>{stat('files')} files</span>
-                  <span>{stat('loc')} LOC</span>
-                  <span>{stat('components')} components</span>
-                  <span>{stat('hooks')} hooks</span>
-                  <span>{stat('anyTypes', 0)} <code>any</code></span>
-                  <span>{stat('consoleLogs', 0)} console.log</span>
-                  <span>{stat('clientComponents', 0)} client components</span>
-                  <span>{stat('serverComponents', 0)} server components</span>
+                <CardContent className="p-4">
+                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 font-mono text-xs">
+                    <div className="rounded-md border border-border/60 bg-muted/20 p-2.5">
+                      <span className="text-muted-foreground text-[11px]">Files</span>
+                      <p className="mt-1 font-semibold text-foreground">{stat('files', 0)}</p>
+                    </div>
+                    <div className="rounded-md border border-border/60 bg-muted/20 p-2.5">
+                      <span className="text-muted-foreground text-[11px]">LOC</span>
+                      <p className="mt-1 font-semibold text-foreground">{stat('loc', 0)}</p>
+                    </div>
+                    <div className="rounded-md border border-border/60 bg-muted/20 p-2.5">
+                      <span className="text-muted-foreground text-[11px]">Components</span>
+                      <p className="mt-1 font-semibold text-foreground">{stat('components', 0)}</p>
+                    </div>
+                    <div className="rounded-md border border-border/60 bg-muted/20 p-2.5">
+                      <span className="text-muted-foreground text-[11px]">Hooks</span>
+                      <p className="mt-1 font-semibold text-foreground">{stat('hooks', 0)}</p>
+                    </div>
+                    <div className="rounded-md border border-border/60 bg-muted/20 p-2.5">
+                      <span className="text-muted-foreground text-[11px]">Client Components</span>
+                      <p className="mt-1 font-semibold text-foreground">{stat('clientComponents', 0)}</p>
+                    </div>
+                    <div className="rounded-md border border-border/60 bg-muted/20 p-2.5">
+                      <span className="text-muted-foreground text-[11px]">Server Components</span>
+                      <p className="mt-1 font-semibold text-foreground">{stat('serverComponents', 0)}</p>
+                    </div>
+                    <div className="rounded-md border border-border/60 bg-muted/20 p-2.5">
+                      <span className="text-muted-foreground text-[11px]">Any Types</span>
+                      <p className="mt-1 font-semibold text-foreground">{stat('anyTypes', 0)}</p>
+                    </div>
+                    <div className="rounded-md border border-border/60 bg-muted/20 p-2.5">
+                      <span className="text-muted-foreground text-[11px]">Console Logs</span>
+                      <p className="mt-1 font-semibold text-foreground">{stat('consoleLogs', 0)}</p>
+                    </div>
+                  </div>
                 </CardContent>
               </Card>
 
-              {structure && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-sm">Structure</CardTitle>
+              {/* Design System metrics if present */}
+              {designSystem && designSystem.componentFiles > 0 && (
+                <Card className="border-border">
+                  <CardHeader className="py-3 px-4 border-b border-border/80">
+                    <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                      Design System Audit
+                    </CardTitle>
                   </CardHeader>
-                  <CardContent className="text-sm text-muted-foreground">
-                    <p>
-                      Top-level dirs:{' '}
-                      {(structure.topLevelDirs as string[] | undefined)?.slice(0, 10).join(', ') ?? '—'}
-                    </p>
-                    <p className="mt-1">
-                      Average file: {(structure.avgFileLines as number | undefined) ?? '—'} lines
-                    </p>
-                    {((structure.hugeFiles as { file: string; lines: number }[]) ?? []).slice(0, 3).map((h) => (
-                      <p key={h.file} className="mt-1 font-mono text-xs">
-                        {h.file} — {h.lines} lines
+                  <CardContent className="p-4">
+                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 font-mono text-xs">
+                      <div className="rounded-md border border-border/60 p-2.5">
+                        <span className="text-muted-foreground text-[11px]">Component Files</span>
+                        <p className="mt-1 font-semibold text-foreground">{designSystem.componentFiles}</p>
+                      </div>
+                      <div className="rounded-md border border-border/60 p-2.5">
+                        <span className="text-muted-foreground text-[11px]">Tokens</span>
+                        <p className="mt-1 font-semibold text-foreground">{designSystem.tokenType ?? 'none'}</p>
+                      </div>
+                      <div className="rounded-md border border-border/60 p-2.5">
+                        <span className="text-muted-foreground text-[11px]">Hardcoded Colors</span>
+                        <p className="mt-1 font-semibold text-foreground">{designSystem.hardcodedColors}</p>
+                      </div>
+                      <div className="rounded-md border border-border/60 p-2.5">
+                        <span className="text-muted-foreground text-[11px]">Variant Components</span>
+                        <p className="mt-1 font-semibold text-foreground">{designSystem.variantComponents}</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Structure Tree */}
+              {structure && (
+                <Card className="border-border">
+                  <CardHeader className="py-3 px-4 border-b border-border/80">
+                    <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                      Repository Structure
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-4 text-xs">
+                    <div className="flex flex-wrap gap-4 text-muted-foreground pb-2">
+                      <span>
+                        Top-level directories:{' '}
+                        <strong className="text-foreground font-mono">
+                          {(structure.topLevelDirs as string[] | undefined)?.slice(0, 8).join(', ') ?? '—'}
+                        </strong>
+                      </span>
+                      <span>
+                        Average file length:{' '}
+                        <strong className="text-foreground font-mono">
+                          {(structure.avgFileLines as number | undefined) ?? '—'} lines
+                        </strong>
+                      </span>
+                    </div>
+
+                    <StructureTree nodes={(structure.tree as StructureNode[] | undefined) ?? []} />
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Circular Dependencies warning */}
+              {graphCycles.length > 0 && (
+                <Card className="border-amber-500/40 bg-amber-500/5">
+                  <CardHeader className="py-3 px-4">
+                    <CardTitle className="text-xs font-semibold text-amber-400 flex items-center gap-1.5">
+                      <AlertTriangle className="h-4 w-4" />
+                      {graphCycles.length} Circular Import Cycle(s) Detected
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="px-4 pb-4 space-y-1 font-mono text-xs text-amber-300">
+                    {graphCycles.slice(0, 5).map((c, i) => (
+                      <p key={i} className="truncate">
+                        {c.join(' → ')}
                       </p>
                     ))}
                   </CardContent>
                 </Card>
               )}
+            </TabsContent>
 
-              {graphCycles.length > 0 && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-sm text-amber-500">
-                      {graphCycles.length} circular import section(s)
+            {/* TAB: Architecture (React Flow) */}
+            <TabsContent value="architecture" className="space-y-4">
+              {moduleGraph ? (
+                <Card className="border-border">
+                  <CardHeader className="py-3 px-4 border-b border-border/80">
+                    <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                      Module Architecture Visualizer
                     </CardTitle>
+                    <CardDescription className="text-xs">
+                      Dependency graph derived from static AST imports grouped by architectural boundaries.
+                    </CardDescription>
                   </CardHeader>
-                  <CardContent className="space-y-1 font-mono text-xs">
-                    {graphCycles.slice(0, 5).map((c, i) => (
-                      <p key={i}>{c.join(' → ')}</p>
-                    ))}
+                  <CardContent className="p-4">
+                    <GraphCanvas graph={moduleGraph} />
+                  </CardContent>
+                </Card>
+              ) : (
+                <Card className="border-dashed">
+                  <CardContent className="py-12 text-center text-xs text-muted-foreground">
+                    No import graph data available for this analysis.
                   </CardContent>
                 </Card>
               )}
             </TabsContent>
 
-            <TabsContent value="findings" className="mt-4">
+            {/* TAB: Findings */}
+            <TabsContent value="findings" className="space-y-4">
               {findings.length === 0 ? (
-                <Card>
-                  <CardContent className="py-8 text-sm text-muted-foreground">No findings. Clean repo!</CardContent>
+                <Card className="border-dashed">
+                  <CardContent className="py-12 text-center text-xs text-muted-foreground">
+                    No findings detected. Clean repository!
+                  </CardContent>
                 </Card>
               ) : (
-                <div className="space-y-2">
-                  {findings.map((f) => (
-                    <Card key={f.id}>
-                      <CardContent className="flex items-start gap-3 py-3">
-                        <Badge className={sevClass(f.severity)}>{f.severity}</Badge>
-                        <div className="min-w-0 flex-1">
-                          <p className="text-sm font-medium">{f.title}</p>
-                          {f.detail && <p className="mt-0.5 text-sm text-muted-foreground">{f.detail}</p>}
-                          {f.file && <p className="mt-1 font-mono text-xs text-muted-foreground">{f.file}{f.line ? `:${f.line}` : ''}</p>}
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
+                <div className="space-y-6">
+                  {criticalFindings.length > 0 && (
+                    <div className="space-y-2">
+                      <h3 className="text-xs font-semibold uppercase tracking-wider text-red-400 flex items-center gap-1.5">
+                        <span className="h-2 w-2 rounded-full bg-red-500" />
+                        Critical ({criticalFindings.length})
+                      </h3>
+                      <div className="divide-y divide-border/60 rounded-md border border-border/80 bg-card">
+                        {criticalFindings.map((f) => (
+                          <FindingItem key={f.id} finding={f} />
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {warningFindings.length > 0 && (
+                    <div className="space-y-2">
+                      <h3 className="text-xs font-semibold uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
+                        <span className="h-2 w-2 rounded-full bg-amber-400" />
+                        Warnings ({warningFindings.length})
+                      </h3>
+                      <div className="divide-y divide-border/60 rounded-md border border-border/80 bg-card">
+                        {warningFindings.map((f) => (
+                          <FindingItem key={f.id} finding={f} />
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {infoFindings.length > 0 && (
+                    <div className="space-y-2">
+                      <h3 className="text-xs font-semibold uppercase tracking-wider text-sky-400 flex items-center gap-1.5">
+                        <span className="h-2 w-2 rounded-full bg-sky-400" />
+                        Info ({infoFindings.length})
+                      </h3>
+                      <div className="divide-y divide-border/60 rounded-md border border-border/80 bg-card">
+                        {infoFindings.map((f) => (
+                          <FindingItem key={f.id} finding={f} />
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </TabsContent>
 
-            <TabsContent value="history" className="mt-4">
-              <Card>
-                <CardContent className="py-3">
-                  <table className="w-full text-sm">
+            {/* TAB: Environment */}
+            <TabsContent value="environment" className="space-y-4">
+              <EnvironmentMatrix slug={slug} />
+            </TabsContent>
+
+            {/* TAB: API Explorer */}
+            <TabsContent value="api" className="space-y-4">
+              <ApiExplorer slug={slug} />
+            </TabsContent>
+
+            {/* TAB: Docs */}
+            <TabsContent value="docs" className="space-y-4">
+              <DocHub slug={slug} />
+            </TabsContent>
+
+            {/* TAB: Health */}
+            <TabsContent value="health" className="space-y-4">
+              <ProjectHealthView slug={slug} />
+            </TabsContent>
+
+            {/* TAB: History */}
+            <TabsContent value="history" className="space-y-4">
+              <Card className="border-border">
+                <CardHeader className="py-3 px-4 border-b border-border/80">
+                  <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    Historical Analysis Runs
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-0">
+                  <table className="w-full text-xs">
                     <thead>
-                      <tr className="border-b text-left text-muted-foreground">
-                        <th className="pb-2 pr-4">When</th>
-                        <th className="pb-2 pr-4">Status</th>
-                        <th className="pb-2 pr-4">Overall</th>
-                        <th className="pb-2">Commit</th>
+                      <tr className="border-b border-border text-left text-muted-foreground">
+                        <th className="py-2.5 px-4 font-medium">Timestamp</th>
+                        <th className="py-2.5 px-4 font-medium">Status</th>
+                        <th className="py-2.5 px-4 font-medium">Score</th>
+                        <th className="py-2.5 px-4 font-medium">Branch</th>
+                        <th className="py-2.5 px-4 font-medium">Commit</th>
+                        <th className="py-2.5 px-4 font-medium">Duration</th>
                       </tr>
                     </thead>
-                    <tbody>
+                    <tbody className="divide-y divide-border/60 font-mono">
                       {project.analyses.map((a) => (
-                        <tr key={a.id} className="border-b border-border/50 last:border-0">
-                          <td className="py-2 pr-4">{new Date(a.createdAt).toLocaleString()}</td>
-                          <td className="py-2 pr-4 capitalize">{a.status}</td>
-                          <td className={`py-2 pr-4 font-mono ${scoreColor(a.overallScore)}`}>
-                            {a.overallScore ?? '—'}
+                        <tr key={a.id} className="transition-colors hover:bg-muted/40">
+                          <td className="py-2.5 px-4 font-sans text-foreground">
+                            {new Date(a.createdAt).toLocaleString()}
                           </td>
-                          <td className="py-2 font-mono text-muted-foreground">
+                          <td className="py-2.5 px-4">
+                            <StatusBadge status={a.status} showSpinner={false} />
+                          </td>
+                          <td className="py-2.5 px-4">
+                            <ScoreBadge score={a.overallScore} size="sm" />
+                          </td>
+                          <td className="py-2.5 px-4 text-muted-foreground">{a.branch}</td>
+                          <td className="py-2.5 px-4 text-muted-foreground">
                             {a.commitSha?.slice(0, 7) ?? '—'}
+                          </td>
+                          <td className="py-2.5 px-4 text-muted-foreground">
+                            {a.durationMs ? `${Math.round(a.durationMs / 1000)}s` : '—'}
                           </td>
                         </tr>
                       ))}
@@ -332,26 +577,35 @@ export function ProjectReport({ slug, project }: { slug: string; project: Projec
               </Card>
             </TabsContent>
           </Tabs>
-        </>
+        </div>
       )}
-      <Separator />
     </div>
   )
 }
 
-function ScoreCard({ label, value, running }: { label: string; value?: number; running: boolean }) {
+function StructureTree({ nodes }: { nodes: StructureNode[] }) {
   return (
-    <Card>
-      <CardHeader>
-        <CardDescription>{label}</CardDescription>
-        <CardTitle className={`font-mono text-3xl ${scoreColor(value)}`}>
-          {running && value == null ? (
-            <Loader2 className="h-7 w-7 animate-spin text-muted-foreground" />
-          ) : (
-            value ?? <span className="text-lg text-muted-foreground">—</span>
-          )}
-        </CardTitle>
-      </CardHeader>
-    </Card>
+    <ul className="mt-3 space-y-0.5 font-mono text-xs">
+      {nodes.map((n) =>
+        n.type === 'dir' ? (
+          <li key={n.name}>
+            <details>
+              <summary className="cursor-pointer list-none marker:hidden py-0.5 hover:text-foreground">
+                <span className="text-muted-foreground">▸</span>{' '}
+                <span className="font-semibold text-foreground/90">{n.name}/</span>
+              </summary>
+              <div className="ml-3 border-l border-border pl-3">
+                <StructureTree nodes={n.children ?? []} />
+              </div>
+            </details>
+          </li>
+        ) : (
+          <li key={n.name} className="flex justify-between gap-4 py-0.5 text-muted-foreground hover:text-foreground">
+            <span>{n.name}</span>
+            {n.lines != null && <span>{n.lines} ln</span>}
+          </li>
+        )
+      )}
+    </ul>
   )
 }
