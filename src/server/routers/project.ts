@@ -142,13 +142,24 @@ export const projectRouter = router({
         })
       }
 
-      if (
-        await prisma.analysis.findFirst({
-          where: { projectId: project.id, status: { in: ['queued', 'cloning', 'analyzing'] } },
-          select: { id: true },
-        })
-      ) {
-        throw new TRPCError({ code: 'CONFLICT', message: 'An analysis is already running.' })
+      const existingRunning = await prisma.analysis.findFirst({
+        where: { projectId: project.id, status: { in: ['queued', 'cloning', 'analyzing'] } },
+        select: { id: true, createdAt: true },
+      })
+      if (existingRunning) {
+        const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000)
+        if (existingRunning.createdAt < tenMinutesAgo) {
+          await prisma.analysis.update({
+            where: { id: existingRunning.id },
+            data: {
+              status: 'failed',
+              errorMessage: 'Analysis timed out in queue. No worker was active to process the job.',
+              completedAt: new Date(),
+            },
+          })
+        } else {
+          throw new TRPCError({ code: 'CONFLICT', message: 'An analysis is already running.' })
+        }
       }
       const analysis = await prisma.analysis.create({
         data: { projectId: project.id, branch: project.defaultBranch, status: 'queued' },

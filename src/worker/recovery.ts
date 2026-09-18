@@ -30,7 +30,25 @@ export async function recoverStaleAnalyses(): Promise<number> {
     console.log(`[worker:recovery] marked ${result.count} stale analyses as failed`)
   }
 
-  // 2. Sweep orphaned clone directories
+  // 2. Re-enqueue any pending queued analyses
+  try {
+    const queuedAnalyses = await prisma.analysis.findMany({
+      where: { status: 'queued' },
+      select: { id: true },
+    })
+    if (queuedAnalyses.length > 0) {
+      const { getAnalysisQueue } = await import('@/server/queue')
+      const queue = getAnalysisQueue()
+      for (const item of queuedAnalyses) {
+        await queue.add('analyze', { analysisId: item.id })
+      }
+      console.log(`[worker:recovery] re-enqueued ${queuedAnalyses.length} pending queued analyses`)
+    }
+  } catch (err: any) {
+    console.warn(`[worker:recovery] warning re-enqueuing queued analyses: ${err.message}`)
+  }
+
+  // 3. Sweep orphaned clone directories
   try {
     if (fs.existsSync(env.CLONE_BASE_DIR)) {
       const entries = fs.readdirSync(env.CLONE_BASE_DIR)
