@@ -5,6 +5,7 @@
   "scripts": {
     "predev": "scripts/db-local.sh start",
     "dev": "next dev",
+    "dev:all": "tsx src/worker/index.ts & next dev",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",

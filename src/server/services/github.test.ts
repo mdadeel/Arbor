@@ -172,7 +172,12 @@ describe('github service', () => {
     it('fetches repositories with User-Agent header and returns mapped repos', async () => {
       ;(prisma.gitHubAccount.findFirst as any).mockResolvedValueOnce({
         id: 'acc-1',
+        username: 'octocat',
         accessToken: 'enc_my_token',
+      })
+      ;(prisma.user.findUnique as any).mockResolvedValueOnce({
+        githubUsername: 'octocat',
+        githubAccessToken: 'enc_my_token',
       })
       ;(global.fetch as any).mockResolvedValueOnce({
         status: 200,
@@ -192,9 +197,10 @@ describe('github service', () => {
         ],
       })
 
-      const repos = await listUserRepos('user-1')
-      expect(repos).toHaveLength(1)
-      expect(repos[0].name).toBe('dev-hub')
+      const res = await listUserRepos('user-1')
+      expect(res.repos).toHaveLength(1)
+      expect(res.repos[0].name).toBe('dev-hub')
+      expect(res.isPublicFallback).toBe(false)
       expect(global.fetch).toHaveBeenCalledWith(
         expect.stringContaining('api.github.com/user/repos'),
         expect.objectContaining({
@@ -206,17 +212,77 @@ describe('github service', () => {
       )
     })
 
-    it('throws specific error when token is 401 Bad credentials', async () => {
+    it('gracefully falls back to public repos when token is 401 expired', async () => {
       ;(prisma.gitHubAccount.findFirst as any).mockResolvedValueOnce({
         id: 'acc-1',
+        username: 'octocat',
         accessToken: 'enc_bad_token',
       })
+      ;(prisma.user.findUnique as any).mockResolvedValueOnce({
+        githubUsername: 'octocat',
+        githubAccessToken: 'enc_bad_token',
+      })
+      // First call (authenticated) returns 401
       ;(global.fetch as any).mockResolvedValueOnce({
         status: 401,
         ok: false,
       })
+      // Second call (public fallback) returns 200 with public repos
+      ;(global.fetch as any).mockResolvedValueOnce({
+        status: 200,
+        ok: true,
+        json: async () => [
+          {
+            id: 102,
+            name: 'public-repo',
+            full_name: 'octocat/public-repo',
+            html_url: 'https://github.com/octocat/public-repo',
+            default_branch: 'main',
+            private: false,
+            description: 'Public project',
+            language: 'TypeScript',
+            updated_at: '2026-09-17T00:00:00Z',
+          },
+        ],
+      })
 
-      await expect(listUserRepos('user-1')).rejects.toThrow('Token is expired or invalid')
+      const res = await listUserRepos('user-1')
+      expect(res.isPublicFallback).toBe(true)
+      expect(res.warning).toContain('expired or invalid')
+      expect(res.repos).toHaveLength(1)
+      expect(res.repos[0].name).toBe('public-repo')
+      expect(global.fetch).toHaveBeenLastCalledWith(
+        expect.stringContaining('api.github.com/users/octocat/repos'),
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            'User-Agent': 'DevHub-App',
+          }),
+        })
+      )
+    })
+
+    it('throws when both authenticated and public fallback fail', async () => {
+      ;(prisma.gitHubAccount.findFirst as any).mockResolvedValueOnce({
+        id: 'acc-1',
+        username: 'octocat',
+        accessToken: 'enc_bad_token',
+      })
+      ;(prisma.user.findUnique as any).mockResolvedValueOnce({
+        githubUsername: 'octocat',
+        githubAccessToken: 'enc_bad_token',
+      })
+      // First call 401
+      ;(global.fetch as any).mockResolvedValueOnce({
+        status: 401,
+        ok: false,
+      })
+      // Public fallback also fails
+      ;(global.fetch as any).mockResolvedValueOnce({
+        status: 500,
+        ok: false,
+      })
+
+      await expect(listUserRepos('user-1')).rejects.toThrow('expired or invalid')
     })
   })
 

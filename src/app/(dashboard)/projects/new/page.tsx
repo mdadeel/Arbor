@@ -21,6 +21,7 @@ import {
   ShieldCheck,
   User,
 } from 'lucide-react'
+import { signIn } from 'next-auth/react'
 import { trpc } from '@/lib/trpc'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -95,12 +96,16 @@ export default function NewProjectPage() {
     },
   })
 
+  const reposData = useMemo(() => repos.data?.repos ?? [], [repos.data?.repos])
+  const isPublicFallback = repos.data?.isPublicFallback ?? false
+  const warningMessage = repos.data?.warning
+
   const filtered = useMemo(() => {
     const q = query.toLowerCase()
-    return (repos.data ?? []).filter(
+    return reposData.filter(
       (r) => r.name.toLowerCase().includes(q) || r.fullName.toLowerCase().includes(q)
     )
-  }, [repos.data, query])
+  }, [reposData, query])
 
   async function addRepo(repo: GitHubRepo) {
     setError(null)
@@ -300,7 +305,7 @@ export default function NewProjectPage() {
 
         {repos.data && (
           <span className="text-xs text-muted-foreground font-mono">
-            {filtered.length} of {repos.data.length} repos
+            {filtered.length} of {reposData.length} repos
             {activeAccount ? ` (@${activeAccount.username})` : ''}
           </span>
         )}
@@ -309,6 +314,42 @@ export default function NewProjectPage() {
       {error && (
         <div className="rounded-md border border-destructive/40 bg-destructive/10 p-3 text-xs text-destructive">
           {error}
+        </div>
+      )}
+
+      {/* Public Repositories Fallback Banner */}
+      {isPublicFallback && (
+        <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-3.5 text-xs text-amber-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm">
+          <div className="flex items-start gap-2.5">
+            <AlertCircle className="h-4 w-4 shrink-0 text-amber-400 mt-0.5" />
+            <div className="space-y-0.5">
+              <p className="font-semibold text-foreground">Showing Public Repositories</p>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                {warningMessage ??
+                  'Your GitHub token is expired or invalid. Showing your public repositories. Reconnect your GitHub account to access private repositories.'}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+            <Button
+              size="sm"
+              variant="default"
+              onClick={() => signIn('github', { callbackUrl: '/projects/new' })}
+              className="text-xs h-8 gap-1.5"
+            >
+              <Github className="h-3.5 w-3.5" />
+              Reconnect GitHub
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setIsConnectModalOpen(true)}
+              className="text-xs h-8 gap-1.5"
+            >
+              <Key className="h-3.5 w-3.5" />
+              Add PAT
+            </Button>
+          </div>
         </div>
       )}
 
@@ -328,6 +369,15 @@ export default function NewProjectPage() {
             <div className="flex items-center justify-center gap-2 pt-1">
               <Button
                 size="sm"
+                onClick={() => signIn('github', { callbackUrl: '/projects/new' })}
+                className="text-xs h-8 gap-1.5"
+              >
+                <Github className="h-3.5 w-3.5" />
+                Connect with GitHub
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
                 onClick={() => setIsConnectModalOpen(true)}
                 className="text-xs h-8 gap-1.5"
               >
@@ -368,9 +418,18 @@ export default function NewProjectPage() {
                 {repos.error?.message ?? 'GitHub token is expired, invalid, or permissions are insufficient.'}
               </p>
             </div>
-            <div className="flex items-center justify-center gap-2 pt-2">
+            <div className="flex flex-wrap items-center justify-center gap-2 pt-2">
               <Button
                 size="sm"
+                onClick={() => signIn('github', { callbackUrl: '/projects/new' })}
+                className="text-xs h-8 gap-1.5"
+              >
+                <Github className="h-3.5 w-3.5" />
+                Reconnect GitHub
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
                 onClick={() => setIsConnectModalOpen(true)}
                 className="text-xs h-8 gap-1.5"
               >

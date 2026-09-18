@@ -23,20 +23,50 @@ export const authOptions: NextAuthOptions = {
       const githubUsername = String(githubProfile.login ?? user.name ?? '')
       const email = user.email ?? `${githubUsername}@users.noreply.github.com`
 
+      const encryptedToken = account.access_token ? encrypt(account.access_token) : undefined
+
       const data = {
         email,
         name: user.name ?? githubUsername,
         avatarUrl: user.image,
         githubUsername,
-        githubAccessToken: account.access_token ? encrypt(account.access_token) : undefined,
+        githubAccessToken: encryptedToken,
         tokenScope: account.scope,
       }
 
-      await prisma.user.upsert({
+      const dbUser = await prisma.user.upsert({
         where: { githubId },
         update: data,
         create: { githubId, ...data },
       })
+
+      if (encryptedToken && githubUsername) {
+        await prisma.gitHubAccount.upsert({
+          where: {
+            userId_username: {
+              userId: dbUser.id,
+              username: githubUsername,
+            },
+          },
+          update: {
+            accessToken: encryptedToken,
+            tokenType: 'oauth',
+            avatarUrl: user.image,
+            scope: account.scope,
+          },
+          create: {
+            userId: dbUser.id,
+            username: githubUsername,
+            accountName: 'Primary (OAuth)',
+            accessToken: encryptedToken,
+            tokenType: 'oauth',
+            avatarUrl: user.image,
+            scope: account.scope,
+            isDefault: true,
+          },
+        })
+      }
+
       return true
     },
 

@@ -387,56 +387,149 @@ export async function resolveGitHubToken(
 }
 
 /**
- * Lists repositories for a specific GitHub account or the default account.
+ * Result structure when listing user repositories, with fallback awareness.
  */
-export async function listUserRepos(userId: string, accountId?: string): Promise<GitHubRepo[]> {
-  const { token } = await resolveGitHubToken(userId, accountId)
+export type ListReposResult = {
+  repos: GitHubRepo[]
+  isPublicFallback: boolean
+  warning?: string
+  username?: string
+}
 
-  if (!token) {
-    throw new Error('GitHub account not connected. Please connect a GitHub account in Settings.')
+/**
+ * Lists repositories for a specific GitHub account or the default account.
+ * If authentication fails or token is expired, gracefully falls back to public repositories
+ * so the user is not completely blocked.
+ */
+export async function listUserRepos(
+  userId: string,
+  accountId?: string
+): Promise<ListReposResult> {
+  let targetAccount = null
+  if (accountId) {
+    targetAccount = await prisma.gitHubAccount.findFirst({
+      where: { id: accountId, userId },
+    })
+  } else {
+    targetAccount = await prisma.gitHubAccount.findFirst({
+      where: { userId, isDefault: true },
+    })
+    if (!targetAccount) {
+      targetAccount = await prisma.gitHubAccount.findFirst({
+        where: { userId },
+        orderBy: { createdAt: 'asc' },
+      })
+    }
   }
 
-  const res = await fetch(
-    'https://api.github.com/user/repos?per_page=100&sort=updated&affiliation=owner,collaborator',
-    {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        Accept: 'application/vnd.github+json',
-        'User-Agent': 'DevHub-App',
-      },
-      cache: 'no-store',
-    }
-  )
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { githubUsername: true, githubAccessToken: true },
+  })
 
-  if (res.status === 401) {
-    throw new Error(
-      'GitHub authentication failed: Token is expired or invalid. Please reconnect your account or update your access token in Settings.'
+  const username = targetAccount?.username ?? user?.githubUsername ?? undefined
+  let token = targetAccount?.accessToken ? decrypt(targetAccount.accessToken) : null
+  if (!token && user?.githubAccessToken) {
+    token = decrypt(user.githubAccessToken)
+  }
+
+  const mapRepos = (raw: RawRepo[]): GitHubRepo[] =>
+    raw.map((r) => ({
+      id: r.id,
+      name: r.name,
+      fullName: r.full_name,
+      url: r.html_url,
+      defaultBranch: r.default_branch,
+      private: r.private,
+      description: r.description,
+      language: r.language,
+      updatedAt: r.updated_at,
+    }))
+
+  const fetchPublicFallback = async (warnMsg: string): Promise<ListReposResult> => {
+    if (!username) {
+      throw new Error(warnMsg)
+    }
+
+    try {
+      const publicRes = await fetch(
+        `https://api.github.com/users/${encodeURIComponent(username)}/repos?per_page=100&sort=updated`,
+        {
+          headers: {
+            Accept: 'application/vnd.github+json',
+            'User-Agent': 'DevHub-App',
+          },
+          cache: 'no-store',
+        }
+      )
+
+      if (!publicRes.ok) {
+        throw new Error(warnMsg)
+      }
+
+      const publicRepos = (await publicRes.json()) as RawRepo[]
+      return {
+        repos: mapRepos(publicRepos),
+        isPublicFallback: true,
+        username,
+        warning: warnMsg,
+      }
+    } catch {
+      throw new Error(warnMsg)
+    }
+  }
+
+  if (!token) {
+    return fetchPublicFallback(
+      'GitHub account is not connected with a valid token. Showing public repositories. Re-authenticate or enter a Personal Access Token in Settings to view private repositories.'
     )
   }
 
-  if (res.status === 403) {
-    const remaining = res.headers.get('x-ratelimit-remaining')
-    if (remaining === '0') {
-      throw new Error('GitHub API rate limit exceeded. Please try again later.')
+  try {
+    const res = await fetch(
+      'https://api.github.com/user/repos?per_page=100&sort=updated&affiliation=owner,collaborator',
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: 'application/vnd.github+json',
+          'User-Agent': 'DevHub-App',
+        },
+        cache: 'no-store',
+      }
+    )
+
+    if (res.status === 401) {
+      return fetchPublicFallback(
+        'GitHub authentication token is expired or invalid. Showing your public repositories. Reconnect your GitHub account or update your access token in Settings to access private repositories.'
+      )
     }
-    throw new Error('GitHub API access forbidden (403). Check account permissions.')
-  }
 
-  if (!res.ok) {
-    throw new Error(`GitHub API error ${res.status}: ${res.statusText}`)
-  }
+    if (res.status === 403) {
+      const remaining = res.headers.get('x-ratelimit-remaining')
+      if (remaining === '0') {
+        return fetchPublicFallback(
+          'GitHub API rate limit exceeded for authenticated requests. Showing public repositories.'
+        )
+      }
+      return fetchPublicFallback(
+        'GitHub API access forbidden (403). Check account permissions. Showing public repositories.'
+      )
+    }
 
-  const repos = (await res.json()) as RawRepo[]
-  return repos.map((r) => ({
-    id: r.id,
-    name: r.name,
-    fullName: r.full_name,
-    url: r.html_url,
-    defaultBranch: r.default_branch,
-    private: r.private,
-    description: r.description,
-    language: r.language,
-    updatedAt: r.updated_at,
-  }))
+    if (!res.ok) {
+      return fetchPublicFallback(
+        `GitHub API returned ${res.status}: ${res.statusText}. Showing public repositories.`
+      )
+    }
+
+    const repos = (await res.json()) as RawRepo[]
+    return {
+      repos: mapRepos(repos),
+      isPublicFallback: false,
+      username,
+    }
+  } catch (err: any) {
+    return fetchPublicFallback(err.message ?? 'Failed to connect to GitHub')
+  }
 }
 
