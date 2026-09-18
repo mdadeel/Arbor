@@ -54,7 +54,7 @@ Thumbs.db
 
 # stitch
 .stitch/designs
-docs
+/docs
 .ai 
 .claude
 .stitch
