@@ -12,11 +12,16 @@ import { AuditLogTimeline } from '@/components/dashboard/audit/audit-log-timelin
 import { AiSettings } from '@/components/dashboard/settings/ai-settings'
 import { GitHubConnections } from '@/components/dashboard/settings/github-connections'
 
-export default async function SettingsPage() {
+export default async function SettingsPage({
+  searchParams,
+}: {
+  searchParams?: { tab?: string }
+}) {
   const session = await getServerSession(authOptions)
   if (!session?.user) redirect('/login')
 
   const user = session.user
+  const defaultTab = searchParams?.tab || 'profile'
 
   return (
     <div className="space-y-6 max-w-4xl">
@@ -27,7 +32,7 @@ export default async function SettingsPage() {
         </p>
       </div>
 
-      <Tabs defaultValue="profile" className="space-y-4">
+      <Tabs defaultValue={defaultTab} className="space-y-4">
         <TabsList className="h-9 flex-wrap">
           <TabsTrigger value="profile" className="text-xs gap-1.5">
             <User className="h-3.5 w-3.5" />
@@ -83,7 +88,7 @@ export default async function SettingsPage() {
 
               <div className="rounded-md border border-border/80 bg-muted/20 p-3">
                 <p className="text-xs text-muted-foreground">
-                  DevHub is configured with v2 multi-tenant workspaces enabled. Switch or invite teammates under the Workspaces tab.
+                  Arbor is configured with v2 multi-tenant workspaces enabled. Switch or invite teammates under the Workspaces tab.
                 </p>
               </div>
             </CardContent>

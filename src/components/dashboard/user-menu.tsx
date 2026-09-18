@@ -2,7 +2,7 @@
 
 import * as React from 'react'
 import { signOut } from 'next-auth/react'
-import { FileText, LogOut, Settings, User } from 'lucide-react'
+import { Building2, FileText, LogOut, Settings, User } from 'lucide-react'
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
@@ -41,8 +41,13 @@ export function UserMenu({ user, showDetails = false }: UserMenuProps) {
   const menuItems: MenuItem[] = [
     {
       label: 'Profile',
-      href: '/settings/profile',
+      href: '/settings',
       icon: <User className="h-4 w-4 shrink-0" />,
+    },
+    {
+      label: 'Workspaces & Team',
+      href: '/settings?tab=workspaces',
+      icon: <Building2 className="h-4 w-4 shrink-0" />,
     },
     {
       label: 'Settings',

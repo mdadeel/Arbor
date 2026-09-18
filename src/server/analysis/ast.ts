@@ -164,10 +164,14 @@ export function parseFile(file: string): FileAnalysis {
         }
       }
       for (const specifier of p.node.specifiers ?? []) {
-        if ('local' in specifier) {
-          result.exportedNames.push(specifier.local.name)
-        } else {
-          result.exportedNames.push(specifier.exported.type === 'Identifier' ? specifier.exported.name : '')
+        if (specifier.type === 'ExportSpecifier') {
+          const expName =
+            specifier.exported.type === 'Identifier'
+              ? specifier.exported.name
+              : (specifier.exported as any).value || (specifier.local as any)?.name
+          if (expName) result.exportedNames.push(expName)
+        } else if ('local' in specifier && (specifier as any).local?.name) {
+          result.exportedNames.push((specifier as any).local.name)
         }
       }
     },

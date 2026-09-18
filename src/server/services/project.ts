@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/prisma'
+import { TRPCError } from '@trpc/server'
 
 export function slugify(input: string): string {
   return input
@@ -27,13 +28,28 @@ export type CreateProjectInput = {
   repoUrl: string
   defaultBranch: string
   repoPrivate: boolean
+  workspaceId?: string
 }
 
 export async function createProject(userId: string, input: CreateProjectInput) {
   const slug = await uniqueSlug(userId, slugify(input.name))
+
+  // If workspaceId is not explicitly provided, associate with user's first workspace if any exists
+  let workspaceId = input.workspaceId
+  if (!workspaceId) {
+    const firstMembership = await prisma.workspaceMember.findFirst({
+      where: { userId },
+      select: { workspaceId: true },
+    })
+    if (firstMembership) {
+      workspaceId = firstMembership.workspaceId
+    }
+  }
+
   return prisma.project.create({
     data: {
       userId,
+      workspaceId,
       slug,
       name: input.name,
       description: input.description,
@@ -45,17 +61,54 @@ export async function createProject(userId: string, input: CreateProjectInput) {
   })
 }
 
-export async function listProjects(userId: string) {
+export async function listProjects(userId: string, workspaceId?: string) {
+  if (workspaceId) {
+    const isMember = await prisma.workspaceMember.findUnique({
+      where: { workspaceId_userId: { workspaceId, userId } },
+    })
+    if (!isMember) {
+      throw new TRPCError({ code: 'FORBIDDEN', message: 'Not a member of this workspace' })
+    }
+    return prisma.project.findMany({
+      where: { workspaceId, status: 'active' },
+      orderBy: { updatedAt: 'desc' },
+      include: { _count: { select: { analyses: true } } },
+    })
+  }
+
+  // Find all workspace IDs the user belongs to
+  const memberships = await prisma.workspaceMember.findMany({
+    where: { userId },
+    select: { workspaceId: true },
+  })
+  const userWorkspaceIds = memberships.map((m) => m.workspaceId)
+
   return prisma.project.findMany({
-    where: { userId, status: 'active' },
+    where: {
+      status: 'active',
+      OR: [
+        { userId },
+        ...(userWorkspaceIds.length > 0 ? [{ workspaceId: { in: userWorkspaceIds } }] : []),
+      ],
+    },
     orderBy: { updatedAt: 'desc' },
     include: { _count: { select: { analyses: true } } },
   })
 }
 
 export async function getProjectBySlug(userId: string, slug: string) {
-  return prisma.project.findUnique({
-    where: { userId_slug: { userId, slug } },
+  return prisma.project.findFirst({
+    where: {
+      slug,
+      OR: [
+        { userId },
+        {
+          workspace: {
+            members: { some: { userId } },
+          },
+        },
+      ],
+    },
     include: {
       analyses: { orderBy: { createdAt: 'desc' }, take: 10 },
     },
