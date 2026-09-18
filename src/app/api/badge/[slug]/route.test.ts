@@ -29,10 +29,11 @@ describe('Badge API Route', () => {
     expect(svg).toContain('Arbor: not found')
   })
 
-  it('returns "unscored" badge if project has no overall score', async () => {
+  it('returns "unscored" badge if project has no overall score and no health score', async () => {
     vi.mocked(prisma.project.findFirst).mockResolvedValueOnce({
       name: 'Unscored Project',
       latestScores: null,
+      healthData: null,
     } as any)
 
     const req = new NextRequest('http://localhost:3000/api/badge/unscored')
@@ -41,6 +42,22 @@ describe('Badge API Route', () => {
     expect(res.status).toBe(200)
     const svg = await res.text()
     expect(svg).toContain('Arbor: unscored')
+  })
+
+  it('falls back to healthData.score when latestScores is null', async () => {
+    vi.mocked(prisma.project.findFirst).mockResolvedValueOnce({
+      name: 'Health Only Project',
+      latestScores: null,
+      healthData: { score: 82 },
+    } as any)
+
+    const req = new NextRequest('http://localhost:3000/api/badge/health-only')
+    const res = await GET(req, { params: { slug: 'health-only' } })
+
+    expect(res.status).toBe(200)
+    const svg = await res.text()
+    expect(svg).toContain('Arbor Audit: 82/100')
+    expect(svg).toContain('#10b981')
   })
 
   it('returns green badge for score >= 80', async () => {

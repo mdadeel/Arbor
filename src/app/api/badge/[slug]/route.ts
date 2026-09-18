@@ -11,7 +11,7 @@ export async function GET(
     const project = await prisma.project.findFirst({
       where: { slug, status: 'active' },
       orderBy: { updatedAt: 'desc' },
-      select: { name: true, latestScores: true },
+      select: { name: true, latestScores: true, healthData: true },
     })
 
     if (!project) {
@@ -24,7 +24,8 @@ export async function GET(
     }
 
     const scores = project.latestScores as { overall?: number | null } | null
-    const score = scores?.overall
+    const health = project.healthData as { score?: number | null } | null
+    const score = scores?.overall ?? health?.score
 
     if (score == null) {
       return new NextResponse(generateSvgBadge('Arbor', 'unscored', '#64748b'), {

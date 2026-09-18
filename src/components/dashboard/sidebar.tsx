@@ -6,6 +6,7 @@ import {
   ArrowLeft,
   FolderGit2,
   LayoutDashboard,
+  Network,
   Plus,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -30,16 +31,20 @@ interface SidebarProps {
 const GLOBAL_NAV = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/projects', label: 'Projects', icon: FolderGit2 },
+  { href: '/systems', label: 'Systems', icon: Network },
 ]
 
 export function Sidebar({ user, projects = [], className, onNavigate }: SidebarProps) {
   const pathname = usePathname()
 
+  // Deduplicate projects by ID to guarantee unique React keys across renders
+  const uniqueProjects = Array.from(new Map(projects.map((p) => [p.id, p])).values())
+
   // Determine if we are inside a specific project
   const match = pathname.match(/^\/projects\/([^/]+)/)
   const isInsideProject = Boolean(match && match[1] !== 'new')
   const currentSlug = isInsideProject && match ? match[1] : null
-  const currentProject = projects.find((p) => p.slug === currentSlug)
+  const currentProject = uniqueProjects.find((p) => p.slug === currentSlug)
 
   const handleLinkClick = () => {
     onNavigate?.()
@@ -114,8 +119,8 @@ export function Sidebar({ user, projects = [], className, onNavigate }: SidebarP
                 {currentProject && (
                   <ScoreBadge
                     score={
-                      (currentProject.latestScores as { overall?: number } | null)
-                        ?.overall
+                      (currentProject.latestScores as { overall?: number } | null)?.overall ??
+                      (currentProject.healthData as { score?: number } | null)?.score
                     }
                     size="sm"
                   />
@@ -135,10 +140,12 @@ export function Sidebar({ user, projects = [], className, onNavigate }: SidebarP
                   Switch Project
                 </div>
                 <nav className="mt-1 space-y-0.5 max-h-48 overflow-y-auto pr-1">
-                  {projects
+                  {uniqueProjects
                     .filter((p) => p.slug !== currentSlug)
                     .map((p) => {
                       const scores = p.latestScores as { overall?: number } | null
+                      const health = p.healthData as { score?: number } | null
+                      const effectiveScore = scores?.overall ?? health?.score
                       return (
                         <Link
                           key={p.id}
@@ -147,7 +154,7 @@ export function Sidebar({ user, projects = [], className, onNavigate }: SidebarP
                           className="flex items-center justify-between rounded-md px-2 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
                         >
                           <span className="truncate">{p.name}</span>
-                          <ScoreBadge score={scores?.overall} size="sm" />
+                          <ScoreBadge score={effectiveScore} size="sm" />
                         </Link>
                       )
                     })}
@@ -171,14 +178,16 @@ export function Sidebar({ user, projects = [], className, onNavigate }: SidebarP
                 </div>
 
                 <nav className="mt-1 space-y-0.5">
-                  {projects.length === 0 ? (
+                  {uniqueProjects.length === 0 ? (
                     <p className="px-2 py-1 text-[11px] text-muted-foreground">
                       No projects connected yet.
                     </p>
                   ) : (
-                    projects.slice(0, 8).map((p) => {
+                    uniqueProjects.slice(0, 8).map((p) => {
                       const isActive = pathname === `/projects/${p.slug}`
                       const scores = p.latestScores as { overall?: number } | null
+                      const health = p.healthData as { score?: number } | null
+                      const effectiveScore = scores?.overall ?? health?.score
 
                       return (
                         <Link
@@ -191,7 +200,7 @@ export function Sidebar({ user, projects = [], className, onNavigate }: SidebarP
                           )}
                         >
                           <span className="truncate">{p.name}</span>
-                          <ScoreBadge score={scores?.overall} size="sm" />
+                          <ScoreBadge score={effectiveScore} size="sm" />
                         </Link>
                       )
                     })

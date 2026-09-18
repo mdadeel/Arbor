@@ -24,7 +24,7 @@ export default async function SettingsPage({
   const defaultTab = searchParams?.tab || 'profile'
 
   return (
-    <div className="space-y-6 max-w-4xl">
+    <div className="space-y-6 max-w-4xl mx-auto">
       <div>
         <h1 className="font-display text-xl font-semibold tracking-tight">Settings</h1>
         <p className="text-xs text-muted-foreground">

@@ -7,7 +7,7 @@ const nextConfig = {
     serverActions: {
       bodySizeLimit: '2mb',
     },
-    serverComponentsExternalPackages: ['bullmq', 'ioredis', 'simple-git', '@babel/parser', '@babel/traverse'],
+    serverComponentsExternalPackages: ['@prisma/client', 'bullmq', 'ioredis', 'simple-git', '@babel/parser', '@babel/traverse'],
   },
 }
 

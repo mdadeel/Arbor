@@ -85,6 +85,20 @@ enum InvitationStatus {
   revoked
 }
 
+enum ProjectGroupRole {
+  frontend
+  backend
+  service
+  shared_lib
+}
+
+enum SystemAnalysisStatus {
+  queued
+  analyzing
+  completed
+  failed
+}
+
 // ─────────────────────────────────────────────
 // IDENTITY CONTEXT
 // ─────────────────────────────────────────────
@@ -106,6 +120,7 @@ model User {
   memberships    WorkspaceMember[]
   auditLogs      AuditLog[]
   githubAccounts GitHubAccount[]
+  projectGroups  ProjectGroup[]
 
   // AI Integration (BYOK)
   openaiApiKey    String?
@@ -154,6 +169,7 @@ model Project {
   apiSpecs      ApiSpec[]
   documents     Document[]
   auditLogs     AuditLog[]
+  groupMembers  ProjectGroupMember[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -367,9 +383,10 @@ model Workspace {
   ownerId     String
 
   members     WorkspaceMember[]
-  invitations WorkspaceInvitation[]
-  projects    Project[]
-  auditLogs   AuditLog[]
+  invitations   WorkspaceInvitation[]
+  projects      Project[]
+  projectGroups ProjectGroup[]
+  auditLogs     AuditLog[]
 
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -435,5 +452,78 @@ model AuditLog {
   @@index([workspaceId, createdAt(sort: Desc)])
   @@index([projectId, createdAt(sort: Desc)])
   @@index([userId, createdAt(sort: Desc)])
+}
+
+// ─────────────────────────────────────────────
+// PROJECT GROUPS & FULLSTACK SYSTEMS
+// ─────────────────────────────────────────────
+
+model ProjectGroup {
+  id          String   @id @default(cuid())
+  userId      String
+  workspaceId String?
+  name        String
+  slug        String
+  description String?
+
+  latestScore Int?     // 0-100 composite system score
+  systemData  Json?    // Summary statistics and route count metrics
+
+  user        User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspace   Workspace?           @relation(fields: [workspaceId], references: [id], onDelete: SetNull)
+  members     ProjectGroupMember[]
+  analyses    SystemAnalysis[]
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([userId, slug])
+  @@index([userId])
+  @@index([workspaceId])
+}
+
+model ProjectGroupMember {
+  id        String           @id @default(cuid())
+  groupId   String
+  projectId String
+  role      ProjectGroupRole @default(service)
+  apiPrefix String?          // e.g. "/api" or "/v1"
+
+  group     ProjectGroup     @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  project   Project          @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+
+  @@unique([groupId, projectId])
+  @@index([groupId])
+  @@index([projectId])
+}
+
+model SystemAnalysis {
+  id             String               @id @default(cuid())
+  groupId        String
+  status         SystemAnalysisStatus @default(queued)
+
+  overallScore   Int?
+  contractScore  Int?
+  envScore       Int?
+  frontendScore  Int?
+  backendScore   Int?
+
+  contractMatrix Json?                // Matched, broken, and orphaned API routes
+  envDrift       Json?                // CORS, base URLs, and ports
+  systemGraph    Json?                // Composite React Flow nodes and cross-repo bridge edges
+  findings       Json?                // Cross-service system findings
+
+  durationMs     Int?
+  errorMessage   String?
+
+  group          ProjectGroup         @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+
+  @@index([groupId])
 }
 

@@ -32,7 +32,7 @@ export function ScoreRow({ scores, running = false, className }: ScoreRowProps) 
   return (
     <div
       className={cn(
-        'grid grid-cols-2 divide-y divide-border rounded-lg border border-border bg-card/50 sm:grid-cols-4 sm:divide-y-0 sm:divide-x lg:grid-cols-7',
+        'grid grid-cols-2 gap-px overflow-hidden rounded-lg border border-border bg-border sm:grid-cols-4 lg:grid-cols-7',
         className
       )}
     >
@@ -45,8 +45,8 @@ export function ScoreRow({ scores, running = false, className }: ScoreRowProps) 
           <div
             key={key}
             className={cn(
-              'flex flex-col justify-between p-3.5 transition-colors',
-              isPrimary ? 'bg-accent/20 col-span-2 sm:col-span-1' : ''
+              'flex flex-col justify-between p-3.5 transition-colors bg-card',
+              isPrimary ? 'bg-accent/25 col-span-2 sm:col-span-2 lg:col-span-1' : ''
             )}
           >
             <div className="flex items-center justify-between gap-1 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">

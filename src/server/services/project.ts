@@ -83,7 +83,7 @@ export async function listProjects(userId: string, workspaceId?: string) {
   })
   const userWorkspaceIds = memberships.map((m) => m.workspaceId)
 
-  return prisma.project.findMany({
+  const projects = await prisma.project.findMany({
     where: {
       status: 'active',
       OR: [
@@ -94,6 +94,9 @@ export async function listProjects(userId: string, workspaceId?: string) {
     orderBy: { updatedAt: 'desc' },
     include: { _count: { select: { analyses: true } } },
   })
+
+  // Deduplicate in case a project matched multiple workspace / ownership clauses
+  return Array.from(new Map(projects.map((p) => [p.id, p])).values())
 }
 
 export async function getProjectBySlug(userId: string, slug: string) {

@@ -35,11 +35,14 @@ export default async function ProjectsPage() {
 
   for (const project of projects) {
     const scores = project.latestScores as { overall?: number } | null
-    if (!scores?.overall) {
+    const health = project.healthData as { score?: number } | null
+    const effectiveScore = scores?.overall ?? health?.score
+
+    if (effectiveScore === undefined || effectiveScore === null) {
       counts.error++
-    } else if (scores.overall >= 80) {
+    } else if (effectiveScore >= 80) {
       counts.healthy++
-    } else if (scores.overall >= 60) {
+    } else if (effectiveScore >= 60) {
       counts.warning++
     } else {
       counts.error++
@@ -103,6 +106,8 @@ export default async function ProjectsPage() {
               <TableBody>
                 {projects.map((project) => {
                   const scores = project.latestScores as { overall?: number } | null
+                  const health = project.healthData as { score?: number } | null
+                  const effectiveScore = scores?.overall ?? health?.score
                   const stack = project.detectedStack as {
                     framework?: string
                     languages?: string[]
@@ -137,7 +142,7 @@ export default async function ProjectsPage() {
                       </TableCell>
 
                       <TableCell>
-                        <ScoreBadge score={scores?.overall} showOutOf size="sm" />
+                        <ScoreBadge score={effectiveScore} showOutOf size="sm" />
                       </TableCell>
 
                       <TableCell>

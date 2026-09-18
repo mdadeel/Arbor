@@ -40,9 +40,9 @@ export function UserMenu({ user, showDetails = false }: UserMenuProps) {
 
   const menuItems: MenuItem[] = [
     {
-      label: 'Profile',
+      label: 'Profile & Settings',
       href: '/settings',
-      icon: <User className="h-4 w-4 shrink-0" />,
+      icon: <Settings className="h-4 w-4 shrink-0" />,
     },
     {
       label: 'Workspaces & Team',
@@ -50,14 +50,9 @@ export function UserMenu({ user, showDetails = false }: UserMenuProps) {
       icon: <Building2 className="h-4 w-4 shrink-0" />,
     },
     {
-      label: 'Settings',
-      href: '/settings',
-      icon: <Settings className="h-4 w-4 shrink-0" />,
-    },
-    {
-      label: 'Terms & Policies',
-      href: '/settings',
-      icon: <FileText className="h-4 w-4 shrink-0" />,
+      label: 'Integrations & AI',
+      href: '/settings?tab=connections',
+      icon: <User className="h-4 w-4 shrink-0" />,
     },
   ]
 
@@ -73,7 +68,7 @@ export function UserMenu({ user, showDetails = false }: UserMenuProps) {
             )}
           >
             <div className="relative shrink-0">
-              <div className="h-9 w-9 rounded-full bg-gradient-to-br from-purple-500 via-pink-500 to-orange-400 p-0.5">
+              <div className="h-9 w-9 rounded-full border border-border/80 bg-muted/40 p-0.5">
                 <div className="h-full w-full overflow-hidden rounded-full bg-card">
                   <Avatar className="h-full w-full">
                     <AvatarImage

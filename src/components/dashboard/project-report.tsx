@@ -1,6 +1,6 @@
 'use client'
 
-import { useRouter } from 'next/navigation'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useEffect, useMemo, useState } from 'react'
 import {
   AlertTriangle,
@@ -119,9 +119,48 @@ type ProjectRow = {
 
 const RUNNING_STATUSES = ['queued', 'cloning', 'analyzing']
 
+const VALID_TABS = [
+  'overview',
+  'architecture',
+  'findings',
+  'environment',
+  'api',
+  'docs',
+  'health',
+  'commits',
+  'history',
+]
+
 export function ProjectReport({ slug, project }: { slug: string; project: ProjectRow }) {
   const router = useRouter()
-  const [tab, setTab] = useState('overview')
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+
+  const activeTabParam = searchParams.get('tab')
+  const initialTab = activeTabParam && VALID_TABS.includes(activeTabParam) ? activeTabParam : 'overview'
+  const [tab, setTab] = useState(initialTab)
+
+  // Keep state in sync with URL if user navigates back/forward
+  useEffect(() => {
+    const currentParam = searchParams.get('tab')
+    if (currentParam && VALID_TABS.includes(currentParam) && currentParam !== tab) {
+      setTab(currentParam)
+    } else if (!currentParam && tab !== 'overview') {
+      setTab('overview')
+    }
+  }, [searchParams, tab])
+
+  const handleTabChange = (newTab: string) => {
+    setTab(newTab)
+    const params = new URLSearchParams(searchParams.toString())
+    if (newTab === 'overview') {
+      params.delete('tab')
+    } else {
+      params.set('tab', newTab)
+    }
+    const query = params.toString()
+    router.replace(`${pathname}${query ? `?${query}` : ''}`, { scroll: false })
+  }
 
   const latest = project.analyses[0]
   const isRunning = latest ? RUNNING_STATUSES.includes(latest.status) : false
@@ -351,7 +390,7 @@ export function ProjectReport({ slug, project }: { slug: string; project: Projec
           <ScoreRow scores={scores} running={isRunning} />
 
           {/* Workbench Tabs */}
-          <Tabs value={tab} onValueChange={setTab} className="space-y-4">
+          <Tabs value={tab} onValueChange={handleTabChange} className="space-y-4">
             <div className="overflow-x-auto pb-1 scrollbar-none">
               <TabsList className="h-9 w-max justify-start">
                 <TabsTrigger value="overview" className="text-xs gap-1.5">

@@ -144,7 +144,7 @@ export default function NewProjectPage() {
   const activeAccount = accounts.data?.find((a) => a.id === activeAccountId)
 
   return (
-    <div className="space-y-6 max-w-4xl">
+    <div className="space-y-6 max-w-4xl mx-auto">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="space-y-1">
           <Link
