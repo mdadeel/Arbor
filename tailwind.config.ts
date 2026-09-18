@@ -52,6 +52,10 @@ const config: Config = {
           400: 'hsl(var(--blue-400))',
           500: 'hsl(var(--blue-500))',
         },
+        cyan: {
+          400: 'hsl(var(--cyan-400))',
+          500: 'hsl(var(--cyan-500))',
+        },
         emerald: {
           300: 'hsl(var(--emerald-300))',
           400: 'hsl(var(--emerald-400))',
@@ -75,6 +79,12 @@ const config: Config = {
         success: '#22c55e',
         warning: '#eab308',
         error: '#ef4444',
+        brand: {
+          plum: '#321E48',
+          navy: '#43637E',
+          teal: '#65DCD5',
+          mint: '#D9FFF4',
+        },
       },
       fontFamily: {
         sans: ['Inter', 'system-ui', 'sans-serif'],

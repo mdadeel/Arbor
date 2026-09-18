@@ -15,6 +15,11 @@ export const env = createEnv({
     MAX_FILES: z.coerce.number().default(5000),
     MAX_FILE_SIZE_KB: z.coerce.number().default(100),
     ANALYSIS_TIMEOUT_MS: z.coerce.number().default(300000),
+    ADMIN_EMAILS: z.string().default(''),
+    ADMIN_GITHUB_USERNAMES: z.string().default(''),
+    ADMIN_USERNAME: z.string().default('adeel'),
+    ADMIN_PASSWORD: z.string().default('adeel1212'),
+    APP_URL: z.string().default('https://arborgit.vercel.app'),
   },
   client: {},
   experimental__runtimeEnv: {

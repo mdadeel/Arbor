@@ -32,7 +32,7 @@ export function Header({ projects = [], user }: HeaderProps) {
 
   return (
     <>
-      <header className="flex h-12 shrink-0 items-center justify-between border-b border-border bg-background px-3 sm:px-6 gap-3 sm:gap-6">
+      <header className="sticky top-0 z-30 flex h-12 shrink-0 items-center justify-between border-b border-border bg-background/95 backdrop-blur px-3 sm:px-6 gap-3 sm:gap-6">
         {/* Left: Mobile hamburger & Dynamic Breadcrumbs */}
         <div className="flex items-center gap-2 sm:gap-3 min-w-0 shrink-0">
           {user && (
@@ -84,6 +84,9 @@ export function Header({ projects = [], user }: HeaderProps) {
                 )}
                 {segments[0] === 'settings' && (
                   <span className="font-semibold text-foreground">Settings</span>
+                )}
+                {segments[0] === 'admin' && (
+                  <span className="font-semibold text-foreground">Admin Panel</span>
                 )}
               </>
             )}

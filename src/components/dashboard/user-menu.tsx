@@ -2,7 +2,8 @@
 
 import * as React from 'react'
 import { signOut } from 'next-auth/react'
-import { Building2, FileText, LogOut, Settings, User } from 'lucide-react'
+import { trpc } from '@/lib/trpc'
+import { Building2, FileText, LogOut, Settings, Shield, User } from 'lucide-react'
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
@@ -38,7 +39,20 @@ export function UserMenu({ user, showDetails = false }: UserMenuProps) {
   const [isOpen, setIsOpen] = React.useState(false)
   const initial = (user.name ?? user.email ?? 'D')[0].toUpperCase()
 
+  const { data: adminStatus } = trpc.admin.checkStatus.useQuery(undefined, {
+    staleTime: 5 * 60 * 1000,
+  })
+
   const menuItems: MenuItem[] = [
+    ...(adminStatus?.isAdmin
+      ? [
+          {
+            label: 'Admin Panel',
+            href: '/admin',
+            icon: <Shield className="h-4 w-4 shrink-0 text-primary" />,
+          },
+        ]
+      : []),
     {
       label: 'Profile & Settings',
       href: '/settings',

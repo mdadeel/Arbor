@@ -8,6 +8,7 @@ import {
   LayoutDashboard,
   Network,
   Plus,
+  Shield,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { ScoreBadge } from '@/components/dashboard/score-badge'
@@ -32,6 +33,7 @@ const GLOBAL_NAV = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/projects', label: 'Projects', icon: FolderGit2 },
   { href: '/systems', label: 'Systems', icon: Network },
+  { href: '/admin', label: 'Admin Panel', icon: Shield },
 ]
 
 export function Sidebar({ user, projects = [], className, onNavigate }: SidebarProps) {

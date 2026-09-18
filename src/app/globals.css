@@ -35,6 +35,8 @@
     --amber-500: 26 90% 37%;
     --blue-400: 221 83% 53%;
     --blue-500: 224 76% 38%;
+    --cyan-400: 189 82% 31%;
+    --cyan-500: 189 90% 27%;
     --emerald-300: 161 94% 30%;
     --emerald-400: 161 94% 30%;
     --emerald-500: 160 90% 24%;
@@ -78,6 +80,8 @@
     --amber-500: 38 92% 50%;
     --blue-400: 214 95% 69%;
     --blue-500: 217 91% 60%;
+    --cyan-400: 189 94% 57%;
+    --cyan-500: 190 90% 50%;
     --emerald-300: 156 72% 67%;
     --emerald-400: 158 64% 52%;
     --emerald-500: 160 84% 39%;
@@ -98,5 +102,15 @@
   body {
     @apply bg-background text-foreground;
     -webkit-font-smoothing: antialiased;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
   }
 }

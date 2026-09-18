@@ -1,5 +1,6 @@
 import type { NextAuthOptions } from 'next-auth'
 import GitHubProvider from 'next-auth/providers/github'
+import CredentialsProvider from 'next-auth/providers/credentials'
 import { env } from '@/lib/env'
 import { encrypt } from '@/lib/crypto'
 import { prisma } from '@/lib/prisma'
@@ -14,10 +15,62 @@ export const authOptions: NextAuthOptions = {
       clientSecret: env.GITHUB_CLIENT_SECRET,
       authorization: { params: { scope: 'read:user user:email repo' } },
     }),
+    CredentialsProvider({
+      id: 'credentials',
+      name: 'Admin Credentials',
+      credentials: {
+        username: { label: 'Username', type: 'text' },
+        password: { label: 'Password', type: 'password' },
+      },
+      async authorize(credentials) {
+        const username = credentials?.username?.trim()
+        const password = credentials?.password?.trim()
+
+        const validUsername = env.ADMIN_USERNAME || 'adeel'
+        const validPassword = env.ADMIN_PASSWORD || 'adeel1212'
+
+        if (username === validUsername && password === validPassword) {
+          let user = await prisma.user.findFirst({
+            where: {
+              OR: [
+                { githubUsername: 'mdadeel' },
+                { githubUsername: 'adeel' },
+                { email: 'mdadeel125@gmail.com' },
+                { email: 'adeel@admin.local' },
+              ],
+            },
+          })
+
+          if (!user) {
+            user = await prisma.user.create({
+              data: {
+                email: 'adeel@admin.local',
+                name: 'Adeel (Admin)',
+                githubUsername: 'adeel',
+                githubId: 99999999,
+              },
+            })
+          }
+
+          return {
+            id: user.id,
+            name: user.name ?? 'Adeel (Admin)',
+            email: user.email,
+            image: user.avatarUrl,
+          }
+        }
+
+        return null
+      },
+    }),
   ],
   callbacks: {
     async signIn({ user, account, profile }) {
       try {
+        if (account?.provider === 'credentials') {
+          return true
+        }
+
         if (account?.provider !== 'github' || !profile) return false
 
       const githubProfile = profile as { id?: number | string; login?: string }
@@ -76,8 +129,11 @@ export const authOptions: NextAuthOptions = {
       }
     },
 
-    async jwt({ token, account, profile }) {
+    async jwt({ token, user, account, profile }) {
       try {
+        if (user) {
+          token.userId = user.id
+        }
         if (account && profile) {
           const githubProfile = profile as { id?: number | string }
           const dbUser = await prisma.user.findUnique({ where: { githubId: Number(githubProfile.id) } })

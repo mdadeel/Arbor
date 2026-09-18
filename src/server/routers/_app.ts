@@ -10,6 +10,7 @@ import { workspaceRouter } from './workspace'
 import { auditRouter } from './audit'
 import { aiRouter } from './ai'
 import { systemRouter } from './system'
+import { adminRouter } from './admin'
 
 export const appRouter = router({
   health: healthRouter,
@@ -23,6 +24,7 @@ export const appRouter = router({
   audit: auditRouter,
   ai: aiRouter,
   system: systemRouter,
+  admin: adminRouter,
 })
 
 export type AppRouter = typeof appRouter

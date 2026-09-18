@@ -1,0 +1,28 @@
+# Arbor — Codebase Intelligence & Developer Portal
+
+> Automated architectural audits, visual dependency graphs, and repository health scores directly from your GitHub repositories in under 30 seconds.
+
+## Overview
+Arbor is a developer platform for inspecting and understanding software codebases. It uses deterministic Abstract Syntax Tree (AST) analysis with Babel parsers rather than black-box AI models, guaranteeing 100% deterministic and repeatable audit reports with zero hallucinations.
+
+## Key Capabilities
+- **Deterministic AST Audits**: Evaluates codebases across 7 architectural health dimensions (Architecture, Tech Debt, Maintainability, Dependencies, Performance, Security, Doc Coverage) in under 30 seconds.
+- **Visual Dependency Graph**: Generates interactive Directed Acyclic Graph (DAG) visualizations of module boundaries and automatically flags circular dependency cycles.
+- **Commit Pulse & Recency**: Classifies Conventional Commits (feat, fix, refactor, perf, docs) to track contributor velocity and team impact.
+- **Secret & Env Shield**: Scans for leaked credentials, exposed API tokens, and missing environment variables across environments.
+- **Interactive API Explorer & Living Docs**: Built-in OpenAPI runner with CORS proxy and versioned Markdown documentation hub.
+- **Dynamic README Badges**: Generates live SVG shields badges (`/api/badge/[slug]`) indicating audit scores directly in GitHub README files.
+
+## Security & Privacy Commitment
+- **Zero Source Code Retained**: Arbor performs shallow Git clones into ephemeral in-memory/temp storage. Cloned files are permanently deleted immediately upon AST parse completion (~30s).
+- **No Model Training**: Source code is never retained or used to train any AI or machine learning models.
+- **Fine-Grained Permissions**: Supports standard GitHub OAuth (read-only repository access) and Personal Access Tokens (PAT) for enterprise SAML/SSO setups.
+
+## Pricing & Tiers
+- **Community (Free forever)**: Up to 3 connected repositories, full AST architectural audits, dependency visualizer, dynamic SVG README badges.
+- **Pro ($15/month — Waitlist)**: Unlimited repositories, automated periodic health sync, team workspaces with RBAC, GitHub Actions CI/CD PR audit blocker.
+
+## Canonical URLs
+- Website: https://arborgit.vercel.app
+- Sign In: https://arborgit.vercel.app/login
+- Dynamic SVG Badges: https://arborgit.vercel.app/api/badge/[slug]

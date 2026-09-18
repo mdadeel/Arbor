@@ -8,12 +8,18 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: 'bg-primary text-primary-foreground shadow hover:bg-primary/90',
+        default:
+          'bg-[#321E48] text-[#D9FFF4] shadow-sm hover:bg-[#43637E] hover:text-white dark:bg-[#65DCD5] dark:text-[#1a0f26] dark:hover:bg-[#321E48] dark:hover:text-[#65DCD5] font-semibold',
+        brand:
+          'bg-[#65DCD5] text-[#1a0f26] shadow-sm hover:bg-[#321E48] hover:text-[#65DCD5] font-bold transition-all',
+        plum:
+          'bg-[#321E48] text-[#D9FFF4] shadow-sm hover:bg-[#43637E] hover:text-white font-semibold transition-all',
         destructive: 'bg-destructive text-destructive-foreground shadow-sm hover:bg-destructive/90',
-        outline: 'border border-input bg-transparent shadow-sm hover:bg-accent hover:text-accent-foreground',
+        outline:
+          'border border-[#43637E]/40 bg-transparent text-foreground shadow-sm hover:border-[#65DCD5] hover:bg-[#65DCD5]/10 hover:text-[#65DCD5]',
         secondary: 'bg-secondary text-secondary-foreground shadow-sm hover:bg-secondary/80',
         ghost: 'hover:bg-accent hover:text-accent-foreground',
-        link: 'text-primary underline-offset-4 hover:underline',
+        link: 'text-[#65DCD5] underline-offset-4 hover:underline',
       },
       size: {
         default: 'h-9 px-4 py-2',

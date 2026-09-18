@@ -527,3 +527,16 @@ model SystemAnalysis {
   @@index([groupId])
 }
 
+// ─────────────────────────────────────────────
+// WAITLIST & MARKETING LEADS
+// ─────────────────────────────────────────────
+
+model WaitlistLead {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  source    String?  @default("pricing_pro")
+  createdAt DateTime @default(now())
+
+  @@index([createdAt(sort: Desc)])
+}
+
