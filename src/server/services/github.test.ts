@@ -65,7 +65,7 @@ describe('github service', () => {
         'https://api.github.com/user',
         expect.objectContaining({
           headers: expect.objectContaining({
-            'User-Agent': 'DevHub-App',
+            'User-Agent': 'Arbor-App',
             Authorization: 'Bearer ghp_valid_token',
           }),
         })
@@ -206,7 +206,7 @@ describe('github service', () => {
         expect.objectContaining({
           headers: expect.objectContaining({
             Authorization: 'Bearer my_token',
-            'User-Agent': 'DevHub-App',
+            'User-Agent': 'Arbor-App',
           }),
         })
       )
@@ -255,7 +255,7 @@ describe('github service', () => {
         expect.stringContaining('api.github.com/users/octocat/repos'),
         expect.objectContaining({
           headers: expect.objectContaining({
-            'User-Agent': 'DevHub-App',
+            'User-Agent': 'Arbor-App',
           }),
         })
       )

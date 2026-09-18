@@ -159,4 +159,4 @@ worker.on('error', (err) => {
   console.error('[worker] error:', err.message)
 })
 
-console.log(`[worker] DevHub analysis worker running on ${env.REDIS_URL} (timeout: ${env.ANALYSIS_TIMEOUT_MS}ms)`)
+console.log(`[worker] Arbor analysis worker running on ${env.REDIS_URL} (timeout: ${env.ANALYSIS_TIMEOUT_MS}ms)`)

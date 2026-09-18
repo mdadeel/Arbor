@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 vi.mock('@/lib/env', () => ({
   env: {
-    CLONE_BASE_DIR: '/tmp/devhub-clones-test',
+    CLONE_BASE_DIR: '/tmp/arbor-clones-test',
   },
 }))
 

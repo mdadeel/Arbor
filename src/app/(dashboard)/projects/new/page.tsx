@@ -158,7 +158,7 @@ export default function NewProjectPage() {
             Connect a Repository
           </h1>
           <p className="text-xs text-muted-foreground">
-            Select a GitHub repository to add to your DevHub workspace for automated audits.
+            Select a GitHub repository to add to your Arbor workspace for automated audits.
           </p>
         </div>
 
@@ -258,7 +258,7 @@ export default function NewProjectPage() {
             <div className="rounded-md border border-border/70 bg-muted/20 p-2.5 text-xs flex items-center justify-between">
               <span className="text-muted-foreground text-[11px]">Generate a token on GitHub:</span>
               <a
-                href="https://github.com/settings/tokens/new?scopes=repo,read:user&description=DevHub"
+                href="https://github.com/settings/tokens/new?scopes=repo,read:user&description=Arbor"
                 target="_blank"
                 rel="noreferrer"
                 className="text-[11px] text-primary hover:underline flex items-center gap-1"

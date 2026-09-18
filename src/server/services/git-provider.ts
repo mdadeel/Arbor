@@ -28,7 +28,7 @@ export class GitHubProvider implements GitProvider {
       headers: {
         Authorization: `Bearer ${token}`,
         Accept: 'application/vnd.github.v3+json',
-        'User-Agent': 'DevHub-App',
+        'User-Agent': 'Arbor-App',
       },
     })
     if (!res.ok) {
@@ -52,7 +52,7 @@ export class GitHubProvider implements GitProvider {
       headers: {
         Authorization: `Bearer ${token}`,
         Accept: 'application/vnd.github.v3+json',
-        'User-Agent': 'DevHub-App',
+        'User-Agent': 'Arbor-App',
       },
     })
     if (res.status === 404) return null
@@ -75,7 +75,7 @@ export class GitHubProvider implements GitProvider {
       headers: {
         Authorization: `Bearer ${token}`,
         Accept: 'application/vnd.github.v3+json',
-        'User-Agent': 'DevHub-App',
+        'User-Agent': 'Arbor-App',
       },
     })
     if (!res.ok) return ['main']

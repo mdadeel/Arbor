@@ -81,7 +81,7 @@ export function AuditLogTimeline({ workspaceId, projectId }: AuditLogTimelinePro
           </div>
         ) : !logs || logs.length === 0 ? (
           <div className="py-10 text-center text-xs text-muted-foreground">
-            No audit events recorded yet. Actions taken across DevHub will be logged here.
+            No audit events recorded yet. Actions taken across Arbor will be logged here.
           </div>
         ) : (
           <div className="relative pl-6 space-y-4 before:absolute before:left-2 before:top-2 before:bottom-2 before:w-px before:bg-border/60">

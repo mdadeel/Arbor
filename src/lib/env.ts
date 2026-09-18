@@ -9,7 +9,7 @@ export const env = createEnv({
     GITHUB_CLIENT_ID: z.string().default(''),
     GITHUB_CLIENT_SECRET: z.string().default(''),
     ENCRYPTION_SECRET: z.string().min(1),
-    CLONE_BASE_DIR: z.string().default('/tmp/devhub-clones'),
+    CLONE_BASE_DIR: z.string().default('/tmp/arbor-clones'),
     CLONE_TIMEOUT: z.coerce.number().default(60),
     MAX_REPO_SIZE_MB: z.coerce.number().default(500),
     MAX_FILES: z.coerce.number().default(5000),

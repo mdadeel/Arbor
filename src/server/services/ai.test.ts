@@ -54,12 +54,12 @@ The service proxies requests through tRPC with full TypeScript validation.
       { title: 'fix: handle missing openapi spec gracefully', number: 43 },
     ]
 
-    const release = generateReleaseNotes('DevHub', commits, prs)
+    const release = generateReleaseNotes('Arbor', commits, prs)
     expect(release.features.length).toBe(1)
     expect(release.features[0]).toContain('#42')
     expect(release.fixes.length).toBe(1)
     expect(release.fixes[0]).toContain('#43')
-    expect(release.markdown).toContain('# DevHub')
+    expect(release.markdown).toContain('# Arbor')
     expect(release.markdown).toContain('🚀 New Features')
     expect(release.markdown).toContain('🐛 Bug Fixes')
   })

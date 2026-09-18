@@ -195,7 +195,7 @@ export function GitHubConnections() {
                     <div className="flex items-center justify-between">
                       <span className="text-muted-foreground text-[11px]">Need to create a token?</span>
                       <a
-                        href="https://github.com/settings/tokens/new?scopes=repo,read:user&description=DevHub"
+                        href="https://github.com/settings/tokens/new?scopes=repo,read:user&description=Arbor"
                         target="_blank"
                         rel="noreferrer"
                         className="text-[11px] text-primary hover:underline flex items-center gap-1"

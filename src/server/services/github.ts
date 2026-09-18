@@ -56,7 +56,7 @@ export async function validateGitHubToken(token: string): Promise<TokenValidatio
       headers: {
         Authorization: `Bearer ${token}`,
         Accept: 'application/vnd.github+json',
-        'User-Agent': 'DevHub-App',
+        'User-Agent': 'Arbor-App',
       },
       cache: 'no-store',
     })
@@ -457,7 +457,7 @@ export async function listUserRepos(
         {
           headers: {
             Accept: 'application/vnd.github+json',
-            'User-Agent': 'DevHub-App',
+            'User-Agent': 'Arbor-App',
           },
           cache: 'no-store',
         }
@@ -492,7 +492,7 @@ export async function listUserRepos(
         headers: {
           Authorization: `Bearer ${token}`,
           Accept: 'application/vnd.github+json',
-          'User-Agent': 'DevHub-App',
+          'User-Agent': 'Arbor-App',
         },
         cache: 'no-store',
       }

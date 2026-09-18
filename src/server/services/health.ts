@@ -317,7 +317,7 @@ export async function syncProjectHealth(userId: string, projectId: string): Prom
             headers: {
               Authorization: `Bearer ${token}`,
               Accept: 'application/vnd.github+json',
-              'User-Agent': 'DevHub-Health-Dashboard',
+              'User-Agent': 'Arbor-Health-Dashboard',
             },
             cache: 'no-store',
           })
@@ -328,7 +328,7 @@ export async function syncProjectHealth(userId: string, projectId: string): Prom
               return await fetch(url, {
                 headers: {
                   Accept: 'application/vnd.github+json',
-                  'User-Agent': 'DevHub-Health-Dashboard',
+                  'User-Agent': 'Arbor-Health-Dashboard',
                 },
                 cache: 'no-store',
               })
@@ -345,7 +345,7 @@ export async function syncProjectHealth(userId: string, projectId: string): Prom
           return await fetch(url, {
             headers: {
               Accept: 'application/vnd.github+json',
-              'User-Agent': 'DevHub-Health-Dashboard',
+              'User-Agent': 'Arbor-Health-Dashboard',
             },
             cache: 'no-store',
           })

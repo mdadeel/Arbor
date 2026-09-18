@@ -1,4 +1,4 @@
-// DevHub v1 — Minimal Schema (User + Project + Analysis)
+// Arbor v1 — Minimal Schema (User + Project + Analysis)
 
 generator client {
   provider        = "prisma-client-js"
