@@ -12,7 +12,7 @@ build
 .env*.example
 
 # analysis artifacts
-/tmp/devhub-clones
+/tmp/arbor-clones
 *.log
 nohup.out
 

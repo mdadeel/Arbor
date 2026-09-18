@@ -1,4 +1,4 @@
-import { AlertCircle, AlertTriangle, FileCode, Info } from 'lucide-react'
+import { AlertCircle, AlertTriangle, Code2, ExternalLink, FileCode, Info } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 export type Severity = 'critical' | 'warning' | 'info'
@@ -17,12 +17,22 @@ export interface FindingData {
 
 interface FindingItemProps {
   finding: FindingData
+  repoUrl?: string
+  commitSha?: string | null
   className?: string
 }
 
-export function FindingItem({ finding, className }: FindingItemProps) {
+export function FindingItem({ finding, repoUrl, commitSha, className }: FindingItemProps) {
   const isCritical = finding.severity === 'critical'
   const isWarning = finding.severity === 'warning'
+
+  const lineRef = finding.line ? `#L${finding.line}` : ''
+  const githubFileUrl = repoUrl && finding.file
+    ? `${repoUrl}/blob/${commitSha || 'main'}/${finding.file}${lineRef}`
+    : null
+  const vscodeUrl = finding.file
+    ? `vscode://file/${finding.file}${finding.line ? `:${finding.line}` : ''}`
+    : null
 
   return (
     <div
@@ -64,12 +74,39 @@ export function FindingItem({ finding, className }: FindingItemProps) {
         )}
 
         {finding.file && (
-          <div className="flex items-center gap-1.5 pt-0.5 font-mono text-[11px] text-muted-foreground/80">
-            <FileCode className="h-3 w-3 shrink-0" />
-            <span className="truncate">
-              {finding.file}
-              {finding.line ? `:${finding.line}` : ''}
-            </span>
+          <div className="flex flex-wrap items-center justify-between gap-2 pt-1 font-mono text-[11px] text-muted-foreground/80">
+            <div className="flex items-center gap-1.5 truncate">
+              <FileCode className="h-3 w-3 shrink-0" />
+              <span className="truncate">
+                {finding.file}
+                {finding.line ? `:${finding.line}` : ''}
+              </span>
+            </div>
+
+            <div className="flex items-center gap-2 opacity-80 group-hover:opacity-100 transition-opacity">
+              {githubFileUrl && (
+                <a
+                  href={githubFileUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground transition-colors"
+                  title="View line on GitHub"
+                >
+                  <ExternalLink className="h-2.5 w-2.5" />
+                  <span>GitHub</span>
+                </a>
+              )}
+              {vscodeUrl && (
+                <a
+                  href={vscodeUrl}
+                  className="inline-flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground transition-colors"
+                  title="Open in VS Code"
+                >
+                  <Code2 className="h-2.5 w-2.5" />
+                  <span>VS Code</span>
+                </a>
+              )}
+            </div>
           </div>
         )}
       </div>
