@@ -304,7 +304,7 @@ export function CommandMenu({ open, onOpenChange, projects = [] }: CommandMenuPr
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="overflow-hidden p-0 sm:max-w-2xl border-border bg-card shadow-2xl">
         <DialogHeader className="sr-only">
-          <DialogTitle>Search DevHub</DialogTitle>
+          <DialogTitle>Search Arbor</DialogTitle>
         </DialogHeader>
 
         {/* Search Input Bar */}
@@ -397,7 +397,7 @@ export function CommandMenu({ open, onOpenChange, projects = [] }: CommandMenuPr
         {/* Keyboard Navigation Footer */}
         <div className="flex items-center justify-between border-t border-border/80 bg-background/50 px-3.5 py-2 text-[11px] text-muted-foreground">
           <div className="flex items-center gap-1 font-mono text-[10px]">
-            <span className="font-semibold text-foreground">DevHub</span>
+            <span className="font-semibold text-foreground">Arbor</span>
             <span>command center</span>
           </div>
           <div className="flex items-center gap-3">

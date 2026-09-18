@@ -88,7 +88,8 @@ export default async function ProjectsPage() {
       ) : (
         <Card className="border-border">
           <CardContent className="p-0">
-            <Table>
+            <div className="overflow-x-auto">
+              <Table>
               <TableHeader>
                 <TableRow className="hover:bg-transparent">
                   <TableHead className="w-[280px]">Project</TableHead>
@@ -168,7 +169,8 @@ export default async function ProjectsPage() {
                 })}
               </TableBody>
             </Table>
-          </CardContent>
+          </div>
+        </CardContent>
         </Card>
       )}
     </div>

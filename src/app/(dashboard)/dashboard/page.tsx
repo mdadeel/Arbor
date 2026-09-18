@@ -166,7 +166,8 @@ export default async function DashboardPage() {
               </Link>
             </CardHeader>
             <CardContent className="p-0">
-              <Table>
+              <div className="overflow-x-auto">
+                <Table>
                 <TableHeader>
                   <TableRow className="hover:bg-transparent">
                     <TableHead className="w-[300px]">Repository</TableHead>
@@ -243,7 +244,8 @@ export default async function DashboardPage() {
                   })}
                 </TableBody>
               </Table>
-            </CardContent>
+            </div>
+          </CardContent>
           </Card>
 
           {/* Two-Column Bottom Workbench Panels */}

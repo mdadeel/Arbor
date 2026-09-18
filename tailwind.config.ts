@@ -42,6 +42,35 @@ const config: Config = {
           DEFAULT: 'hsl(var(--card))',
           foreground: 'hsl(var(--card-foreground))',
         },
+        amber: {
+          200: 'hsl(var(--amber-200))',
+          300: 'hsl(var(--amber-300))',
+          400: 'hsl(var(--amber-400))',
+          500: 'hsl(var(--amber-500))',
+        },
+        blue: {
+          400: 'hsl(var(--blue-400))',
+          500: 'hsl(var(--blue-500))',
+        },
+        emerald: {
+          300: 'hsl(var(--emerald-300))',
+          400: 'hsl(var(--emerald-400))',
+          500: 'hsl(var(--emerald-500))',
+        },
+        orange: {
+          500: 'hsl(var(--orange-500))',
+        },
+        red: {
+          400: 'hsl(var(--red-400))',
+          500: 'hsl(var(--red-500))',
+        },
+        sky: {
+          400: 'hsl(var(--sky-400))',
+          500: 'hsl(var(--sky-500))',
+        },
+        yellow: {
+          400: 'hsl(var(--yellow-400))',
+        },
         surface: '#171717',
         success: '#22c55e',
         warning: '#eab308',

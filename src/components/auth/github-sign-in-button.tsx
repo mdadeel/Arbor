@@ -15,6 +15,8 @@ import {
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
+import { Logo } from '@/components/ui/logo'
+
 export function GithubSignInButton({ configured }: { configured: boolean }) {
   const [loading, setLoading] = useState(false)
 
@@ -29,16 +31,18 @@ export function GithubSignInButton({ configured }: { configured: boolean }) {
 
   return (
     <div className="w-full max-w-md space-y-6">
-      <div className="space-y-2 text-center">
-        <div className="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-primary shadow-lg shadow-primary/25 font-mono text-xl font-bold text-primary-foreground">
-          D
+      <div className="space-y-3 text-center">
+        <div className="inline-flex justify-center">
+          <Logo size="xl" />
         </div>
-        <h1 className="font-display text-2xl font-bold tracking-tight text-foreground">
-          Welcome to DevHub
-        </h1>
-        <p className="text-xs text-muted-foreground max-w-sm mx-auto leading-relaxed">
-          The developer portal that automatically understands your codebase. Zero configuration, deterministic AST analysis.
-        </p>
+        <div className="space-y-1.5">
+          <h1 className="font-display text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+            Arbor
+          </h1>
+          <p className="text-xs text-muted-foreground max-w-sm mx-auto leading-relaxed">
+            Automated architectural audits and codebase intelligence for developers. Zero config, deterministic AST parsing.
+          </p>
+        </div>
       </div>
 
       <div className="rounded-xl border border-border bg-card/60 p-6 shadow-xl backdrop-blur-sm space-y-5">
@@ -86,7 +90,7 @@ export function GithubSignInButton({ configured }: { configured: boolean }) {
               <p className="text-[11px] text-muted-foreground leading-relaxed">
                 Set <code className="font-mono text-foreground">GITHUB_CLIENT_ID</code> and{' '}
                 <code className="font-mono text-foreground">GITHUB_CLIENT_SECRET</code> in your{' '}
-                <code className="font-mono text-foreground">.env</code> file, then restart DevHub.
+                <code className="font-mono text-foreground">.env</code> file, then restart Arbor.
               </p>
             </div>
           )}
