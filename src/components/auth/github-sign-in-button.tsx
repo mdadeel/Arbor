@@ -1,9 +1,11 @@
 'use client'
 
 import { useState } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { signIn } from 'next-auth/react'
 import {
   AlertCircle,
+  AlertTriangle,
   ArrowRight,
   Boxes,
   Code2,
@@ -19,6 +21,26 @@ import { Logo } from '@/components/ui/logo'
 
 export function GithubSignInButton({ configured }: { configured: boolean }) {
   const [loading, setLoading] = useState(false)
+  const searchParams = useSearchParams()
+  const error = searchParams.get('error')
+
+  const getErrorMessage = (err: string) => {
+    switch (err) {
+      case 'OAuthCallback':
+        return 'GitHub authorization failed. Verify your Client Secret and Authorization Callback URL in GitHub Developer Settings.'
+      case 'OAuthSignin':
+      case 'OAuthCreateAccount':
+        return 'Could not initialize GitHub account connection. Please try again.'
+      case 'Callback':
+        return 'Database error while establishing user session. Verify your DATABASE_URL connection in Vercel.'
+      case 'Configuration':
+        return 'Server configuration issue. Verify NEXTAUTH_SECRET and NEXTAUTH_URL are set.'
+      case 'AccessDenied':
+        return 'Sign-in access was denied.'
+      default:
+        return 'An error occurred during authentication. Please try again.'
+    }
+  }
 
   const handleSignIn = async () => {
     setLoading(true)
@@ -66,7 +88,19 @@ export function GithubSignInButton({ configured }: { configured: boolean }) {
           </div>
         </div>
 
-        <div className="border-t border-border pt-4">
+        <div className="border-t border-border pt-4 space-y-3">
+          {error && (
+            <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-xs text-red-300 space-y-1">
+              <div className="flex items-center gap-1.5 font-semibold">
+                <AlertTriangle className="h-4 w-4 shrink-0 text-red-400" />
+                <span>Authentication Error</span>
+              </div>
+              <p className="text-[11px] text-red-200/90 leading-relaxed">
+                {getErrorMessage(error)}
+              </p>
+            </div>
+          )}
+
           {configured ? (
             <Button
               className="w-full h-10 gap-2.5 font-medium text-xs shadow-md"

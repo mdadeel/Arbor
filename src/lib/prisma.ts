@@ -3,6 +3,13 @@ import { PrismaClient } from '@prisma/client'
 const globalForPrisma = globalThis as unknown as { prisma: PrismaClient | undefined }
 
 function getPrismaClient(): PrismaClient {
+  if (process.env.NODE_ENV === 'production') {
+    if (!globalForPrisma.prisma) {
+      globalForPrisma.prisma = new PrismaClient()
+    }
+    return globalForPrisma.prisma
+  }
+
   const cached = globalForPrisma.prisma
   if (cached && 'projectGroup' in cached) {
     return cached
@@ -21,9 +28,7 @@ function getPrismaClient(): PrismaClient {
 
   const { PrismaClient: FreshClient } = require('@prisma/client') as { PrismaClient: typeof PrismaClient }
   const fresh = new FreshClient()
-  if (process.env.NODE_ENV !== 'production') {
-    globalForPrisma.prisma = fresh
-  }
+  globalForPrisma.prisma = fresh
   return fresh
 }
 

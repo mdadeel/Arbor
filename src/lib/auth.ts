@@ -7,6 +7,7 @@ import { prisma } from '@/lib/prisma'
 export const authOptions: NextAuthOptions = {
   // ponytail: JWT sessions, no adapter tables — keeps the 3-table v1 schema
   session: { strategy: 'jwt' },
+  debug: Boolean(process.env.NODE_ENV === 'development' || process.env.VERCEL),
   providers: [
     GitHubProvider({
       clientId: env.GITHUB_CLIENT_ID,
@@ -16,7 +17,8 @@ export const authOptions: NextAuthOptions = {
   ],
   callbacks: {
     async signIn({ user, account, profile }) {
-      if (account?.provider !== 'github' || !profile) return false
+      try {
+        if (account?.provider !== 'github' || !profile) return false
 
       const githubProfile = profile as { id?: number | string; login?: string }
       const githubId = Number(githubProfile.id)
@@ -68,13 +70,21 @@ export const authOptions: NextAuthOptions = {
       }
 
       return true
+      } catch (err) {
+        console.error('[NextAuth:signIn] Error processing GitHub sign-in:', err)
+        throw err
+      }
     },
 
     async jwt({ token, account, profile }) {
-      if (account && profile) {
-        const githubProfile = profile as { id?: number | string }
-        const dbUser = await prisma.user.findUnique({ where: { githubId: Number(githubProfile.id) } })
-        if (dbUser) token.userId = dbUser.id
+      try {
+        if (account && profile) {
+          const githubProfile = profile as { id?: number | string }
+          const dbUser = await prisma.user.findUnique({ where: { githubId: Number(githubProfile.id) } })
+          if (dbUser) token.userId = dbUser.id
+        }
+      } catch (err) {
+        console.error('[NextAuth:jwt] Error fetching user in jwt callback:', err)
       }
       return token
     },
@@ -86,5 +96,6 @@ export const authOptions: NextAuthOptions = {
   },
   pages: {
     signIn: '/login',
+    error: '/login',
   },
 }
