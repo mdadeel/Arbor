@@ -13,9 +13,7 @@ import {
   ArrowRight,
   CreditCard,
   Github,
-  LayoutDashboard,
   ShieldCheck,
-  Sparkles,
   Timer,
 } from 'lucide-react'
 
@@ -33,7 +31,7 @@ const stackLogos = [
 
 /* eslint-disable @next/next/no-img-element */
 function LogoRow() {
-  const vscodeHref = 'https://cdn.simpleicons.org/visualstudiocode/007ACC'
+  const vscodeHref = '/icons/vscode.svg'
   return (
     <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
       <div className="flex flex-col items-center gap-5">
@@ -97,32 +95,7 @@ export default async function HomePage() {
             </p>
           </div>
 
-          {/* High-Intent Conversion CTAs */}
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-3.5 pt-2">
-            {user ? (
-              <Button asChild size="lg" className="h-12 px-7 gap-2.5 text-sm shadow-sm">
-                <Link href="/dashboard">
-                  <LayoutDashboard className="h-4 w-4" />
-                  <span>Go to Dashboard</span>
-                  <ArrowRight className="h-4 w-4" />
-                </Link>
-              </Button>
-            ) : (
-              <Button asChild size="lg" className="h-12 px-7 gap-2.5 text-sm shadow-sm">
-                <Link href="/login">
-                  <Github className="h-4 w-4" />
-                  <span>Start Analyzing Free with GitHub</span>
-                  <ArrowRight className="h-4 w-4" />
-                </Link>
-              </Button>
-            )}
 
-            <Button asChild variant="outline" size="lg" className="h-12 px-6 text-sm">
-              <a href="#features">
-                Try Live Interactive Demo
-              </a>
-            </Button>
-          </div>
 
           {/* Immediate Trust Architecture Signals */}
           <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-xs text-muted-foreground pt-1">

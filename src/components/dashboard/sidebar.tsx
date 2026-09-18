@@ -61,7 +61,7 @@ export function Sidebar({ user, projects = [], className, onNavigate }: SidebarP
     >
       {/* Logo header */}
       <div className="flex h-12 shrink-0 items-center border-b border-border px-4">
-        <Link href="/dashboard" onClick={handleLinkClick} className="flex items-center gap-2.5 transition-opacity hover:opacity-90">
+        <Link href="/" onClick={handleLinkClick} className="flex items-center gap-2.5 transition-opacity hover:opacity-90">
           <Logo size="sm" showWordmark />
         </Link>
       </div>
