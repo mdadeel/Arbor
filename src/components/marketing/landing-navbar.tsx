@@ -55,12 +55,12 @@ export function LandingNavbar({ user }: LandingNavbarProps) {
 
           {user ? (
             <div className="flex items-center gap-2">
-              <Button asChild variant="outline" size="sm" className="hidden sm:inline-flex gap-1.5 border-[#43637E]/40 hover:border-[#65DCD5] hover:text-[#65DCD5] transition-all">
+              <Button asChild variant="outline" size="sm" className="hidden sm:inline-flex gap-1.5">
                 <Link href="/admin">
                   <span>Admin</span>
                 </Link>
               </Button>
-              <Button asChild size="sm" className="gap-2 font-bold shadow-sm bg-[#65DCD5] text-[#1a0f26] hover:bg-[#321E48] hover:text-[#65DCD5] transition-all">
+              <Button asChild size="sm" className="gap-2 shadow-sm">
                 <Link href="/dashboard">
                   <LayoutDashboard className="h-4 w-4" />
                   <span className="hidden sm:inline">Dashboard</span>
@@ -73,7 +73,7 @@ export function LandingNavbar({ user }: LandingNavbarProps) {
               <Button asChild variant="ghost" size="sm" className="hidden sm:inline-flex text-muted-foreground hover:text-foreground">
                 <Link href="/login">Sign in</Link>
               </Button>
-              <Button asChild size="sm" className="gap-2 shadow-sm font-bold bg-[#65DCD5] text-[#1a0f26] hover:bg-[#321E48] hover:text-[#65DCD5] transition-all">
+              <Button asChild size="sm" className="gap-2 shadow-sm">
                 <Link href="/login">
                   <Github className="h-4 w-4" />
                   <span className="hidden sm:inline">Analyze Repo Free</span>
@@ -115,7 +115,7 @@ export function LandingNavbar({ user }: LandingNavbarProps) {
                 asChild
                 size="sm"
                 onClick={() => setMobileMenuOpen(false)}
-                className="mt-2 gap-2 font-bold bg-[#65DCD5] text-[#1a0f26] hover:bg-[#321E48] hover:text-[#65DCD5] transition-all"
+                className="mt-2 gap-2 shadow-sm"
               >
                 <Link href="/login">
                   <Github className="h-4 w-4" />

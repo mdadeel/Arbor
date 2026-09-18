@@ -100,7 +100,7 @@ export default async function HomePage() {
           {/* High-Intent Conversion CTAs */}
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3.5 pt-2">
             {user ? (
-              <Button asChild size="lg" className="h-12 px-7 gap-2.5 font-bold shadow-md text-sm bg-[#65DCD5] text-[#1a0f26] hover:bg-[#321E48] hover:text-[#65DCD5] transition-all">
+              <Button asChild size="lg" className="h-12 px-7 gap-2.5 text-sm shadow-sm">
                 <Link href="/dashboard">
                   <LayoutDashboard className="h-4 w-4" />
                   <span>Go to Dashboard</span>
@@ -108,7 +108,7 @@ export default async function HomePage() {
                 </Link>
               </Button>
             ) : (
-              <Button asChild size="lg" className="h-12 px-7 gap-2.5 font-bold shadow-md text-sm bg-[#65DCD5] text-[#1a0f26] hover:bg-[#321E48] hover:text-[#65DCD5] transition-all">
+              <Button asChild size="lg" className="h-12 px-7 gap-2.5 text-sm shadow-sm">
                 <Link href="/login">
                   <Github className="h-4 w-4" />
                   <span>Start Analyzing Free with GitHub</span>
@@ -117,7 +117,7 @@ export default async function HomePage() {
               </Button>
             )}
 
-            <Button asChild variant="outline" size="lg" className="h-12 px-6 font-semibold text-sm border border-[#43637E]/50 hover:border-[#65DCD5] bg-card hover:bg-[#65DCD5]/10 text-foreground hover:text-[#65DCD5] transition-all">
+            <Button asChild variant="outline" size="lg" className="h-12 px-6 text-sm">
               <a href="#features">
                 Try Live Interactive Demo
               </a>
@@ -200,7 +200,7 @@ export default async function HomePage() {
                 AI hallucination, no source code stored.
               </p>
               <div className="pt-2 flex justify-center">
-                <Button asChild size="lg" className="h-12 px-8 gap-2.5 font-bold shadow-md bg-[#65DCD5] text-[#1a0f26] hover:bg-[#321E48] hover:text-[#65DCD5] transition-all">
+                <Button asChild size="lg" className="h-12 px-8 gap-2.5 shadow-sm">
                   <Link href={user ? '/dashboard' : '/login'}>
                     <Github className="h-4 w-4" />
                     <span>{user ? 'Open Dashboard' : 'Analyze Repo Free with GitHub'}</span>

@@ -103,7 +103,7 @@ export function PricingSection() {
           </div>
 
           <div className="pt-8">
-            <Button asChild className="w-full h-11 font-bold gap-2 shadow-sm bg-[#321E48] text-[#D9FFF4] hover:bg-[#43637E] hover:text-white dark:bg-[#65DCD5] dark:text-[#1a0f26] dark:hover:bg-[#321E48] dark:hover:text-[#65DCD5] transition-all">
+            <Button asChild variant="outline" className="w-full h-11 gap-2 shadow-xs">
               <Link href="/login">
                 <span>Start Free with GitHub</span>
                 <ArrowRight className="h-4 w-4" />
@@ -186,7 +186,7 @@ export function PricingSection() {
                 <Button
                   type="submit"
                   disabled={isSubmitting}
-                  className="h-11 px-5 text-xs font-bold shrink-0 bg-[#65DCD5] text-[#1a0f26] hover:bg-[#321E48] hover:text-[#65DCD5] transition-all shadow-sm disabled:opacity-50"
+                  className="h-11 px-5 text-xs shrink-0 shadow-sm disabled:opacity-50"
                 >
                   {isSubmitting ? 'Saving...' : 'Notify Me'}
                 </Button>

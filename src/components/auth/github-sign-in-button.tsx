@@ -136,7 +136,7 @@ export function GithubSignInButton({ configured }: { configured: boolean }) {
       <div className="relative flex items-center justify-center my-4">
         <div className="border-t border-border w-full" />
         <span className="bg-card px-2.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground shrink-0 flex items-center gap-1.5">
-          <Shield className="h-3 w-3 text-[#65DCD5]" /> Or Admin Sign In
+          <Shield className="h-3 w-3" /> Or Admin Sign In
         </span>
         <div className="border-t border-border w-full" />
       </div>
@@ -145,7 +145,7 @@ export function GithubSignInButton({ configured }: { configured: boolean }) {
       <form onSubmit={handleAdminSignIn} className="space-y-3.5 rounded-xl border border-border/80 bg-muted/20 p-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
-            <KeyRound className="h-3.5 w-3.5 text-[#65DCD5]" />
+            <KeyRound className="h-3.5 w-3.5 text-foreground" />
             <span>Admin Portal Login</span>
           </div>
           <span className="text-[10px] font-mono text-muted-foreground">Credentials</span>
@@ -170,7 +170,7 @@ export function GithubSignInButton({ configured }: { configured: boolean }) {
               onChange={(e) => setUsername(e.target.value)}
               placeholder="Username"
               disabled={adminLoading}
-              className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-xs shadow-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#65DCD5] disabled:opacity-50"
+              className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-xs shadow-xs ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:opacity-50"
             />
           </div>
 
@@ -186,7 +186,7 @@ export function GithubSignInButton({ configured }: { configured: boolean }) {
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Password"
               disabled={adminLoading}
-              className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-xs shadow-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#65DCD5] disabled:opacity-50"
+              className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-xs shadow-xs ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:opacity-50"
             />
           </div>
         </div>
@@ -194,7 +194,7 @@ export function GithubSignInButton({ configured }: { configured: boolean }) {
         <Button
           type="submit"
           disabled={adminLoading || loading}
-          className="w-full h-10 font-bold text-xs gap-2 bg-[#65DCD5] text-[#1a0f26] hover:bg-[#321E48] hover:text-[#65DCD5] transition-all shadow-sm"
+          className="w-full h-10 text-xs gap-2 shadow-sm"
         >
           {adminLoading ? (
             <>

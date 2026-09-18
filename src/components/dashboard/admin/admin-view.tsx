@@ -253,9 +253,9 @@ export function AdminView({ initialMetrics, initialUsers, initialWaitlistLeads =
         <button
           type="button"
           onClick={() => setActiveTab('users')}
-          className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-semibold transition-colors ${
+          className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-medium transition-colors ${
             activeTab === 'users'
-              ? 'bg-[#321E48] text-[#D9FFF4] dark:bg-[#65DCD5] dark:text-[#321E48] shadow-sm'
+              ? 'bg-foreground text-background shadow-xs'
               : 'text-muted-foreground hover:text-foreground hover:bg-muted/40'
           }`}
         >
@@ -266,16 +266,20 @@ export function AdminView({ initialMetrics, initialUsers, initialWaitlistLeads =
         <button
           type="button"
           onClick={() => setActiveTab('waitlist')}
-          className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-semibold transition-colors ${
+          className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-medium transition-colors ${
             activeTab === 'waitlist'
-              ? 'bg-[#321E48] text-[#D9FFF4] dark:bg-[#65DCD5] dark:text-[#321E48] shadow-sm'
+              ? 'bg-foreground text-background shadow-xs'
               : 'text-muted-foreground hover:text-foreground hover:bg-muted/40'
           }`}
         >
           <Mail className="h-3.5 w-3.5" />
           <span>Early Access Waitlist ({initialWaitlistLeads.length})</span>
           {initialWaitlistLeads.length > 0 && (
-            <span className="rounded-full bg-[#65DCD5]/20 text-[#65DCD5] dark:bg-[#321E48] dark:text-[#D9FFF4] px-1.5 py-0.5 text-[10px] font-bold">
+            <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-medium ${
+              activeTab === 'waitlist'
+                ? 'bg-background/20 text-background'
+                : 'bg-muted text-muted-foreground'
+            }`}>
               {initialWaitlistLeads.length}
             </span>
           )}

@@ -9,17 +9,17 @@ const buttonVariants = cva(
     variants: {
       variant: {
         default:
-          'bg-[#321E48] text-[#D9FFF4] shadow-sm hover:bg-[#43637E] hover:text-white dark:bg-[#65DCD5] dark:text-[#1a0f26] dark:hover:bg-[#321E48] dark:hover:text-[#65DCD5] font-semibold',
+          'bg-black text-white hover:bg-neutral-800 border border-black dark:bg-white dark:text-black dark:border-white dark:hover:bg-neutral-200 font-medium shadow-sm transition-all',
         brand:
-          'bg-[#65DCD5] text-[#1a0f26] shadow-sm hover:bg-[#321E48] hover:text-[#65DCD5] font-bold transition-all',
-        plum:
-          'bg-[#321E48] text-[#D9FFF4] shadow-sm hover:bg-[#43637E] hover:text-white font-semibold transition-all',
-        destructive: 'bg-destructive text-destructive-foreground shadow-sm hover:bg-destructive/90',
+          'bg-black text-white hover:bg-neutral-800 border border-black dark:bg-white dark:text-black dark:border-white dark:hover:bg-neutral-200 font-medium shadow-sm transition-all',
+        secondary:
+          'border border-border bg-background text-foreground hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:border-neutral-400 dark:hover:border-neutral-600 shadow-xs transition-all',
         outline:
-          'border border-[#43637E]/40 bg-transparent text-foreground shadow-sm hover:border-[#65DCD5] hover:bg-[#65DCD5]/10 hover:text-[#65DCD5]',
-        secondary: 'bg-secondary text-secondary-foreground shadow-sm hover:bg-secondary/80',
-        ghost: 'hover:bg-accent hover:text-accent-foreground',
-        link: 'text-[#65DCD5] underline-offset-4 hover:underline',
+          'border border-border bg-background text-foreground hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:border-neutral-400 dark:hover:border-neutral-600 shadow-xs transition-all',
+        destructive:
+          'bg-red-600 text-white hover:bg-red-700 dark:bg-red-500 dark:hover:bg-red-600 shadow-sm font-medium transition-all',
+        ghost: 'hover:bg-accent hover:text-accent-foreground text-muted-foreground hover:text-foreground transition-colors',
+        link: 'text-foreground underline-offset-4 hover:underline',
       },
       size: {
         default: 'h-9 px-4 py-2',

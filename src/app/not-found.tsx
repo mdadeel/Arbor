@@ -32,13 +32,13 @@ export default function NotFound() {
         </div>
 
         <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-          <Button asChild size="lg" className="h-12 px-7 gap-2 font-bold bg-[#65DCD5] text-[#1a0f26] hover:bg-[#321E48] hover:text-[#65DCD5] transition-all">
+          <Button asChild size="lg" className="h-12 px-7 gap-2 shadow-sm">
             <Link href="/">
               <ArrowLeft className="h-4 w-4" />
               <span>Back to Home</span>
             </Link>
           </Button>
-          <Button asChild size="lg" variant="outline" className="h-12 px-7 font-semibold border border-[#43637E]/50 hover:border-[#65DCD5] bg-card hover:bg-[#65DCD5]/10 text-foreground hover:text-[#65DCD5] transition-all">
+          <Button asChild size="lg" variant="outline" className="h-12 px-7 shadow-xs">
             <Link href="/dashboard">
               <span>Go to Dashboard</span>
             </Link>
