@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { Suspense } from 'react'
 import { ArrowLeft, ArrowRight, Boxes, KeyRound, ShieldCheck, Terminal, UserCog } from 'lucide-react'
 import { AdminSignInForm } from '@/components/auth/admin-sign-in-form'
 import { Logo } from '@/components/ui/logo'
@@ -60,7 +61,9 @@ export default function AdminLoginPage() {
               </span>
             </div>
 
-            <AdminSignInForm />
+            <Suspense fallback={null}>
+              <AdminSignInForm />
+            </Suspense>
 
             <div className="grid gap-1.5 border-t border-border pt-4">
               {adminPowers.map(({ icon: Icon, label }) => (
