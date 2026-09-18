@@ -6,6 +6,7 @@ import { encrypt } from '@/lib/crypto'
 import { prisma } from '@/lib/prisma'
 
 export const authOptions: NextAuthOptions = {
+  secret: env.NEXTAUTH_SECRET,
   // ponytail: JWT sessions, no adapter tables — keeps the 3-table v1 schema
   session: { strategy: 'jwt' },
   debug: Boolean(process.env.NODE_ENV === 'development' || process.env.VERCEL),
@@ -73,71 +74,116 @@ export const authOptions: NextAuthOptions = {
 
         if (account?.provider !== 'github' || !profile) return false
 
-      const githubProfile = profile as { id?: number | string; login?: string }
-      const githubId = Number(githubProfile.id)
-      const githubUsername = String(githubProfile.login ?? user.name ?? '')
-      const email = user.email ?? `${githubUsername}@users.noreply.github.com`
+        const githubProfile = profile as { id?: number | string; login?: string }
+        const githubId = Number(githubProfile.id)
+        if (!githubId || isNaN(githubId)) {
+          console.error('[NextAuth:signIn] Missing valid githubId in profile:', profile)
+          return false
+        }
 
-      const encryptedToken = account.access_token ? encrypt(account.access_token) : undefined
+        const githubUsername = String(githubProfile.login ?? user.name ?? '')
+        const email = user.email ?? `${githubUsername}@users.noreply.github.com`
 
-      const data = {
-        email,
-        name: user.name ?? githubUsername,
-        avatarUrl: user.image,
-        githubUsername,
-        githubAccessToken: encryptedToken,
-        tokenScope: account.scope,
-      }
+        let encryptedToken: string | undefined
+        if (account.access_token) {
+          try {
+            encryptedToken = encrypt(account.access_token)
+          } catch (encErr) {
+            console.warn('[NextAuth:signIn] Warning: Failed to encrypt GitHub access token:', encErr)
+          }
+        }
 
-      const dbUser = await prisma.user.upsert({
-        where: { githubId },
-        update: data,
-        create: { githubId, ...data },
-      })
+        const data = {
+          email,
+          name: user.name ?? githubUsername,
+          avatarUrl: user.image,
+          githubUsername,
+          githubAccessToken: encryptedToken,
+          tokenScope: account.scope,
+        }
 
-      if (encryptedToken && githubUsername) {
-        await prisma.gitHubAccount.upsert({
+        // Safe user lookup by githubId OR email to prevent P2002 unique constraint violations
+        let dbUser = await prisma.user.findFirst({
           where: {
-            userId_username: {
-              userId: dbUser.id,
-              username: githubUsername,
-            },
-          },
-          update: {
-            accessToken: encryptedToken,
-            tokenType: 'oauth',
-            avatarUrl: user.image,
-            scope: account.scope,
-          },
-          create: {
-            userId: dbUser.id,
-            username: githubUsername,
-            accountName: 'Primary (OAuth)',
-            accessToken: encryptedToken,
-            tokenType: 'oauth',
-            avatarUrl: user.image,
-            scope: account.scope,
-            isDefault: true,
+            OR: [{ githubId }, { email }],
           },
         })
-      }
 
-      return true
+        if (dbUser) {
+          dbUser = await prisma.user.update({
+            where: { id: dbUser.id },
+            data: {
+              githubId,
+              ...data,
+            },
+          })
+        } else {
+          dbUser = await prisma.user.create({
+            data: {
+              githubId,
+              ...data,
+            },
+          })
+        }
+
+        if (encryptedToken && githubUsername && dbUser?.id) {
+          await prisma.gitHubAccount.upsert({
+            where: {
+              userId_username: {
+                userId: dbUser.id,
+                username: githubUsername,
+              },
+            },
+            update: {
+              accessToken: encryptedToken,
+              tokenType: 'oauth',
+              avatarUrl: user.image,
+              scope: account.scope,
+            },
+            create: {
+              userId: dbUser.id,
+              username: githubUsername,
+              accountName: 'Primary (OAuth)',
+              accessToken: encryptedToken,
+              tokenType: 'oauth',
+              avatarUrl: user.image,
+              scope: account.scope,
+              isDefault: true,
+            },
+          }).catch((accErr) => {
+            console.warn('[NextAuth:signIn] Non-fatal error creating gitHubAccount record:', accErr)
+          })
+        }
+
+        return true
       } catch (err) {
         console.error('[NextAuth:signIn] Error processing GitHub sign-in:', err)
-        throw err
+        // Return error page redirect instead of throwing unhandled exception which causes HTTP 500
+        return '/login?error=Callback'
       }
     },
 
     async jwt({ token, user, account, profile }) {
       try {
-        if (user) {
+        if (user?.id) {
           token.userId = user.id
         }
-        if (account && profile) {
-          const githubProfile = profile as { id?: number | string }
-          const dbUser = await prisma.user.findUnique({ where: { githubId: Number(githubProfile.id) } })
-          if (dbUser) token.userId = dbUser.id
+        if (account && (profile || token.email)) {
+          const githubProfile = profile as { id?: number | string } | undefined
+          const gId = githubProfile?.id ? Number(githubProfile.id) : undefined
+          const dbUser = await prisma.user.findFirst({
+            where: {
+              OR: [
+                ...(gId && !isNaN(gId) ? [{ githubId: gId }] : []),
+                ...(token.email ? [{ email: token.email }] : []),
+                ...(user?.email ? [{ email: user.email }] : []),
+              ],
+            },
+            select: { id: true },
+          })
+          if (dbUser) {
+            token.userId = dbUser.id
+          }
         }
       } catch (err) {
         console.error('[NextAuth:jwt] Error fetching user in jwt callback:', err)

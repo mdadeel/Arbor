@@ -19,7 +19,7 @@ export const metadata = {
 export default async function AdminPage() {
   const session = await getServerSession(authOptions)
   if (!session?.user) {
-    redirect('/login?callbackUrl=/admin')
+    redirect('/admin-login?callbackUrl=/admin')
   }
 
   const dbUser = await prisma.user.findUnique({

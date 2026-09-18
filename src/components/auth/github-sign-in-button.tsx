@@ -3,26 +3,12 @@
 import { useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { signIn } from 'next-auth/react'
-import {
-  AlertCircle,
-  AlertTriangle,
-  ArrowRight,
-  Github,
-  KeyRound,
-  Loader2,
-  Lock,
-  Shield,
-  ShieldCheck,
-  User,
-} from 'lucide-react'
+import Link from 'next/link'
+import { AlertCircle, AlertTriangle, ArrowRight, Github, Loader2, Lock, ShieldCheck } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
 export function GithubSignInButton({ configured }: { configured: boolean }) {
   const [loading, setLoading] = useState(false)
-  const [adminLoading, setAdminLoading] = useState(false)
-  const [username, setUsername] = useState('adeel')
-  const [password, setPassword] = useState('')
-  const [adminError, setAdminError] = useState<string | null>(null)
 
   const searchParams = useSearchParams()
   const error = searchParams.get('error')
@@ -55,34 +41,8 @@ export function GithubSignInButton({ configured }: { configured: boolean }) {
     }
   }
 
-  const handleAdminSignIn = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setAdminLoading(true)
-    setAdminError(null)
-
-    try {
-      const res = await signIn('credentials', {
-        redirect: false,
-        username: username.trim(),
-        password: password.trim(),
-        callbackUrl: callbackUrl || '/admin',
-      })
-
-      if (res?.error) {
-        setAdminError('Invalid admin credentials. Please enter valid username & password.')
-        setAdminLoading(false)
-      } else {
-        window.location.href = res?.url || '/admin'
-      }
-    } catch {
-      setAdminError('An unexpected error occurred during admin sign-in.')
-      setAdminLoading(false)
-    }
-  }
-
   return (
     <div className="w-full space-y-6">
-      {/* Error display */}
       {error && (
         <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-xs text-red-300 space-y-1.5 animate-in fade-in duration-200">
           <div className="flex items-center gap-2 font-semibold">
@@ -95,14 +55,13 @@ export function GithubSignInButton({ configured }: { configured: boolean }) {
         </div>
       )}
 
-      {/* Primary OAuth Button */}
       {configured ? (
         <div className="space-y-3">
           <Button
             size="lg"
             className="w-full h-12 gap-3 font-semibold text-sm shadow-xl shadow-primary/10 transition-all hover:shadow-primary/20"
             onClick={handleSignIn}
-            disabled={loading || adminLoading}
+            disabled={loading}
           >
             {loading ? (
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -114,7 +73,7 @@ export function GithubSignInButton({ configured }: { configured: boolean }) {
           </Button>
 
           <div className="flex items-center justify-center gap-1.5 text-[11px] text-muted-foreground/80">
-            <Lock className="h-3 w-3 text-emerald-400" />
+            <Lock className="h-3 w-3 text-[#65DCD5]" />
             <span>Read-only user profile &amp; repository clone access</span>
           </div>
         </div>
@@ -132,88 +91,11 @@ export function GithubSignInButton({ configured }: { configured: boolean }) {
         </div>
       )}
 
-      {/* Admin Credentials Divider */}
-      <div className="relative flex items-center justify-center my-4">
-        <div className="border-t border-border w-full" />
-        <span className="bg-card px-2.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground shrink-0 flex items-center gap-1.5">
-          <Shield className="h-3 w-3" /> Or Admin Sign In
-        </span>
-        <div className="border-t border-border w-full" />
-      </div>
-
-      {/* Admin Credentials Form */}
-      <form onSubmit={handleAdminSignIn} className="space-y-3.5 rounded-xl border border-border/80 bg-muted/20 p-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
-            <KeyRound className="h-3.5 w-3.5 text-foreground" />
-            <span>Admin Portal Login</span>
-          </div>
-          <span className="text-[10px] font-mono text-muted-foreground">Credentials</span>
-        </div>
-
-        {adminError && (
-          <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-2.5 text-xs text-red-300">
-            {adminError}
-          </div>
-        )}
-
-        <div className="space-y-2.5">
-          <div className="space-y-1">
-            <label className="text-[11px] font-medium text-muted-foreground flex items-center gap-1">
-              <User className="h-3 w-3" />
-              <span>Username</span>
-            </label>
-            <input
-              type="text"
-              required
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              placeholder="Username"
-              disabled={adminLoading}
-              className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-xs shadow-xs ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:opacity-50"
-            />
-          </div>
-
-          <div className="space-y-1">
-            <label className="text-[11px] font-medium text-muted-foreground flex items-center gap-1">
-              <Lock className="h-3 w-3" />
-              <span>Password</span>
-            </label>
-            <input
-              type="password"
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="Password"
-              disabled={adminLoading}
-              className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-xs shadow-xs ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:opacity-50"
-            />
-          </div>
-        </div>
-
-        <Button
-          type="submit"
-          disabled={adminLoading || loading}
-          className="w-full h-10 text-xs gap-2 shadow-sm"
-        >
-          {adminLoading ? (
-            <>
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              <span>Verifying credentials...</span>
-            </>
-          ) : (
-            <>
-              <Shield className="h-3.5 w-3.5" />
-              <span>Sign In as Admin</span>
-              <ArrowRight className="h-3.5 w-3.5 ml-auto opacity-70" />
-            </>
-          )}
-        </Button>
-      </form>
-
-      <div className="flex items-center justify-center gap-2 text-[11px] text-muted-foreground/70">
-        <ShieldCheck className="h-3.5 w-3.5 text-emerald-500" />
-        <span>Zero repository code stored · Ephemeral AST clones</span>
+      <div className="text-center text-[11px] text-muted-foreground/70">
+        <Link href="/admin-login" className="inline-flex items-center justify-center gap-1.5 font-medium text-[#65DCD5] hover:text-[#321E48] dark:hover:text-[#D9FFF4] transition-colors">
+          <ShieldCheck className="h-3.5 w-3.5" />
+          <span>Admin? Sign in to the portal</span>
+        </Link>
       </div>
     </div>
   )

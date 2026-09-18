@@ -11,7 +11,9 @@ export default async function DashboardLayout({
   children: React.ReactNode
 }) {
   const session = await getServerSession(authOptions)
-  if (!session?.user) redirect('/login')
+  if (!session?.user) {
+    redirect('/login')
+  }
 
   const caller = await getServerCaller()
   const projects = await caller.project.list().catch(() => [])

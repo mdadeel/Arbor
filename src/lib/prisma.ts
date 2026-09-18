@@ -2,16 +2,35 @@ import { PrismaClient } from '@prisma/client'
 
 const globalForPrisma = globalThis as unknown as { prisma: PrismaClient | undefined }
 
+function getDatasourceUrl(): string | undefined {
+  const rawUrl = process.env.DATABASE_URL
+  if (!rawUrl) return undefined
+
+  // Ensure connection limit is bounded to avoid exhausting PostgreSQL connection
+  // slots on hobby tier cloud databases (Aiven max_connections: 20-25).
+  // Serverless functions (Vercel) should use 1 connection per instance; local uses 3.
+  if (!rawUrl.includes('connection_limit=')) {
+    const sep = rawUrl.includes('?') ? '&' : '?'
+    const limit = process.env.VERCEL ? '1' : '3'
+    return `${rawUrl}${sep}connection_limit=${limit}&pool_timeout=15`
+  }
+  return rawUrl
+}
+
 function getPrismaClient(): PrismaClient {
+  const datasourceUrl = getDatasourceUrl()
+
   if (process.env.NODE_ENV === 'production') {
     if (!globalForPrisma.prisma) {
-      globalForPrisma.prisma = new PrismaClient()
+      globalForPrisma.prisma = datasourceUrl
+        ? new PrismaClient({ datasources: { db: { url: datasourceUrl } } })
+        : new PrismaClient()
     }
     return globalForPrisma.prisma
   }
 
   const cached = globalForPrisma.prisma
-  if (cached && 'projectGroup' in cached) {
+  if (cached) {
     return cached
   }
 
@@ -27,7 +46,9 @@ function getPrismaClient(): PrismaClient {
   }
 
   const { PrismaClient: FreshClient } = require('@prisma/client') as { PrismaClient: typeof PrismaClient }
-  const fresh = new FreshClient()
+  const fresh = datasourceUrl
+    ? new FreshClient({ datasources: { db: { url: datasourceUrl } } })
+    : new FreshClient()
   globalForPrisma.prisma = fresh
   return fresh
 }

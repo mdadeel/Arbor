@@ -43,7 +43,7 @@ export default function LoginPage() {
           <div className="rounded-2xl border border-border bg-card p-6 shadow-xl space-y-4">
             <div className="flex items-center justify-between border-b border-border pb-3">
               <div className="flex items-center gap-2.5">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 font-display font-black text-lg">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#65DCD5]/10 border border-[#65DCD5]/25 text-[#65DCD5] font-display font-black text-lg">
                   88
                 </div>
                 <div>
@@ -55,7 +55,7 @@ export default function LoginPage() {
                   </div>
                 </div>
               </div>
-              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-400 border border-emerald-500/20">
+              <span className="inline-flex items-center gap-1 rounded-full bg-[#65DCD5]/10 px-2 py-0.5 text-[10px] font-semibold text-[#65DCD5] border border-[#65DCD5]/20">
                 <CheckCircle2 className="h-3 w-3" /> Excellent
               </span>
             </div>
@@ -63,15 +63,15 @@ export default function LoginPage() {
             <div className="grid grid-cols-3 gap-2 text-center text-[10px] font-mono">
               <div className="rounded-lg border border-border bg-muted/30 p-2">
                 <span className="text-muted-foreground block text-[9px] uppercase">Architecture</span>
-                <span className="text-emerald-400 font-bold">85/100</span>
+                <span className="text-[#65DCD5] font-bold">85/100</span>
               </div>
               <div className="rounded-lg border border-border bg-muted/30 p-2">
                 <span className="text-muted-foreground block text-[9px] uppercase">Tech Debt</span>
-                <span className="text-emerald-400 font-bold">92/100</span>
+                <span className="text-[#65DCD5] font-bold">92/100</span>
               </div>
               <div className="rounded-lg border border-border bg-muted/30 p-2">
                 <span className="text-muted-foreground block text-[9px] uppercase">Security</span>
-                <span className="text-emerald-400 font-bold">86/100</span>
+                <span className="text-[#65DCD5] font-bold">86/100</span>
               </div>
             </div>
 
@@ -80,13 +80,13 @@ export default function LoginPage() {
                 <span className="flex items-center gap-1.5 text-foreground font-sans">
                   <Network className="h-3.5 w-3.5 text-primary" /> Dependency DAG
                 </span>
-                <span className="text-emerald-400 font-bold">0 cycles</span>
+                <span className="text-[#65DCD5] font-bold">0 cycles</span>
               </div>
               <div className="flex items-center justify-between rounded-lg border border-border bg-muted/20 p-2.5 text-[11px]">
                 <span className="flex items-center gap-1.5 text-foreground font-sans">
-                  <ShieldCheck className="h-3.5 w-3.5 text-cyan-400" /> Leaked Secrets
+                  <ShieldCheck className="h-3.5 w-3.5 text-[#43637E]" /> Leaked Secrets
                 </span>
-                <span className="text-emerald-400 font-bold">Clean</span>
+                <span className="text-[#65DCD5] font-bold">Clean</span>
               </div>
             </div>
           </div>
@@ -109,7 +109,7 @@ export default function LoginPage() {
             <span>30-second AST analysis</span>
           </div>
           <div className="flex items-center gap-2">
-            <Boxes className="h-3.5 w-3.5 text-cyan-400 shrink-0" />
+            <Boxes className="h-3.5 w-3.5 text-[#65DCD5] shrink-0" />
             <span>Interactive graph viewer</span>
           </div>
           <div className="flex items-center gap-2">
@@ -117,7 +117,7 @@ export default function LoginPage() {
             <span>Zero code saved to disk</span>
           </div>
           <div className="flex items-center gap-2">
-            <Code2 className="h-3.5 w-3.5 text-purple-400 shrink-0" />
+            <Code2 className="h-3.5 w-3.5 text-[#D9FFF4] shrink-0" />
             <span>No AI hallucinations</span>
           </div>
         </div>
