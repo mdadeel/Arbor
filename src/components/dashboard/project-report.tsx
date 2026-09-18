@@ -6,8 +6,12 @@ import {
   AlertTriangle,
   ArrowUpRight,
   Boxes,
+  Check,
   Code2,
+  Copy,
+  Download,
   FileCode,
+  FileText,
   History,
   Layers,
   Loader2,
@@ -17,9 +21,22 @@ import {
   Globe,
   BookOpen,
   Activity,
+  GitCommit,
 } from 'lucide-react'
 import { trpc } from '@/lib/trpc'
 import { Button } from '@/components/ui/button'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import {
+  generateMarkdownReport,
+  generateJsonReport,
+  downloadFile,
+} from '@/lib/export-report'
 import {
   Card,
   CardContent,
@@ -39,6 +56,7 @@ import { EnvironmentMatrix } from '@/components/dashboard/environment-matrix'
 import { ApiExplorer } from '@/components/dashboard/api-explorer'
 import { DocHub } from '@/components/dashboard/docs/doc-hub'
 import { ProjectHealthView } from '@/components/dashboard/health/project-health-view'
+import { CommitTimeline } from '@/components/dashboard/commits/commit-timeline'
 import { ScoreRow, AuditScores } from '@/components/dashboard/score-row'
 import { ScoreBadge } from '@/components/dashboard/score-badge'
 import { StatusBadge } from '@/components/dashboard/status-badge'
@@ -125,6 +143,40 @@ export function ProjectReport({ slug, project }: { slug: string; project: Projec
     [project.analyses]
   )
 
+  const [copied, setCopied] = useState(false)
+
+  const handleExportMarkdown = () => {
+    if (!completed) return
+    const md = generateMarkdownReport(project, completed)
+    const filename = `${project.slug}-analysis-${new Date(completed.createdAt).toISOString().slice(0, 10)}.md`
+    downloadFile(filename, md, 'text/markdown')
+  }
+
+  const handleExportJson = () => {
+    if (!completed) return
+    const json = generateJsonReport(project, completed)
+    const filename = `${project.slug}-analysis-${new Date(completed.createdAt).toISOString().slice(0, 10)}.json`
+    downloadFile(filename, json, 'application/json')
+  }
+
+  const handleCopyMarkdown = async () => {
+    if (!completed) return
+    const md = generateMarkdownReport(project, completed)
+    await navigator.clipboard.writeText(md)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
+  const [copiedBadge, setCopiedBadge] = useState(false)
+
+  const handleCopyBadgeMarkdown = async () => {
+    const origin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000'
+    const badgeMd = `[![Arbor Architecture](${origin}/api/badge/${project.slug})](${origin}/projects/${project.slug})`
+    await navigator.clipboard.writeText(badgeMd)
+    setCopiedBadge(true)
+    setTimeout(() => setCopiedBadge(false), 2000)
+  }
+
   const scores: AuditScores = completed
     ? {
         overall: completed.overallScore,
@@ -203,19 +255,65 @@ export function ProjectReport({ slug, project }: { slug: string; project: Projec
           )}
         </div>
 
-        <Button
-          size="sm"
-          disabled={isRunning || analyze.isPending}
-          onClick={() => analyze.mutate({ slug })}
-          className="h-8 gap-1.5 text-xs font-medium"
-        >
-          {isRunning || analyze.isPending ? (
-            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-          ) : (
-            <Play className="h-3.5 w-3.5" />
+        <div className="flex items-center gap-2">
+          {completed && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="h-8 gap-1.5 text-xs font-medium">
+                  <Download className="h-3.5 w-3.5" />
+                  <span>Export Report</span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuItem onClick={handleExportMarkdown} className="gap-2.5 text-xs cursor-pointer py-2">
+                  <FileText className="h-4 w-4 text-primary shrink-0" />
+                  <div className="flex flex-col">
+                    <span className="font-medium">Markdown Report (.md)</span>
+                    <span className="text-[10px] text-muted-foreground">Formatted summary & findings</span>
+                  </div>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleExportJson} className="gap-2.5 text-xs cursor-pointer py-2">
+                  <FileCode className="h-4 w-4 text-primary shrink-0" />
+                  <div className="flex flex-col">
+                    <span className="font-medium">Raw Payload (.json)</span>
+                    <span className="text-[10px] text-muted-foreground">Complete AST audit data</span>
+                  </div>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={handleCopyMarkdown} className="gap-2.5 text-xs cursor-pointer py-1.5">
+                  {copied ? (
+                    <Check className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
+                  ) : (
+                    <Copy className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                  )}
+                  <span className="font-medium">{copied ? 'Copied to Clipboard!' : 'Copy Markdown'}</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleCopyBadgeMarkdown} className="gap-2.5 text-xs cursor-pointer py-1.5">
+                  {copiedBadge ? (
+                    <Check className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
+                  ) : (
+                    <Shield className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                  )}
+                  <span className="font-medium">{copiedBadge ? 'Badge Markdown Copied!' : 'Copy README Badge'}</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           )}
-          <span>{latest ? 'Re-analyze' : 'Run First Analysis'}</span>
-        </Button>
+
+          <Button
+            size="sm"
+            disabled={isRunning || analyze.isPending}
+            onClick={() => analyze.mutate({ slug })}
+            className="h-8 gap-1.5 text-xs font-medium"
+          >
+            {isRunning || analyze.isPending ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Play className="h-3.5 w-3.5" />
+            )}
+            <span>{latest ? 'Re-analyze' : 'Run First Analysis'}</span>
+          </Button>
+        </div>
       </div>
 
       {latest?.status === 'failed' && (
@@ -230,7 +328,7 @@ export function ProjectReport({ slug, project }: { slug: string; project: Projec
           <CardContent className="py-12 text-center text-xs text-muted-foreground space-y-2">
             <p className="font-medium text-foreground text-sm">No analysis completed yet.</p>
             <p className="max-w-md mx-auto">
-              DevHub clones the repository shallowly, parses your files using an AST engine, detects frameworks, imports, and debt, and scores your architecture in under 30 seconds.
+              Arbor clones the repository shallowly, parses your files using an AST engine, detects frameworks, imports, and debt, and scores your architecture in under 30 seconds.
             </p>
             <div className="pt-2">
               <Button
@@ -254,40 +352,46 @@ export function ProjectReport({ slug, project }: { slug: string; project: Projec
 
           {/* Workbench Tabs */}
           <Tabs value={tab} onValueChange={setTab} className="space-y-4">
-            <TabsList className="h-9">
-              <TabsTrigger value="overview" className="text-xs gap-1.5">
-                <Layers className="h-3.5 w-3.5" />
-                Overview
-              </TabsTrigger>
-              <TabsTrigger value="architecture" className="text-xs gap-1.5">
-                <Boxes className="h-3.5 w-3.5" />
-                Architecture
-              </TabsTrigger>
-              <TabsTrigger value="findings" className="text-xs gap-1.5">
-                <AlertTriangle className="h-3.5 w-3.5" />
-                Findings ({findings.length})
-              </TabsTrigger>
-              <TabsTrigger value="environment" className="text-xs gap-1.5">
-                <FileCode className="h-3.5 w-3.5" />
-                Environment
-              </TabsTrigger>
-              <TabsTrigger value="api" className="text-xs gap-1.5">
-                <Globe className="h-3.5 w-3.5" />
-                API
-              </TabsTrigger>
-              <TabsTrigger value="docs" className="text-xs gap-1.5">
-                <BookOpen className="h-3.5 w-3.5" />
-                Docs
-              </TabsTrigger>
-              <TabsTrigger value="health" className="text-xs gap-1.5">
-                <Activity className="h-3.5 w-3.5" />
-                Health
-              </TabsTrigger>
-              <TabsTrigger value="history" className="text-xs gap-1.5">
-                <History className="h-3.5 w-3.5" />
-                History ({project.analyses.length})
-              </TabsTrigger>
-            </TabsList>
+            <div className="overflow-x-auto pb-1 scrollbar-none">
+              <TabsList className="h-9 w-max justify-start">
+                <TabsTrigger value="overview" className="text-xs gap-1.5">
+                  <Layers className="h-3.5 w-3.5" />
+                  Overview
+                </TabsTrigger>
+                <TabsTrigger value="architecture" className="text-xs gap-1.5">
+                  <Boxes className="h-3.5 w-3.5" />
+                  Architecture
+                </TabsTrigger>
+                <TabsTrigger value="findings" className="text-xs gap-1.5">
+                  <AlertTriangle className="h-3.5 w-3.5" />
+                  Findings ({findings.length})
+                </TabsTrigger>
+                <TabsTrigger value="environment" className="text-xs gap-1.5">
+                  <FileCode className="h-3.5 w-3.5" />
+                  Environment
+                </TabsTrigger>
+                <TabsTrigger value="api" className="text-xs gap-1.5">
+                  <Globe className="h-3.5 w-3.5" />
+                  API
+                </TabsTrigger>
+                <TabsTrigger value="docs" className="text-xs gap-1.5">
+                  <BookOpen className="h-3.5 w-3.5" />
+                  Docs
+                </TabsTrigger>
+                <TabsTrigger value="health" className="text-xs gap-1.5">
+                  <Activity className="h-3.5 w-3.5" />
+                  Health
+                </TabsTrigger>
+                <TabsTrigger value="commits" className="text-xs gap-1.5">
+                  <GitCommit className="h-3.5 w-3.5" />
+                  Commits
+                </TabsTrigger>
+                <TabsTrigger value="history" className="text-xs gap-1.5">
+                  <History className="h-3.5 w-3.5" />
+                  History ({project.analyses.length})
+                </TabsTrigger>
+              </TabsList>
+            </div>
 
             {/* TAB: Overview */}
             <TabsContent value="overview" className="space-y-4">
@@ -473,7 +577,12 @@ export function ProjectReport({ slug, project }: { slug: string; project: Projec
                       </h3>
                       <div className="divide-y divide-border/60 rounded-md border border-border/80 bg-card">
                         {criticalFindings.map((f) => (
-                          <FindingItem key={f.id} finding={f} />
+                          <FindingItem
+                            key={f.id}
+                            finding={f}
+                            repoUrl={project.repoUrl}
+                            commitSha={completed?.commitSha}
+                          />
                         ))}
                       </div>
                     </div>
@@ -487,7 +596,12 @@ export function ProjectReport({ slug, project }: { slug: string; project: Projec
                       </h3>
                       <div className="divide-y divide-border/60 rounded-md border border-border/80 bg-card">
                         {warningFindings.map((f) => (
-                          <FindingItem key={f.id} finding={f} />
+                          <FindingItem
+                            key={f.id}
+                            finding={f}
+                            repoUrl={project.repoUrl}
+                            commitSha={completed?.commitSha}
+                          />
                         ))}
                       </div>
                     </div>
@@ -501,7 +615,12 @@ export function ProjectReport({ slug, project }: { slug: string; project: Projec
                       </h3>
                       <div className="divide-y divide-border/60 rounded-md border border-border/80 bg-card">
                         {infoFindings.map((f) => (
-                          <FindingItem key={f.id} finding={f} />
+                          <FindingItem
+                            key={f.id}
+                            finding={f}
+                            repoUrl={project.repoUrl}
+                            commitSha={completed?.commitSha}
+                          />
                         ))}
                       </div>
                     </div>
@@ -528,6 +647,11 @@ export function ProjectReport({ slug, project }: { slug: string; project: Projec
             {/* TAB: Health */}
             <TabsContent value="health" className="space-y-4">
               <ProjectHealthView slug={slug} />
+            </TabsContent>
+
+            {/* TAB: Commits & Activity */}
+            <TabsContent value="commits" className="space-y-4">
+              <CommitTimeline slug={slug} />
             </TabsContent>
 
             {/* TAB: History */}

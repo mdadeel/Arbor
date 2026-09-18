@@ -5,6 +5,7 @@ import { prisma } from '@/lib/prisma'
 import { getAnalysisQueue } from '@/server/queue'
 import { checkRateLimit } from '@/lib/redis'
 import { logAuditEvent } from '@/server/services/audit'
+import { getProjectCommits } from '@/server/services/commits'
 import {
   createProject,
   getProjectBySlug,
@@ -19,6 +20,7 @@ const repoInput = {
   repoUrl: z.string().url(),
   defaultBranch: z.string().min(1).max(100),
   repoPrivate: z.boolean(),
+  workspaceId: z.string().optional(),
 }
 
 export const projectRouter = router({
@@ -45,11 +47,26 @@ export const projectRouter = router({
     return project
   }),
 
-  list: protectedProcedure.query(({ ctx }) => listProjects(ctx.session.user.id)),
+  list: protectedProcedure
+    .input(z.object({ workspaceId: z.string().optional() }).optional())
+    .query(({ ctx, input }) => listProjects(ctx.session.user.id, input?.workspaceId)),
 
   recentAnalyses: protectedProcedure.query(async ({ ctx }) => {
+    const memberships = await prisma.workspaceMember.findMany({
+      where: { userId: ctx.session.user.id },
+      select: { workspaceId: true },
+    })
+    const wsIds = memberships.map((m) => m.workspaceId)
+
     return prisma.analysis.findMany({
-      where: { project: { userId: ctx.session.user.id } },
+      where: {
+        project: {
+          OR: [
+            { userId: ctx.session.user.id },
+            ...(wsIds.length > 0 ? [{ workspaceId: { in: wsIds } }] : []),
+          ],
+        },
+      },
       orderBy: { createdAt: 'desc' },
       take: 6,
       include: {
@@ -149,4 +166,16 @@ export const projectRouter = router({
 
       return analysis
     }),
+
+  commits: protectedProcedure
+    .input(
+      z.object({
+        slug: z.string(),
+        branch: z.string().optional(),
+      })
+    )
+    .query(async ({ ctx, input }) => {
+      return getProjectCommits(ctx.session.user.id, slugify(input.slug), input.branch)
+    }),
 })
+
