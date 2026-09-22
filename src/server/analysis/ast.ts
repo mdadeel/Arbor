@@ -109,7 +109,7 @@ export function parseFile(file: string): FileAnalysis {
 
   // text-scoped cheap counters (work even when parsing fails)
   const firstLine = text.split('\n').find((l) => l.trim() !== '') ?? ''
-  result.clientDirective = firstLine.trim() === 'use client'
+  result.clientDirective = /^['"]use client['"];?$/.test(firstLine.trim())
   result.imgTags = countOccurrences(text, /\b<img\b/g)
   result.jsdocCount = countOccurrences(text, /\/\*\*/g)
   result.commentLines = text

@@ -114,6 +114,16 @@ export function detectUnusedDeps(repoDir: string): string[] {
   }
   // whole-tree text coverage catches config-referenced deps (tailwind, autoprefixer) too
   for (const f of listFiles(repoDir).slice(0, 2000)) {
+    const base = path.basename(f)
+    if (
+      base === 'package.json' ||
+      base === 'package-lock.json' ||
+      base === 'yarn.lock' ||
+      base === 'pnpm-lock.yaml' ||
+      base === 'bun.lockb'
+    ) {
+      continue
+    }
     blob += readText(f) ?? ''
   }
   return deps.filter((d) => {
