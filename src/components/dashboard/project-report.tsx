@@ -152,14 +152,15 @@ export function ProjectReport({ slug, project }: { slug: string; project: Projec
 
   const handleTabChange = (newTab: string) => {
     setTab(newTab)
-    const params = new URLSearchParams(searchParams.toString())
+    const params = new URLSearchParams(window.location.search)
     if (newTab === 'overview') {
       params.delete('tab')
     } else {
       params.set('tab', newTab)
     }
     const query = params.toString()
-    router.replace(`${pathname}${query ? `?${query}` : ''}`, { scroll: false })
+    const newUrl = `${window.location.pathname}${query ? `?${query}` : ''}`
+    window.history.replaceState(null, '', newUrl)
   }
 
   const latest = project.analyses[0]

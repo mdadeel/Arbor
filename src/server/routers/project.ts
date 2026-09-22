@@ -12,6 +12,7 @@ import {
   listProjects,
   slugify,
 } from '@/server/services/project'
+import { appCache, TTL_RECENT_ANALYSES } from '@/server/services/admin-cache'
 
 const repoInput = {
   name: z.string().min(1).max(80),
@@ -46,19 +47,22 @@ export const projectRouter = router({
     }).catch(() => {})
     return project
   }),
-
   list: protectedProcedure
     .input(z.object({ workspaceId: z.string().optional() }).optional())
     .query(({ ctx, input }) => listProjects(ctx.session.user.id, input?.workspaceId)),
 
   recentAnalyses: protectedProcedure.query(async ({ ctx }) => {
+    const cacheKey = `analyses:recent:${ctx.session.user.id}`
+    const cached = appCache.get<any[]>(cacheKey)
+    if (cached) return cached
+
     const memberships = await prisma.workspaceMember.findMany({
       where: { userId: ctx.session.user.id },
       select: { workspaceId: true },
     })
     const wsIds = memberships.map((m) => m.workspaceId)
 
-    return prisma.analysis.findMany({
+    const result = await prisma.analysis.findMany({
       where: {
         project: {
           OR: [
@@ -73,6 +77,9 @@ export const projectRouter = router({
         project: { select: { name: true, slug: true, repoFullName: true } },
       },
     })
+
+    appCache.set(cacheKey, result, TTL_RECENT_ANALYSES)
+    return result
   }),
 
   bySlug: protectedProcedure
@@ -98,7 +105,9 @@ export const projectRouter = router({
         select: { id: true },
       })
       if (!project) throw new TRPCError({ code: 'NOT_FOUND' })
-      return prisma.project.update({ where: { id: project.id }, data })
+      const updated = await prisma.project.update({ where: { id: project.id }, data })
+      appCache.clearPrefix('projects:')
+      return updated
     }),
 
   archive: protectedProcedure
@@ -113,6 +122,8 @@ export const projectRouter = router({
         where: { id: project.id },
         data: { status: 'archived' },
       })
+      appCache.clearPrefix('projects:')
+      appCache.clearPrefix('analyses:')
       logAuditEvent({
         userId: ctx.session.user.id,
         projectId: project.id,
@@ -175,6 +186,8 @@ export const projectRouter = router({
         metadata: { branch: project.defaultBranch },
       }).catch(() => {})
 
+      appCache.clearPrefix('projects:')
+      appCache.clearPrefix('analyses:')
       return analysis
     }),
 

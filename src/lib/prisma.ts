@@ -8,10 +8,10 @@ function getDatasourceUrl(): string | undefined {
 
   // Ensure connection limit is bounded to avoid exhausting PostgreSQL connection
   // slots on hobby tier cloud databases (Aiven max_connections: 20-25).
-  // Serverless functions (Vercel) should use 1 connection per instance; local uses 3.
+  // Serverless functions (Vercel) should use 1 connection per instance; local uses 7.
   if (!rawUrl.includes('connection_limit=')) {
     const sep = rawUrl.includes('?') ? '&' : '?'
-    const limit = process.env.VERCEL ? '1' : '3'
+    const limit = process.env.VERCEL ? '1' : '7'
     return `${rawUrl}${sep}connection_limit=${limit}&pool_timeout=15`
   }
   return rawUrl
@@ -30,7 +30,7 @@ function getPrismaClient(): PrismaClient {
   }
 
   const cached = globalForPrisma.prisma
-  if (cached) {
+  if (cached && (cached as any).adminEmail) {
     return cached
   }
 

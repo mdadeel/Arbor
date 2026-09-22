@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/prisma'
 import { TRPCError } from '@trpc/server'
 import { resolveGitHubToken } from './github'
+import { appCache, TTL_WORKSPACE_HEALTH } from './admin-cache'
 
 export type Contributor = {
   login: string
@@ -489,6 +490,7 @@ export async function syncProjectHealth(userId: string, projectId: string): Prom
     },
   })
 
+  appCache.clearPrefix('health:')
   return healthResult
 }
 
@@ -517,6 +519,10 @@ export async function getProjectHealth(
 }
 
 export async function getWorkspaceHealth(userId: string): Promise<WorkspaceHealth> {
+  const cacheKey = `health:workspace:${userId}`
+  const cached = appCache.get<WorkspaceHealth>(cacheKey)
+  if (cached) return cached
+
   const projects = await prisma.project.findMany({
     where: { userId, status: 'active' },
     select: {
@@ -591,7 +597,7 @@ export async function getWorkspaceHealth(userId: string): Promise<WorkspaceHealt
     (a, b) => new Date(b.workflow.createdAt).getTime() - new Date(a.workflow.createdAt).getTime()
   )
 
-  return {
+  const result: WorkspaceHealth = {
     totalProjects: projects.length,
     avgHealthScore,
     totalOpenPRs,
@@ -601,4 +607,6 @@ export async function getWorkspaceHealth(userId: string): Promise<WorkspaceHealt
     attentionList,
     recentWorkflows: allWorkflows.slice(0, 8),
   }
+  appCache.set(cacheKey, result, TTL_WORKSPACE_HEALTH)
+  return result
 }

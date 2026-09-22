@@ -5,9 +5,20 @@ import { httpBatchLink } from '@trpc/client'
 import superjson from 'superjson'
 import { useState } from 'react'
 import { trpc } from '@/lib/trpc'
-
 export function TRPCProvider({ children }: { children: React.ReactNode }) {
-  const [queryClient] = useState(() => new QueryClient())
+  const [queryClient] = useState(
+    () =>
+      new QueryClient({
+        defaultOptions: {
+          queries: {
+            staleTime: 30 * 1000,
+            refetchOnWindowFocus: false,
+            refetchOnReconnect: false,
+            retry: 1,
+          },
+        },
+      })
+  )
   const [trpcClient] = useState(() =>
     trpc.createClient({
       links: [
