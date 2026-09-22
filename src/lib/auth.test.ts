@@ -31,8 +31,13 @@ vi.mock('@/lib/prisma', () => ({
   },
 }))
 
-import { authOptions } from './auth'
-import { prisma } from './prisma'
+vi.mock('@/lib/redis', () => ({
+  checkRateLimit: vi.fn().mockResolvedValue({ allowed: true, remaining: 5 }),
+}))
+
+import { authOptions, timingSafeCompare } from './auth'
+import { prisma } from '@/lib/prisma'
+import { checkRateLimit } from '@/lib/redis'
 
 const callSignIn = async (params: any) => {
   const cb = authOptions.callbacks?.signIn as any
@@ -160,4 +165,89 @@ describe('authOptions callbacks', () => {
       expect(session.user.id).toBe('user-cuid-123')
     })
   })
+
+  describe('timingSafeCompare', () => {
+    it('returns true for matching strings in constant time', () => {
+      expect(timingSafeCompare('supersecret', 'supersecret')).toBe(true)
+    })
+
+    it('returns false for mismatched strings of same length', () => {
+      expect(timingSafeCompare('supersecret1', 'supersecret2')).toBe(false)
+    })
+
+    it('returns false for mismatched strings of different length', () => {
+      expect(timingSafeCompare('short', 'muchlongersecret')).toBe(false)
+    })
+
+    it('returns false when either argument is not a string', () => {
+      expect(timingSafeCompare(null as any, 'secret')).toBe(false)
+      expect(timingSafeCompare('secret', undefined as any)).toBe(false)
+    })
+  })
+
+  describe('credentials authorize provider', () => {
+    const getAuthorize = () => {
+      const provider = authOptions.providers.find((p: any) => p.id === 'credentials') as any
+      return provider.options?.authorize || provider.authorize
+    }
+
+    it('authenticates valid admin credentials', async () => {
+      const authorize = getAuthorize()
+      vi.mocked(checkRateLimit).mockResolvedValueOnce({ allowed: true, remaining: 5 })
+      vi.mocked(prisma.user.findFirst).mockResolvedValueOnce({
+        id: 'admin-cuid',
+        name: 'Adeel (Admin)',
+        email: 'adeel@admin.local',
+        avatarUrl: null,
+      } as any)
+
+      const result = await authorize({
+        username: 'adeel',
+        password: 'adeel1212',
+      })
+
+      expect(result).toEqual({
+        id: 'admin-cuid',
+        name: 'Adeel (Admin)',
+        email: 'adeel@admin.local',
+        image: null,
+      })
+    })
+
+    it('rejects invalid password', async () => {
+      const authorize = getAuthorize()
+      vi.mocked(checkRateLimit).mockResolvedValueOnce({ allowed: true, remaining: 5 })
+
+      const result = await authorize({
+        username: 'adeel',
+        password: 'wrongpassword',
+      })
+
+      expect(result).toBeNull()
+    })
+
+    it('rejects empty credentials', async () => {
+      const authorize = getAuthorize()
+
+      const result = await authorize({
+        username: '',
+        password: '',
+      })
+
+      expect(result).toBeNull()
+    })
+
+    it('enforces brute-force rate limit', async () => {
+      const authorize = getAuthorize()
+      vi.mocked(checkRateLimit).mockResolvedValueOnce({ allowed: false, remaining: 0 })
+
+      await expect(
+        authorize({
+          username: 'adeel',
+          password: 'wrongpassword',
+        })
+      ).rejects.toThrow('Too many login attempts')
+    })
+  })
 })
+

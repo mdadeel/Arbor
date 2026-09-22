@@ -1,9 +1,22 @@
+import { createHash, timingSafeEqual } from 'node:crypto'
 import type { NextAuthOptions } from 'next-auth'
 import GitHubProvider from 'next-auth/providers/github'
 import CredentialsProvider from 'next-auth/providers/credentials'
 import { env } from '@/lib/env'
 import { encrypt } from '@/lib/crypto'
 import { prisma } from '@/lib/prisma'
+import { checkRateLimit } from '@/lib/redis'
+
+/**
+ * Constant-time comparison using SHA-256 digests and timingSafeEqual
+ * to prevent side-channel timing attacks on credential verification.
+ */
+export function timingSafeCompare(a: string, b: string): boolean {
+  if (typeof a !== 'string' || typeof b !== 'string') return false
+  const hashA = createHash('sha256').update(a).digest()
+  const hashB = createHash('sha256').update(b).digest()
+  return timingSafeEqual(hashA, hashB)
+}
 
 export const authOptions: NextAuthOptions = {
   secret: env.NEXTAUTH_SECRET,
@@ -24,13 +37,28 @@ export const authOptions: NextAuthOptions = {
         password: { label: 'Password', type: 'password' },
       },
       async authorize(credentials) {
-        const username = credentials?.username?.trim()
-        const password = credentials?.password?.trim()
+        const username = credentials?.username?.trim() ?? ''
+        const password = credentials?.password?.trim() ?? ''
+
+        if (!username || !password) {
+          return null
+        }
+
+        // Protect against brute-force attacks via sliding window rate limiting (5 attempts / 5 mins)
+        const rateLimitKey = `auth:admin:login:${username.toLowerCase()}`
+        const { allowed } = await checkRateLimit(rateLimitKey, 5, 300)
+        if (!allowed) {
+          console.warn(`[Auth:Admin] Rate limit exceeded for login attempts on user: ${username}`)
+          throw new Error('Too many login attempts. Please try again in a few minutes.')
+        }
 
         const validUsername = env.ADMIN_USERNAME || 'adeel'
         const validPassword = env.ADMIN_PASSWORD || 'adeel1212'
 
-        if (username === validUsername && password === validPassword) {
+        const isUserMatch = timingSafeCompare(username, validUsername)
+        const isPassMatch = timingSafeCompare(password, validPassword)
+
+        if (isUserMatch && isPassMatch) {
           let user = await prisma.user.findFirst({
             where: {
               OR: [
