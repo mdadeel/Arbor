@@ -4,9 +4,50 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 
+import { cookies } from 'next/headers'
+import { IMPERSONATION_COOKIE_NAME, verifyImpersonationToken } from '@/lib/impersonation'
+
 export async function createTRPCContext() {
   const session = await getServerSession(authOptions)
-  return { session, prisma }
+
+  if (session?.user?.id) {
+    try {
+      const cookieStore = cookies()
+      const token = cookieStore.get(IMPERSONATION_COOKIE_NAME)?.value
+      if (token) {
+        const payload = verifyImpersonationToken(token)
+        if (payload && payload.originalAdminId === session.user.id) {
+          return {
+            session: {
+              ...session,
+              user: {
+                ...session.user,
+                id: payload.targetUserId,
+                name: payload.targetUserName || session.user.name,
+                email: payload.targetUserEmail || session.user.email,
+              },
+              isImpersonating: true,
+              impersonatedBy: payload.originalAdminId,
+            },
+            prisma,
+          }
+        }
+      }
+    } catch {
+      // Ignore if called outside Next.js request context (e.g. unit tests)
+    }
+  }
+
+  return {
+    session: session
+      ? {
+          ...session,
+          isImpersonating: false as boolean,
+          impersonatedBy: undefined as string | undefined,
+        }
+      : null,
+    prisma,
+  }
 }
 
 type Context = Awaited<ReturnType<typeof createTRPCContext>>
