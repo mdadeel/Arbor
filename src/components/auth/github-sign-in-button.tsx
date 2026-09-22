@@ -3,8 +3,7 @@
 import { useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { signIn } from 'next-auth/react'
-import Link from 'next/link'
-import { AlertCircle, AlertTriangle, ArrowRight, Github, Loader2, Lock, ShieldCheck } from 'lucide-react'
+import { AlertCircle, AlertTriangle, ArrowRight, Github, Loader2, Lock } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
 export function GithubSignInButton({ configured }: { configured: boolean }) {
@@ -42,9 +41,9 @@ export function GithubSignInButton({ configured }: { configured: boolean }) {
   }
 
   return (
-    <div className="w-full space-y-6">
+    <div className="w-full space-y-4">
       {error && (
-        <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-xs text-red-300 space-y-1.5 animate-in fade-in duration-200">
+        <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-3.5 text-xs text-red-300 space-y-1 animate-in fade-in duration-200">
           <div className="flex items-center gap-2 font-semibold">
             <AlertTriangle className="h-4 w-4 shrink-0 text-red-400" />
             <span>Authentication Error</span>
@@ -59,7 +58,7 @@ export function GithubSignInButton({ configured }: { configured: boolean }) {
         <div className="space-y-3">
           <Button
             size="lg"
-            className="w-full h-12 gap-3 font-semibold text-sm shadow-xl shadow-primary/10 transition-all hover:shadow-primary/20"
+            className="w-full h-11 gap-2.5 font-medium text-sm transition-all"
             onClick={handleSignIn}
             disabled={loading}
           >
@@ -69,12 +68,12 @@ export function GithubSignInButton({ configured }: { configured: boolean }) {
               <Github className="h-4 w-4" />
             )}
             <span>Continue with GitHub</span>
-            <ArrowRight className="h-4 w-4 ml-auto opacity-70" />
+            <ArrowRight className="h-4 w-4 ml-auto opacity-60" />
           </Button>
 
-          <div className="flex items-center justify-center gap-1.5 text-[11px] text-muted-foreground/80">
-            <Lock className="h-3 w-3 text-[#65DCD5]" />
-            <span>Read-only user profile &amp; repository clone access</span>
+          <div className="flex items-center justify-center gap-1.5 text-[11px] text-muted-foreground/70">
+            <Lock className="h-3 w-3" />
+            <span>Read-only GitHub access · No code stored</span>
           </div>
         </div>
       ) : (
@@ -86,17 +85,10 @@ export function GithubSignInButton({ configured }: { configured: boolean }) {
           <p className="text-[11px] text-muted-foreground leading-relaxed">
             Set <code className="font-mono text-foreground">GITHUB_CLIENT_ID</code> and{' '}
             <code className="font-mono text-foreground">GITHUB_CLIENT_SECRET</code> in your{' '}
-            <code className="font-mono text-foreground">.env</code> file or Vercel dashboard.
+            <code className="font-mono text-foreground">.env</code> file or environment variables.
           </p>
         </div>
       )}
-
-      <div className="text-center text-[11px] text-muted-foreground/70">
-        <Link href="/admin-login" className="inline-flex items-center justify-center gap-1.5 font-medium text-[#65DCD5] hover:text-[#321E48] dark:hover:text-[#D9FFF4] transition-colors">
-          <ShieldCheck className="h-3.5 w-3.5" />
-          <span>Admin? Sign in to the portal</span>
-        </Link>
-      </div>
     </div>
   )
 }
