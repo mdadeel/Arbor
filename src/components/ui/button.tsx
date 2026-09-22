@@ -9,17 +9,17 @@ const buttonVariants = cva(
     variants: {
       variant: {
         default:
-          'bg-black text-white hover:bg-neutral-800 border border-black dark:bg-white dark:text-black dark:border-white dark:hover:bg-neutral-200 font-medium shadow-sm transition-all',
+          'bg-neutral-950 text-white hover:bg-neutral-800 border border-neutral-950 dark:bg-white dark:text-neutral-950 dark:border-white/90 dark:hover:bg-neutral-100 font-medium shadow-sm dark:shadow-[0_1px_2px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(255,255,255,0.8)] active:scale-[0.98] transition-all',
         brand:
-          'bg-black text-white hover:bg-neutral-800 border border-black dark:bg-white dark:text-black dark:border-white dark:hover:bg-neutral-200 font-medium shadow-sm transition-all',
+          'bg-neutral-950 text-white hover:bg-neutral-800 border border-neutral-950 dark:bg-white dark:text-neutral-950 dark:border-white/90 dark:hover:bg-neutral-100 font-medium shadow-sm dark:shadow-[0_1px_2px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(255,255,255,0.8)] active:scale-[0.98] transition-all',
         secondary:
-          'border border-border bg-background text-foreground hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:border-neutral-400 dark:hover:border-neutral-600 shadow-xs transition-all',
+          'border border-border/80 bg-background text-foreground hover:bg-muted/70 hover:border-neutral-400 dark:hover:border-neutral-600 shadow-xs active:scale-[0.98] transition-all',
         outline:
-          'border border-border bg-background text-foreground hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:border-neutral-400 dark:hover:border-neutral-600 shadow-xs transition-all',
+          'border border-border/80 bg-background text-foreground hover:bg-muted/70 hover:border-neutral-400 dark:hover:border-neutral-600 shadow-xs active:scale-[0.98] transition-all',
         destructive:
-          'bg-red-600 text-white hover:bg-red-700 dark:bg-red-500 dark:hover:bg-red-600 shadow-sm font-medium transition-all',
-        ghost: 'hover:bg-accent hover:text-accent-foreground text-muted-foreground hover:text-foreground transition-colors',
-        link: 'text-foreground underline-offset-4 hover:underline',
+          'bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/30 hover:bg-red-600 hover:text-white dark:hover:bg-red-600 dark:hover:text-white font-medium shadow-xs active:scale-[0.98] transition-all',
+        ghost: 'hover:bg-muted/60 hover:text-foreground text-muted-foreground active:scale-[0.98] transition-colors',
+        link: 'text-foreground underline-offset-4 hover:underline active:scale-[0.98]',
       },
       size: {
         default: 'h-9 px-4 py-2',

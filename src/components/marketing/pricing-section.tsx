@@ -40,7 +40,7 @@ export function PricingSection() {
   return (
     <section id="pricing" className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 scroll-mt-24">
       <div className="text-center space-y-4 mb-12">
-        <div className="inline-flex items-center gap-2 rounded-full border border-[#65DCD5]/30 bg-[#65DCD5]/10 px-3 py-1 text-xs font-semibold text-[#65DCD5]">
+        <div className="inline-flex items-center gap-2 rounded-full border border-border bg-muted/40 px-3 py-1 text-xs font-semibold text-foreground">
           <Sparkles className="h-3.5 w-3.5" />
           <span>Transparent Pricing</span>
         </div>
@@ -55,7 +55,7 @@ export function PricingSection() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 max-w-4xl mx-auto items-stretch">
         {/* Tier 1: Community Free */}
         <div className="rounded-2xl border border-border bg-card p-8 flex flex-col justify-between shadow-sm relative">
-          <div className="absolute -top-3.5 left-6 rounded-full bg-[#321E48] text-[#D9FFF4] border border-[#65DCD5]/30 px-3 py-1 text-[11px] font-bold shadow-md">
+          <div className="absolute -top-3.5 left-6 rounded-full bg-neutral-900 text-neutral-100 dark:bg-neutral-100 dark:text-neutral-950 border border-border px-3 py-1 text-[11px] font-bold shadow-md">
             FREE FOREVER
           </div>
 
@@ -113,18 +113,18 @@ export function PricingSection() {
         </div>
 
         {/* Tier 2: Pro (Premium Launching Soon) */}
-        <div className="rounded-2xl border-2 border-[#65DCD5]/60 bg-card p-8 flex flex-col justify-between shadow-xl relative">
-          <div className="absolute -top-3.5 right-6 rounded-full bg-[#321E48] text-[#65DCD5] border border-[#65DCD5]/40 px-3 py-1 text-[11px] font-bold shadow-md">
+        <div className="rounded-2xl border-2 border-foreground/30 bg-card p-8 flex flex-col justify-between shadow-xl relative">
+          <div className="absolute -top-3.5 right-6 rounded-full bg-neutral-900 text-neutral-100 dark:bg-neutral-100 dark:text-neutral-950 border border-border px-3 py-1 text-[11px] font-bold shadow-md">
             COMING SOON
           </div>
 
           <div className="space-y-6">
             <div className="space-y-2">
               <div className="flex items-center gap-2">
-                <span className="text-xs font-semibold uppercase tracking-wider text-[#65DCD5]">
+                <span className="text-xs font-semibold uppercase tracking-wider text-foreground">
                   Pro &amp; Teams
                 </span>
-                <span className="rounded bg-[#65DCD5]/15 text-[#65DCD5] text-[10px] font-bold px-1.5 py-0.5 border border-[#65DCD5]/30">
+                <span className="rounded bg-muted text-foreground text-[10px] font-mono font-bold px-1.5 py-0.5 border border-border">
                   WAITLIST
                 </span>
               </div>
@@ -143,23 +143,23 @@ export function PricingSection() {
               </div>
               <ul className="space-y-2.5 text-sm text-muted-foreground">
                 <li className="flex items-center gap-2.5">
-                  <Check className="h-4 w-4 text-[#65DCD5] shrink-0" />
+                  <Check className="h-4 w-4 text-foreground shrink-0" />
                   <span className="text-foreground font-medium">Unlimited repositories &amp; analyses</span>
                 </li>
                 <li className="flex items-center gap-2.5">
-                  <Check className="h-4 w-4 text-[#65DCD5] shrink-0" />
+                  <Check className="h-4 w-4 text-foreground shrink-0" />
                   <span>Team Workspaces &amp; RBAC (Owner, Admin, Member)</span>
                 </li>
                 <li className="flex items-center gap-2.5">
-                  <Check className="h-4 w-4 text-[#65DCD5] shrink-0" />
+                  <Check className="h-4 w-4 text-foreground shrink-0" />
                   <span>Scheduled automated repository health sync</span>
                 </li>
                 <li className="flex items-center gap-2.5">
-                  <Check className="h-4 w-4 text-[#65DCD5] shrink-0" />
+                  <Check className="h-4 w-4 text-foreground shrink-0" />
                   <span>GitHub Actions CI/CD audit blocker</span>
                 </li>
                 <li className="flex items-center gap-2.5">
-                  <Check className="h-4 w-4 text-[#65DCD5] shrink-0" />
+                  <Check className="h-4 w-4 text-foreground shrink-0" />
                   <span>Priority analysis worker queue</span>
                 </li>
               </ul>
@@ -168,8 +168,8 @@ export function PricingSection() {
 
           <div className="pt-8 space-y-2">
             {joinedWaitlist ? (
-              <div className="rounded-lg border border-[#65DCD5]/40 bg-[#65DCD5]/10 p-3.5 text-center text-xs text-foreground font-medium flex items-center justify-center gap-2">
-                <CheckCircle2 className="h-4 w-4 text-[#65DCD5] shrink-0" />
+              <div className="rounded-lg border border-border bg-muted/30 p-3.5 text-center text-xs text-foreground font-medium flex items-center justify-center gap-2">
+                <CheckCircle2 className="h-4 w-4 text-foreground shrink-0" />
                 <span>You&apos;re on the early access waitlist! We&apos;ll notify you first when subscriptions launch.</span>
               </div>
             ) : (
@@ -180,7 +180,7 @@ export function PricingSection() {
                   value={waitlistEmail}
                   onChange={(e) => setWaitlistEmail(e.target.value)}
                   disabled={isSubmitting}
-                  className="flex h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-xs ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#65DCD5] disabled:opacity-50"
+                  className="flex h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-xs ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
                   required
                 />
                 <Button
