@@ -127,6 +127,13 @@ model User {
   anthropicApiKey String?
   aiModel         String? @default("gpt-4o")
 
+  // Access Controls & Plans (Phase 9 Admin)
+  role            String   @default("user") // "user" | "admin" | "moderator"
+  status          String   @default("active") // "active" | "suspended"
+  plan            String   @default("free") // "free" | "pro" | "teams" | "enterprise" | "lifetime"
+  benefits        Json?    // { perks: string[], customNotes?: string, grantedAt?: string, grantedBy?: string }
+  permissions     Json?    // { bypassRateLimit?: boolean, canAnalyzePrivate?: boolean, unlimitedProjects?: boolean }
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -537,6 +544,26 @@ model WaitlistLead {
   source    String?  @default("pricing_pro")
   createdAt DateTime @default(now())
 
+  @@index([createdAt(sort: Desc)])
+}
+
+// ─────────────────────────────────────────────
+// ADMIN EMAILS & BROADCASTS
+// ─────────────────────────────────────────────
+
+model AdminEmail {
+  id              String   @id @default(cuid())
+  senderId        String
+  subject         String
+  body            String   @db.Text
+  template        String?  @default("custom")
+  targetType      String   // "all" | "selected" | "individual"
+  recipientCount  Int
+  recipientEmails Json     // string[]
+  status          String   @default("sent") // "sent" | "delivered" | "simulated"
+  createdAt       DateTime @default(now())
+
+  @@index([senderId])
   @@index([createdAt(sort: Desc)])
 }
 
