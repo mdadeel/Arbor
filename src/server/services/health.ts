@@ -360,17 +360,22 @@ export async function syncProjectHealth(userId: string, projectId: string): Prom
     }
 
     try {
+      const branchParam = project.defaultBranch ? `&sha=${encodeURIComponent(project.defaultBranch)}` : ''
+      const [repoRes, prsRes, commitsRes, actionsRes, contribRes] = await Promise.all([
+        githubFetch(`/repos/${project.repoFullName}`),
+        githubFetch(`/repos/${project.repoFullName}/pulls?state=open&per_page=100`),
+        githubFetch(`/repos/${project.repoFullName}/commits?per_page=100${branchParam}`),
+        githubFetch(`/repos/${project.repoFullName}/actions/runs?per_page=10`),
+        githubFetch(`/repos/${project.repoFullName}/contributors?per_page=8`),
+      ])
+
       // 1. Repo overview (issues, default branch)
-      const repoRes = await githubFetch(`/repos/${project.repoFullName}`)
       if (repoRes?.ok) {
         const repoData = await repoRes.json()
         repositoryMetrics.openIssues = repoData.open_issues_count ?? 0
       }
 
       // 2. Open Pull Requests
-      const prsRes = await githubFetch(
-        `/repos/${project.repoFullName}/pulls?state=open&per_page=100`
-      )
       if (prsRes?.ok) {
         const prs = await prsRes.json()
         if (Array.isArray(prs)) {
@@ -383,10 +388,6 @@ export async function syncProjectHealth(userId: string, projectId: string): Prom
       }
 
       // 3. Commits & Frequency
-      const branchParam = project.defaultBranch ? `&sha=${encodeURIComponent(project.defaultBranch)}` : ''
-      const commitsRes = await githubFetch(
-        `/repos/${project.repoFullName}/commits?per_page=100${branchParam}`
-      )
       if (commitsRes?.ok) {
         const commits = await commitsRes.json()
         if (Array.isArray(commits) && commits.length > 0) {
@@ -409,9 +410,6 @@ export async function syncProjectHealth(userId: string, projectId: string): Prom
       }
 
       // 4. Actions Workflows
-      const actionsRes = await githubFetch(
-        `/repos/${project.repoFullName}/actions/runs?per_page=10`
-      )
       if (actionsRes?.ok) {
         const actionsData = await actionsRes.json()
         if (Array.isArray(actionsData.workflow_runs)) {
@@ -434,9 +432,6 @@ export async function syncProjectHealth(userId: string, projectId: string): Prom
       }
 
       // 5. Contributors
-      const contribRes = await githubFetch(
-        `/repos/${project.repoFullName}/contributors?per_page=8`
-      )
       if (contribRes?.ok) {
         const contribs = await contribRes.json()
         if (Array.isArray(contribs)) {

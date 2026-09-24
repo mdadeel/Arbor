@@ -195,11 +195,15 @@ export function matchApiContracts(
     // Check direct match or prefixed match
     let candidates = backendMap.get(normCallPath)
 
-    if (!candidates && normalizedPrefix && normCallPath.startsWith(normalizedPrefix)) {
+    const isPrefixMatch =
+      normalizedPrefix &&
+      (normCallPath === normalizedPrefix || normCallPath.startsWith(`${normalizedPrefix}/`))
+
+    if (!candidates && isPrefixMatch && normalizedPrefix) {
       // Try stripping prefix: /api/v1/users -> /users
       const stripped = normCallPath.slice(normalizedPrefix.length) || '/'
       candidates = backendMap.get(stripped)
-    } else if (!candidates && normalizedPrefix && !normCallPath.startsWith(normalizedPrefix)) {
+    } else if (!candidates && normalizedPrefix && !isPrefixMatch) {
       // Try adding prefix: /users -> /api/users
       const prefixed = `${normalizedPrefix}${normCallPath}`
       candidates = backendMap.get(prefixed)

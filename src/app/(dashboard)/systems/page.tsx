@@ -1,15 +1,6 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
-import {
-  AlertCircle,
-  ArrowRight,
-  Boxes,
-  CheckCircle2,
-  Globe,
-  Network,
-  Plus,
-  ShieldAlert,
-} from 'lucide-react'
+import { ArrowRight, Network, Plus } from 'lucide-react'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { getServerCaller } from '@/server/caller'

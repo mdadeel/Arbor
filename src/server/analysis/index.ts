@@ -134,7 +134,7 @@ export function runAnalysis(repoDir: string): AnalysisReport {
     if (a.exportedNames.length || a.hasDefaultExport) {
       exportedByFile.set(rel, [...a.exportedNames, a.hasDefaultExport ? 'default' : ''].filter(Boolean))
     }
-    importsBySource.set(rel, a.imports.map((i) => i))
+    importsBySource.set(rel, [...a.imports, ...a.importedSymbols])
     graphNodes.add(rel)
     for (const t of a.localTargets) edges.push([rel, t])
     secretFindings.push(...scanSecrets(text, rel))

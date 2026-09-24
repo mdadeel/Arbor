@@ -13,7 +13,14 @@ export const IMPERSONATION_COOKIE_NAME = 'arbor_impersonation'
 export const IMPERSONATION_MAX_AGE_SECONDS = 3600 // 1 hour
 
 function getSecretKey(): string {
-  return process.env.NEXTAUTH_SECRET || process.env.ENCRYPTION_SECRET || 'arbor_default_impersonation_key_sec'
+  const secret = process.env.NEXTAUTH_SECRET || process.env.ENCRYPTION_SECRET
+  if (!secret) {
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error('NEXTAUTH_SECRET or ENCRYPTION_SECRET must be configured for impersonation tokens in production.')
+    }
+    return 'arbor_default_impersonation_key_sec'
+  }
+  return secret
 }
 
 export function createImpersonationToken(payload: ImpersonationPayload): string {

@@ -20,6 +20,7 @@ export interface FileAnalysis {
   commentLines: number
   jsdocCount: number
   localTargets: string[]
+  importedSymbols: string[]
   parseFailed: boolean
 }
 
@@ -103,6 +104,7 @@ export function parseFile(file: string): FileAnalysis {
     commentLines: 0,
     jsdocCount: 0,
     localTargets: [],
+    importedSymbols: [],
     parseFailed: false,
   }
   if (text == null) return result
@@ -149,6 +151,20 @@ export function parseFile(file: string): FileAnalysis {
       if (spec === 'next/image') result.nextImageImports = true
       const resolved = resolveLocalTarget(repoDir, file, spec)
       if (resolved) result.localTargets.push(resolved)
+      for (const specifier of p.node.specifiers ?? []) {
+        if (specifier.type === 'ImportSpecifier') {
+          const name =
+            specifier.imported.type === 'Identifier'
+              ? specifier.imported.name
+              : (specifier.imported as any).value
+          if (name) result.importedSymbols.push(name)
+        } else if (
+          specifier.type === 'ImportDefaultSpecifier' ||
+          specifier.type === 'ImportNamespaceSpecifier'
+        ) {
+          if (specifier.local?.name) result.importedSymbols.push(specifier.local.name)
+        }
+      }
     },
     ExportNamedDeclaration(p) {
       const d = p.node.declaration

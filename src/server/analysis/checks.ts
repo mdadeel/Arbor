@@ -130,7 +130,8 @@ export function detectUnusedDeps(repoDir: string): string[] {
     // @types/* are ambient devDeps, never imported
     if (d.startsWith('@types/')) return false
     if (d.startsWith('@')) return !blob.includes(d)
-    return !new RegExp(`\\b${d}\\b`).test(blob)
+    const escaped = d.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    return !new RegExp(`\\b${escaped}\\b`).test(blob)
   }).sort()
 }
 
@@ -150,7 +151,7 @@ export function detectDeadExports(
   const dead: { file: string; name: string }[] = []
   for (const [file, names] of exportedByFile) {
     for (const name of names) {
-      if (name && !usedNames.has(name)) dead.push({ file, name })
+      if (name && name !== 'default' && !usedNames.has(name)) dead.push({ file, name })
     }
   }
   return dead.slice(0, 20)

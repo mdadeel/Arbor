@@ -57,13 +57,36 @@ export async function GET(
   }
 }
 
+function escapeXml(str: string): string {
+  return str.replace(/[<>&"']/g, (c) => {
+    switch (c) {
+      case '<':
+        return '&lt;'
+      case '>':
+        return '&gt;'
+      case '&':
+        return '&amp;'
+      case '"':
+        return '&quot;'
+      case "'":
+        return '&apos;'
+      default:
+        return c
+    }
+  })
+}
+
 function generateSvgBadge(label: string, value: string, color: string): string {
+  const safeLabel = escapeXml(label)
+  const safeValue = escapeXml(value)
+  const safeColor = /^#[0-9a-fA-F]{3,8}$/.test(color) ? color : '#6b7280'
+
   const labelWidth = Math.max(50, label.length * 7 + 14)
   const valueWidth = Math.max(42, value.length * 7 + 14)
   const totalWidth = labelWidth + valueWidth
 
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${totalWidth}" height="20" role="img" aria-label="${label}: ${value}">
-  <title>${label}: ${value}</title>
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${totalWidth}" height="20" role="img" aria-label="${safeLabel}: ${safeValue}">
+  <title>${safeLabel}: ${safeValue}</title>
   <linearGradient id="s" x2="0" y2="100%">
     <stop offset="0" stop-color="#bbb" stop-opacity=".1"/>
     <stop offset="1" stop-opacity=".1"/>
@@ -73,14 +96,14 @@ function generateSvgBadge(label: string, value: string, color: string): string {
   </clipPath>
   <g clip-path="url(#r)">
     <rect width="${labelWidth}" height="20" fill="#1e293b"/>
-    <rect x="${labelWidth}" width="${valueWidth}" height="20" fill="${color}"/>
+    <rect x="${labelWidth}" width="${valueWidth}" height="20" fill="${safeColor}"/>
     <rect width="${totalWidth}" height="20" fill="url(#s)"/>
   </g>
   <g fill="#fff" text-anchor="middle" font-family="Verdana,Geneva,DejaVu Sans,sans-serif" text-rendering="geometricPrecision" font-size="110">
-    <text aria-hidden="true" x="${(labelWidth * 10) / 2}" y="150" fill="#010101" fill-opacity=".3" transform="scale(.1)" textLength="${(labelWidth - 14) * 10}">${label}</text>
-    <text x="${(labelWidth * 10) / 2}" y="140" transform="scale(.1)" fill="#fff" textLength="${(labelWidth - 14) * 10}">${label}</text>
-    <text aria-hidden="true" x="${labelWidth * 10 + (valueWidth * 10) / 2}" y="150" fill="#010101" fill-opacity=".3" transform="scale(.1)" textLength="${(valueWidth - 14) * 10}">${value}</text>
-    <text x="${labelWidth * 10 + (valueWidth * 10) / 2}" y="140" transform="scale(.1)" fill="#fff" textLength="${(valueWidth - 14) * 10}">${value}</text>
+    <text aria-hidden="true" x="${(labelWidth * 10) / 2}" y="150" fill="#010101" fill-opacity=".3" transform="scale(.1)" textLength="${(labelWidth - 14) * 10}">${safeLabel}</text>
+    <text x="${(labelWidth * 10) / 2}" y="140" transform="scale(.1)" fill="#fff" textLength="${(labelWidth - 14) * 10}">${safeLabel}</text>
+    <text aria-hidden="true" x="${labelWidth * 10 + (valueWidth * 10) / 2}" y="150" fill="#010101" fill-opacity=".3" transform="scale(.1)" textLength="${(valueWidth - 14) * 10}">${safeValue}</text>
+    <text x="${labelWidth * 10 + (valueWidth * 10) / 2}" y="140" transform="scale(.1)" fill="#fff" textLength="${(valueWidth - 14) * 10}">${safeValue}</text>
   </g>
 </svg>`
 }

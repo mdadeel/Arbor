@@ -3,6 +3,7 @@ import yaml from 'js-yaml'
 import { prisma } from '@/lib/prisma'
 import { TRPCError } from '@trpc/server'
 import type { OpenAPI, OpenAPIV3 } from 'openapi-types'
+import { validateSafeUrl } from '@/lib/ssrf'
 
 export type ParsedEndpoint = {
   method: string
@@ -168,16 +169,34 @@ export async function proxyRequest(
   headers: Record<string, string>,
   body?: string
 ): Promise<ProxyResponse> {
+  const safeUrl = await validateSafeUrl(url)
   const start = Date.now()
-  const resp = await fetch(url, {
-    method,
-    headers,
-    body: ['GET', 'HEAD'].includes(method.toUpperCase()) ? undefined : body,
-  })
-  const durationMs = Date.now() - start
-  const respBody = await resp.text()
-  const respHeaders: Record<string, string> = {}
-  resp.headers.forEach((v, k) => { respHeaders[k] = v })
-  delete respHeaders['set-cookie']
-  return { status: resp.status, statusText: resp.statusText, headers: respHeaders, body: respBody, durationMs }
+
+  const sanitizedHeaders: Record<string, string> = {}
+  const DANGEROUS_HEADERS = new Set(['host', 'cookie', 'set-cookie'])
+  for (const [k, v] of Object.entries(headers)) {
+    if (!DANGEROUS_HEADERS.has(k.toLowerCase())) {
+      sanitizedHeaders[k] = v
+    }
+  }
+
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), 10_000)
+
+  try {
+    const resp = await fetch(safeUrl.toString(), {
+      method,
+      headers: sanitizedHeaders,
+      body: ['GET', 'HEAD'].includes(method.toUpperCase()) ? undefined : body,
+      signal: controller.signal,
+    })
+    const durationMs = Date.now() - start
+    const respBody = await resp.text()
+    const respHeaders: Record<string, string> = {}
+    resp.headers.forEach((v, k) => { respHeaders[k] = v })
+    delete respHeaders['set-cookie']
+    return { status: resp.status, statusText: resp.statusText, headers: respHeaders, body: respBody, durationMs }
+  } finally {
+    clearTimeout(timeoutId)
+  }
 }

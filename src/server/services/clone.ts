@@ -14,6 +14,14 @@ export async function cloneRepo(opts: {
   destination: string
   token?: string
 }): Promise<CloneResult> {
+  if (!opts.branch || opts.branch.startsWith('-') || /[\s\0~^:?*\[\\]/.test(opts.branch)) {
+    throw new Error(`Invalid branch name '${opts.branch}'`)
+  }
+
+  if (!opts.repoUrl.startsWith('https://')) {
+    throw new Error('Only https:// repository URLs are allowed')
+  }
+
   fs.rmSync(opts.destination, { recursive: true, force: true })
   fs.mkdirSync(opts.destination, { recursive: true })
 
@@ -61,5 +69,6 @@ export async function cloneRepo(opts: {
 }
 
 export function repoDirFor(projectId: string): string {
-  return path.join(env.CLONE_BASE_DIR, projectId)
+  const sanitized = path.basename(projectId)
+  return path.join(env.CLONE_BASE_DIR, sanitized)
 }
