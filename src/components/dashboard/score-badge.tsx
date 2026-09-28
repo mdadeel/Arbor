@@ -67,7 +67,7 @@ export function ScoreBadge({
     return (
       <span
         className={cn(
-          'inline-flex items-center rounded border px-2 py-0.5 font-mono text-xs text-muted-foreground',
+          'inline-flex items-center rounded-full border px-2 py-0.5 font-mono text-xs text-muted-foreground tabular-nums',
           colors.bg,
           colors.border,
           className
@@ -79,15 +79,15 @@ export function ScoreBadge({
   }
 
   const sizeClasses = {
-    sm: 'text-xs px-1.5 py-0.2',
-    md: 'text-xs px-2 py-0.5',
-    lg: 'text-sm px-2.5 py-1',
+    sm: 'text-xs px-2 py-0.5',
+    md: 'text-xs px-2.5 py-0.5',
+    lg: 'text-sm px-3 py-1',
   }
 
   return (
     <span
       className={cn(
-        'inline-flex items-center gap-1 rounded border font-mono font-medium',
+        'inline-flex items-center gap-1 rounded-full border font-mono font-semibold tabular-nums',
         sizeClasses[size],
         colors.text,
         colors.bg,

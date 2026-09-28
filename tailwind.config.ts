@@ -80,15 +80,15 @@ const config: Config = {
         warning: '#eab308',
         error: '#ef4444',
         brand: {
-          plum: '#321E48',
-          navy: '#43637E',
-          teal: '#65DCD5',
-          mint: '#D9FFF4',
+          indigo: '#5E6AD2',
+          cyan: '#00F2FE',
+          violet: '#8B5CF6',
+          obsidian: '#070809',
         },
       },
       fontFamily: {
-        sans: ['Inter', 'system-ui', 'sans-serif'],
-        display: ['Space Grotesk', 'Inter', 'sans-serif'],
+        sans: ['Plus Jakarta Sans', 'Inter', 'system-ui', 'sans-serif'],
+        display: ['Plus Jakarta Sans', 'Inter', 'sans-serif'],
         mono: ['JetBrains Mono', 'monospace'],
       },
       borderRadius: {

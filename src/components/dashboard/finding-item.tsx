@@ -62,7 +62,7 @@ export function FindingItem({ finding, repoUrl, commitSha, className }: FindingI
           <span className="text-xs font-semibold text-foreground">
             {finding.title}
           </span>
-          <span className="rounded border border-border/70 bg-muted/40 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
+          <span className="rounded-full border border-border/70 bg-muted/60 px-2 py-0.5 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
             {finding.category}
           </span>
         </div>

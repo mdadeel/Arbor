@@ -1,0 +1,778 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Arbor — Linear x Threads x Instagram Redesign Preview</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      /* Theme 1: Linear Velvet Obsidian (Default) */
+      --bg-main: #070809;
+      --bg-card: rgba(255, 255, 255, 0.03);
+      --bg-card-solid: #0e0f14;
+      --bg-subtle: #14151d;
+      --border-color: rgba(255, 255, 255, 0.08);
+      --border-color-hover: rgba(94, 106, 210, 0.4);
+      
+      --text-main: #f7f8f8;
+      --text-muted: #8a8f98;
+      --text-dim: #62676f;
+      
+      --brand-primary: #5e6ad2;
+      --brand-gradient: linear-gradient(135deg, #5e6ad2 0%, #00f2fe 100%);
+      --brand-glow: rgba(94, 106, 210, 0.25);
+      
+      --score-green: #10b981;
+      --score-amber: #f59e0b;
+      --score-red: #ef4444;
+      
+      --radius-card: 16px;
+      --radius-pill: 9999px;
+      --font-sans: 'Plus Jakarta Sans', 'Inter', sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+    }
+
+    [data-theme="threads-liquid"] {
+      /* Theme 2: Threads by Meta (Pitch Black + Rounded Liquid UI) */
+      --bg-main: #000000;
+      --bg-card: #101010;
+      --bg-card-solid: #141414;
+      --bg-subtle: #1e1e1e;
+      --border-color: #262626;
+      --border-color-hover: #404040;
+      
+      --text-main: #ffffff;
+      --text-muted: #777777;
+      --text-dim: #444444;
+      
+      --brand-primary: #ffffff;
+      --brand-gradient: linear-gradient(135deg, #ffffff 0%, #a1a1aa 100%);
+      --brand-glow: rgba(255, 255, 255, 0.15);
+      
+      --score-green: #00e676;
+      --score-amber: #ffb300;
+      --score-red: #ff3d00;
+      
+      --radius-card: 24px;
+      --radius-pill: 9999px;
+    }
+
+    [data-theme="instagram-sunset"] {
+      /* Theme 3: Instagram Sunset Glow */
+      --bg-main: #0b0c10;
+      --bg-card: #12141c;
+      --bg-card-solid: #181a26;
+      --bg-subtle: #202333;
+      --border-color: rgba(240, 148, 51, 0.15);
+      --border-color-hover: rgba(220, 39, 67, 0.4);
+      
+      --text-main: #ffffff;
+      --text-muted: #9a9eab;
+      --text-dim: #5c606e;
+      
+      --brand-primary: #e6683c;
+      --brand-gradient: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%);
+      --brand-glow: rgba(220, 39, 67, 0.3);
+      
+      --score-green: #10b981;
+      --score-amber: #f09433;
+      --score-red: #dc2743;
+      
+      --radius-card: 20px;
+      --radius-pill: 9999px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      transition: background 0.25s ease, border-color 0.25s ease, color 0.25s ease, transform 0.15s ease, box-shadow 0.25s ease;
+    }
+
+    body {
+      background-color: var(--bg-main);
+      color: var(--text-main);
+      font-family: var(--font-sans);
+      line-height: 1.5;
+      padding: 2rem;
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .container {
+      max-width: 1240px;
+      margin: 0 auto;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 2rem;
+      border-bottom: 1px solid var(--border-color);
+      margin-bottom: 2.5rem;
+    }
+
+    .brand-logo {
+      display: flex;
+      align-items: center;
+      gap: 0.875rem;
+      font-size: 1.35rem;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+    }
+
+    .logo-gradient-box {
+      width: 42px;
+      height: 42px;
+      border-radius: 12px;
+      background: var(--brand-gradient);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      font-family: var(--font-mono);
+      font-weight: 800;
+      font-size: 1.1rem;
+      box-shadow: 0 0 25px var(--brand-glow);
+    }
+
+    .controls-bar {
+      display: flex;
+      gap: 0.75rem;
+      align-items: center;
+      background: var(--bg-card);
+      padding: 0.5rem 0.875rem;
+      border-radius: 9999px;
+      border: 1px solid var(--border-color);
+    }
+
+    select, button {
+      font-family: inherit;
+      cursor: pointer;
+    }
+
+    .theme-select {
+      background: var(--bg-subtle);
+      color: var(--text-main);
+      border: 1px solid var(--border-color);
+      padding: 0.5rem 1rem;
+      border-radius: 9999px;
+      font-weight: 600;
+      font-size: 0.825rem;
+      outline: none;
+    }
+
+    .theme-select:focus {
+      border-color: var(--border-color-hover);
+    }
+
+    /* Grid Layout */
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(12, 1fr);
+      gap: 1.5rem;
+      margin-bottom: 2.5rem;
+    }
+
+    .col-12 { grid-column: span 12; }
+    .col-8 { grid-column: span 8; }
+    .col-6 { grid-column: span 6; }
+    .col-4 { grid-column: span 4; }
+    .col-5 { grid-column: span 5; }
+    .col-7 { grid-column: span 7; }
+
+    /* Card Component */
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-card);
+      padding: 1.5rem;
+      backdrop-filter: blur(16px);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+    }
+
+    .card:hover {
+      border-color: var(--border-color-hover);
+      box-shadow: 0 12px 40px var(--brand-glow);
+    }
+
+    .card-title {
+      font-size: 1.1rem;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      letter-spacing: -0.02em;
+    }
+
+    .card-subtitle {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      margin-bottom: 1.25rem;
+    }
+
+    /* Swatches */
+    .palette-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 1rem;
+    }
+
+    .swatch {
+      border-radius: 12px;
+      padding: 0.875rem;
+      background: var(--bg-subtle);
+      border: 1px solid var(--border-color);
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .swatch-color {
+      height: 48px;
+      border-radius: 8px;
+    }
+
+    .swatch-name {
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+    .swatch-hex {
+      font-size: 0.725rem;
+      font-family: var(--font-mono);
+      color: var(--text-dim);
+    }
+
+    /* Buttons */
+    .btn-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      align-items: center;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      padding: 0.65rem 1.35rem;
+      border-radius: var(--radius-pill);
+      font-size: 0.85rem;
+      font-weight: 700;
+      border: 1px solid transparent;
+      letter-spacing: -0.01em;
+    }
+
+    .btn:active {
+      transform: scale(0.96);
+    }
+
+    .btn-gradient {
+      background: var(--brand-gradient);
+      color: #ffffff;
+      box-shadow: 0 4px 20px var(--brand-glow);
+    }
+    .btn-gradient:hover {
+      opacity: 0.92;
+      box-shadow: 0 6px 28px var(--brand-glow);
+    }
+
+    .btn-secondary {
+      background: var(--bg-subtle);
+      color: var(--text-main);
+      border: 1px solid var(--border-color);
+    }
+    .btn-secondary:hover {
+      border-color: var(--border-color-hover);
+      background: var(--bg-card-solid);
+    }
+
+    .btn-outline {
+      background: transparent;
+      color: var(--text-main);
+      border: 1px solid var(--border-color);
+    }
+    .btn-outline:hover {
+      border-color: var(--text-main);
+    }
+
+    .btn-ghost {
+      background: transparent;
+      color: var(--text-muted);
+    }
+    .btn-ghost:hover {
+      color: var(--text-main);
+      background: var(--bg-subtle);
+    }
+
+    /* Badges */
+    .badge-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.6rem;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.3rem 0.75rem;
+      border-radius: var(--radius-pill);
+      font-size: 0.775rem;
+      font-weight: 700;
+      font-family: var(--font-mono);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .badge-green {
+      background: rgba(16, 185, 129, 0.15);
+      color: var(--score-green);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+    }
+
+    .badge-amber {
+      background: rgba(245, 158, 11, 0.15);
+      color: var(--score-amber);
+      border: 1px solid rgba(245, 158, 11, 0.3);
+    }
+
+    .badge-red {
+      background: rgba(239, 68, 68, 0.15);
+      color: var(--score-red);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+    }
+
+    .badge-pill {
+      background: var(--bg-subtle);
+      color: var(--text-muted);
+      border: 1px solid var(--border-color);
+    }
+
+    /* Mock Dashboard View */
+    .dashboard-preview {
+      background: var(--bg-card-solid);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-card);
+      padding: 1.75rem;
+      box-shadow: 0 16px 48px rgba(0,0,0,0.5);
+    }
+
+    .dash-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 1.25rem;
+      border-bottom: 1px solid var(--border-color);
+      margin-bottom: 1.5rem;
+    }
+
+    .nav-tabs {
+      display: flex;
+      gap: 0.35rem;
+      background: var(--bg-subtle);
+      padding: 0.3rem;
+      border-radius: var(--radius-pill);
+      border: 1px solid var(--border-color);
+    }
+
+    .tab {
+      padding: 0.45rem 1rem;
+      font-size: 0.8rem;
+      font-weight: 700;
+      border-radius: var(--radius-pill);
+      color: var(--text-muted);
+    }
+
+    .tab.active {
+      background: var(--brand-gradient);
+      color: #ffffff;
+      box-shadow: 0 4px 16px var(--brand-glow);
+    }
+
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .stat-box {
+      background: var(--bg-subtle);
+      border: 1px solid var(--border-color);
+      padding: 1.1rem;
+      border-radius: calc(var(--radius-card) - 4px);
+    }
+
+    .stat-label {
+      font-size: 0.725rem;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      font-weight: 700;
+    }
+
+    .stat-val {
+      font-size: 1.6rem;
+      font-weight: 800;
+      margin-top: 0.25rem;
+      font-family: var(--font-mono);
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* Finding Item */
+    .finding-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .finding-card {
+      background: var(--bg-subtle);
+      border: 1px solid var(--border-color);
+      padding: 0.9rem 1.2rem;
+      border-radius: calc(var(--radius-card) - 6px);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .finding-card:hover {
+      border-color: var(--border-color-hover);
+    }
+
+    .finding-title {
+      font-weight: 700;
+      font-size: 0.875rem;
+    }
+
+    .finding-file {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      color: var(--text-dim);
+      margin-top: 0.2rem;
+    }
+
+    /* AST Graph Preview */
+    .graph-mock {
+      height: 200px;
+      background: var(--bg-subtle);
+      border: 1px solid var(--border-color);
+      border-radius: calc(var(--radius-card) - 4px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .graph-node {
+      position: absolute;
+      padding: 0.5rem 0.9rem;
+      background: var(--bg-card-solid);
+      border: 1px solid var(--border-color-hover);
+      border-radius: var(--radius-pill);
+      font-size: 0.75rem;
+      font-family: var(--font-mono);
+      font-weight: 700;
+      color: var(--text-main);
+      box-shadow: 0 4px 16px var(--brand-glow);
+    }
+
+    .node-1 { top: 30px; left: 40px; }
+    .node-2 { top: 110px; left: 200px; border-color: var(--text-muted); }
+    .node-3 { top: 35px; right: 50px; border-color: var(--score-green); }
+
+    svg.line-canvas {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      stroke: var(--border-color-hover);
+      stroke-width: 2;
+      stroke-dasharray: 4;
+    }
+
+    /* Plan Steps Table */
+    .plan-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 1rem;
+    }
+
+    .plan-table th, .plan-table td {
+      padding: 0.875rem 1rem;
+      text-align: left;
+      border-bottom: 1px solid var(--border-color);
+      font-size: 0.85rem;
+    }
+
+    .plan-table th {
+      background: var(--bg-subtle);
+      color: var(--text-muted);
+      font-size: 0.725rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      font-weight: 700;
+    }
+
+    .step-num {
+      font-family: var(--font-mono);
+      font-weight: 800;
+      color: var(--text-main);
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="brand-logo">
+        <div class="logo-gradient-box">A</div>
+        <span>Arbor <span style="font-weight: 400; color: var(--text-dim); font-size: 0.95rem;">Linear x Threads Redesign</span></span>
+      </div>
+
+      <div class="controls-bar">
+        <span style="font-size: 0.8rem; font-weight: 700; color: var(--text-muted);">Redesign Concept:</span>
+        <select class="theme-select" id="conceptSelector" onchange="switchConcept(this.value)">
+          <option value="linear-obsidian">Concept 1: Linear Velvet Obsidian (Deep Glass Cyber Workbench)</option>
+          <option value="threads-liquid">Concept 2: Threads Liquid Graphite (Meta Pitch Black + Pill UI)</option>
+          <option value="instagram-sunset">Concept 3: Instagram Sunset Glow (Dynamic Accent Sheen)</option>
+        </select>
+      </div>
+    </header>
+
+    <!-- Theme Palette Tokens -->
+    <div class="grid">
+      <div class="col-12 card">
+        <div class="card-title">
+          <span>1. Linear x Threads Design Token Architecture</span>
+          <span class="badge badge-pill">Redesign Concepts</span>
+        </div>
+        <div class="card-subtitle">Blending Linear's deep glassmorphic obsidian workbench with Threads' pill navigation and smooth tactile spring controls.</div>
+        
+        <div class="palette-grid">
+          <div class="swatch">
+            <div class="swatch-color" style="background: var(--bg-main); border: 1px solid var(--border-color);"></div>
+            <div class="swatch-name">Pitch Canvas</div>
+            <div class="swatch-hex" id="hex-bg">--bg-main</div>
+          </div>
+          <div class="swatch">
+            <div class="swatch-color" style="background: var(--bg-card-solid); border: 1px solid var(--border-color);"></div>
+            <div class="swatch-name">Glass Surface</div>
+            <div class="swatch-hex" id="hex-card">--bg-card</div>
+          </div>
+          <div class="swatch">
+            <div class="swatch-color" style="background: var(--brand-gradient);"></div>
+            <div class="swatch-name">Brand Gradient</div>
+            <div class="swatch-hex">--brand-gradient</div>
+          </div>
+          <div class="swatch">
+            <div class="swatch-color" style="background: var(--text-main);"></div>
+            <div class="swatch-name">Display Text</div>
+            <div class="swatch-hex">--text-main</div>
+          </div>
+          <div class="swatch">
+            <div class="swatch-color" style="background: var(--score-green);"></div>
+            <div class="swatch-name">Healthy (&ge;80)</div>
+            <div class="swatch-hex">--score-green</div>
+          </div>
+          <div class="swatch">
+            <div class="swatch-color" style="background: var(--score-amber);"></div>
+            <div class="swatch-name">Warning (60-79)</div>
+            <div class="swatch-hex">--score-amber</div>
+          </div>
+          <div class="swatch">
+            <div class="swatch-color" style="background: var(--score-red);"></div>
+            <div class="swatch-name">Critical (&lt;60)</div>
+            <div class="swatch-hex">--score-red</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Component Gallery Mockup -->
+    <div class="grid">
+      <div class="col-6 card">
+        <div class="card-title">2A. Tactile Pill Buttons (Threads x Linear)</div>
+        <div class="card-subtitle">Pill shape geometry with active micro-scale press (`active:scale-96`) and gradient highlights.</div>
+        <div class="btn-group">
+          <button class="btn btn-gradient">Primary Gradient</button>
+          <button class="btn btn-secondary">Secondary Pill</button>
+          <button class="btn btn-outline">Outline</button>
+          <button class="btn btn-ghost">Ghost</button>
+        </div>
+      </div>
+
+      <div class="col-6 card">
+        <div class="card-title">2B. Metric &amp; Audit Pill Badges</div>
+        <div class="card-subtitle">Tabular numbers, rounded pill geometry, distinct health status glow.</div>
+        <div class="badge-group" style="margin-bottom: 0.85rem;">
+          <span class="badge badge-green">88 / 100 HEALTHY</span>
+          <span class="badge badge-amber">64 / 100 WARNING</span>
+          <span class="badge badge-red">42 / 100 CRITICAL</span>
+        </div>
+        <div class="badge-group">
+          <span class="badge badge-pill">AST ENGINE v2.1</span>
+          <span class="badge badge-pill">0 CYCLES PASS</span>
+          <span class="badge badge-pill">OPENAPI v3.0</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Dashboard Workbench Mockup -->
+    <div class="grid">
+      <div class="col-12 dashboard-preview">
+        <div class="dash-header">
+          <div>
+            <div style="font-size: 1.25rem; font-weight: 800; letter-spacing: -0.02em;">mdadeel / Arbor</div>
+            <div style="font-size: 0.825rem; color: var(--text-dim); margin-top: 0.15rem;">Deterministic AST Engine Audit Report &amp; System Health</div>
+          </div>
+
+          <div class="nav-tabs">
+            <div class="tab active">Overview</div>
+            <div class="tab">Architecture DAG</div>
+            <div class="tab">Findings (12)</div>
+            <div class="tab">API Spec</div>
+            <div class="tab">Docs</div>
+          </div>
+        </div>
+
+        <div class="stats-row">
+          <div class="stat-box">
+            <div class="stat-label">Overall Health</div>
+            <div class="stat-val" style="color: var(--score-green);">92<span style="font-size: 0.9rem; color: var(--text-dim);"> / 100</span></div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-label">Security Shield</div>
+            <div class="stat-val">100%</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-label">Client Ratio</div>
+            <div class="stat-val">18.4%</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-label">Circular Deps</div>
+            <div class="stat-val" style="color: var(--score-green);">0</div>
+          </div>
+        </div>
+
+        <div class="grid" style="margin-bottom: 0;">
+          <div class="col-7">
+            <div style="font-size: 0.9rem; font-weight: 700; margin-bottom: 0.75rem;">Audit Findings</div>
+            <div class="finding-list">
+              <div class="finding-card">
+                <div>
+                  <div class="finding-title">SSRF Protection Verified</div>
+                  <div class="finding-file">src/lib/ssrf.ts:L42 — IPv4/IPv6 CIDR validation active</div>
+                </div>
+                <span class="badge badge-green">PASS</span>
+              </div>
+              <div class="finding-card">
+                <div>
+                  <div class="finding-title">Unused Dependency Flagged</div>
+                  <div class="finding-file">package.json — @apidevtools/swagger-parser</div>
+                </div>
+                <span class="badge badge-amber">NOTICE</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-5">
+            <div style="font-size: 0.9rem; font-weight: 700; margin-bottom: 0.75rem;">AST Module Graph</div>
+            <div class="graph-mock">
+              <svg class="line-canvas">
+                <line x1="80" y1="40" x2="210" y2="110" />
+                <line x1="210" y1="110" x2="290" y2="45" />
+              </svg>
+              <div class="graph-node node-1">src/server/routers</div>
+              <div class="graph-node node-2">src/server/services</div>
+              <div class="graph-node node-3">src/server/analysis</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Complete Implementation Plan -->
+    <div class="grid">
+      <div class="col-12 card">
+        <div class="card-title">3. Comprehensive Linear x Threads Redesign Implementation Plan</div>
+        <div class="card-subtitle">Steps to apply this complete aesthetic transformation across the Arbor codebase.</div>
+        
+        <table class="plan-table">
+          <thead>
+            <tr>
+              <th style="width: 80px;">Phase</th>
+              <th>Target System</th>
+              <th>Files Touched</th>
+              <th>Action &amp; Transformation Details</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="step-num">PHASE 1</td>
+              <td><strong>Tokens &amp; Geometry</strong></td>
+              <td><code>src/app/globals.css</code><br><code>tailwind.config.ts</code></td>
+              <td>Define pitch canvas tokens, glassmorphic card variables, rounded pill radii (<code>rounded-full</code> pill buttons/tabs), and Linear gradient accents.</td>
+            </tr>
+            <tr>
+              <td class="step-num">PHASE 2</td>
+              <td><strong>Pill Buttons &amp; Badges</strong></td>
+              <td><code>src/components/ui/button.tsx</code><br><code>src/components/dashboard/score-badge.tsx</code></td>
+              <td>Refactor all button variants to rounded pill geometry (`rounded-full`) with active spring micro-scaling (`active:scale-95`). Format score badges as rounded pill tags.</td>
+            </tr>
+            <tr>
+              <td class="step-num">PHASE 3</td>
+              <td><strong>Workbench Navigation</strong></td>
+              <td><code>src/components/dashboard/sidebar.tsx</code><br><code>src/components/dashboard/header.tsx</code><br><code>src/components/dashboard/project-report.tsx</code></td>
+              <td>Convert dashboard tabs to floating pill switchers with sliding active pill highlights. Update brand logo to gradient icon box.</td>
+            </tr>
+            <tr>
+              <td class="step-num">PHASE 4</td>
+              <td><strong>Graph &amp; Findings</strong></td>
+              <td><code>src/components/dashboard/architecture/graph-canvas.tsx</code><br><code>src/components/dashboard/finding-item.tsx</code></td>
+              <td>Transform React Flow AST graph nodes into rounded pill capsules with glowing borders and animated edges.</td>
+            </tr>
+            <tr>
+              <td class="step-num">PHASE 5</td>
+              <td><strong>Landing Page &amp; Auth</strong></td>
+              <td><code>src/app/page.tsx</code><br><code>src/app/(auth)/login/page.tsx</code></td>
+              <td>Re-style marketing landing hero, bento cards, pricing waitlist, and auth screen to match the Linear x Threads pitch-dark glass aesthetic.</td>
+            </tr>
+            <tr>
+              <td class="step-num">PHASE 6</td>
+              <td><strong>Verification</strong></td>
+              <td><code>npm run typecheck</code><br><code>npm test</code></td>
+              <td>Verify 100% of TypeScript types compile and all 154 unit tests pass with zero regressions.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function switchConcept(conceptKey) {
+      if (conceptKey === 'threads-liquid') {
+        document.documentElement.setAttribute('data-theme', 'threads-liquid');
+        document.getElementById('hex-bg').innerText = '#000000';
+        document.getElementById('hex-card').innerText = '#101010';
+      } else if (conceptKey === 'instagram-sunset') {
+        document.documentElement.setAttribute('data-theme', 'instagram-sunset');
+        document.getElementById('hex-bg').innerText = '#0B0C10';
+        document.getElementById('hex-card').innerText = '#12141C';
+      } else {
+        document.documentElement.removeAttribute('data-theme');
+        document.getElementById('hex-bg').innerText = '#070809';
+        document.getElementById('hex-card').innerText = '#0E0F14';
+      }
+    }
+  </script>
+</body>
+</html>

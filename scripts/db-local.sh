@@ -9,10 +9,10 @@ LOG="$HOME/devhub/pg.log"
 
 case "${1:-start}" in
   start)
-    if "$PG_BIN/pg_ctl" -D "$PGDATA" status >/dev/null 2>&1; then
+    if "$PG_BIN/pg_ctl" -D "$PGDATA" status >/dev/null 2>&1 || (echo > /dev/tcp/127.0.0.1/5433) 2>/dev/null; then
       echo "postgres already running"
     else
-      "$PG_BIN/pg_ctl" -D "$PGDATA" -l "$LOG" -o "-p 5432" start
+      "$PG_BIN/pg_ctl" -D "$PGDATA" -l "$LOG" -o "-p 5433" start
     fi
     ;;
   stop)

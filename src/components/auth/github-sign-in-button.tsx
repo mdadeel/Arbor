@@ -1,17 +1,26 @@
 'use client'
 
-import { useState } from 'react'
-import { useSearchParams } from 'next/navigation'
-import { signIn } from 'next-auth/react'
-import { AlertCircle, AlertTriangle, ArrowRight, Github, Loader2, Lock } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { useSearchParams, useRouter } from 'next/navigation'
+import { signIn, useSession } from 'next-auth/react'
+import { AlertCircle, AlertTriangle, ArrowRight, Github, Loader2, Lock, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
 export function GithubSignInButton({ configured }: { configured: boolean }) {
   const [loading, setLoading] = useState(false)
+  const [dismissedError, setDismissedError] = useState(false)
 
+  const router = useRouter()
   const searchParams = useSearchParams()
   const error = searchParams.get('error')
   const callbackUrl = searchParams.get('callbackUrl')
+  const { status } = useSession()
+
+  useEffect(() => {
+    if (status === 'authenticated') {
+      router.replace(callbackUrl || '/dashboard')
+    }
+  }, [status, router, callbackUrl])
 
   const getErrorMessage = (err: string) => {
     switch (err) {
@@ -42,8 +51,15 @@ export function GithubSignInButton({ configured }: { configured: boolean }) {
 
   return (
     <div className="w-full space-y-4">
-      {error && (
-        <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-3.5 text-xs text-red-300 space-y-1 animate-in fade-in duration-200">
+      {error && !dismissedError && (
+        <div className="relative rounded-xl border border-red-500/30 bg-red-500/10 p-3.5 pr-8 text-xs text-red-300 space-y-1 animate-in fade-in duration-200">
+          <button
+            onClick={() => setDismissedError(true)}
+            className="absolute top-2.5 right-2.5 text-red-400 hover:text-red-200 transition-colors"
+            title="Dismiss notice"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
           <div className="flex items-center gap-2 font-semibold">
             <AlertTriangle className="h-4 w-4 shrink-0 text-red-400" />
             <span>Authentication Error</span>

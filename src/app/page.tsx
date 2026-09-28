@@ -84,7 +84,7 @@ export default async function HomePage() {
           <div className="space-y-5 max-w-4xl mx-auto">
             <h1 className="font-display text-4xl sm:text-6xl lg:text-7xl font-black tracking-tight text-balance text-foreground leading-[1.05]">
               Arbor: Automated Codebase Intelligence in{' '}
-              <span className="text-[#65DCD5]">
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#5E6AD2] via-[#00F2FE] to-[#8B5CF6]">
                 30 Seconds.
               </span>
             </h1>
@@ -128,7 +128,7 @@ export default async function HomePage() {
               ].map((badge) => (
                 <span
                   key={badge}
-                  className="rounded-md border border-border/80 bg-muted/40 px-2.5 py-1 text-[11px] font-mono text-muted-foreground hover:text-foreground transition-colors"
+                  className="rounded-full border border-border/80 bg-muted/60 px-3 py-1 text-[11px] font-mono text-muted-foreground hover:text-foreground transition-colors"
                 >
                   {badge}
                 </span>

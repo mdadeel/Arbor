@@ -41,7 +41,7 @@ test-results
 # os
 .DS_Store
 Thumbs.db
-
+.agents 
 # editors
 *~
 *.swp
