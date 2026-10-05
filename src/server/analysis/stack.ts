@@ -6,26 +6,33 @@ import type { DetectedTechStack } from './types'
 const FRAMEWORKS: [string, string][] = [
   ['next', 'Next.js'],
   ['nuxt', 'Nuxt'],
+  ['@sveltejs/kit', 'SvelteKit'],
+  ['svelte', 'Svelte'],
+  ['@remix-run/react', 'Remix'],
+  ['remix', 'Remix'],
+  ['astro', 'Astro'],
+  ['vite', 'Vite'],
   ['react', 'React'],
   ['vue', 'Vue'],
-  ['svelte', 'Svelte'],
   ['angular', 'Angular'],
+  ['hono', 'Hono'],
   ['express', 'Express'],
   ['fastify', 'Fastify'],
   ['nestjs', 'NestJS'],
   ['solid-js', 'Solid'],
-  ['remix', 'Remix'],
   ['gatsby', 'Gatsby'],
 ]
 
 const DATABASES: [RegExp, string][] = [
-  [/@prisma\/client/, 'PostgreSQL (Prisma)'],
+  [/@prisma\/client/, 'Prisma'],
+  [/drizzle-orm/, 'Drizzle ORM'],
+  [/@supabase\/supabase-js/, 'Supabase'],
   [/pg\b/, 'PostgreSQL'],
-  [/mysql2/, 'MySQL'],
-  [/mongoose/, 'MongoDB'],
-  [/redis/, 'Redis'],
+  [/mysql2?/, 'MySQL'],
+  [/mongoose/, 'MongoDB (Mongoose)'],
   [/mongodb/, 'MongoDB'],
-  [/drizzle-orm/, 'PostgreSQL (Drizzle)'],
+  [/better-sqlite3|sqlite3|@libsql\/client/, 'SQLite'],
+  [/redis|@upstash\/redis|ioredis/, 'Redis'],
 ]
 
 const TESTING: [RegExp, string][] = [
@@ -33,17 +40,20 @@ const TESTING: [RegExp, string][] = [
   [/jest/, 'Jest'],
   [/@playwright\/test/, 'Playwright'],
   [/cypress/, 'Cypress'],
+  [/@testing-library\//, 'Testing Library'],
   [/\bava\b/, 'AVA'],
 ]
 
 const UI: [RegExp, string][] = [
   [/tailwindcss/, 'Tailwind CSS'],
+  [/class-variance-authority/, 'shadcn/ui'],
+  [/radix-ui/, 'Radix UI'],
+  [/lucide-react/, 'Lucide Icons'],
+  [/framer-motion/, 'Framer Motion'],
   [/styled-components/, 'styled-components'],
   [/@emotion\//, 'Emotion'],
   [/material-ui|@mui\//, 'Material UI'],
   [/antd/, 'Ant Design'],
-  [/class-variance-authority/, 'shadcn/ui'],
-  [/radix-ui/, 'Radix UI'],
   [/chakra-ui/, 'Chakra UI'],
 ]
 

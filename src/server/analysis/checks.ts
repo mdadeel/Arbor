@@ -126,9 +126,33 @@ export function detectUnusedDeps(repoDir: string): string[] {
     }
     blob += readText(f) ?? ''
   }
+  const TOOLING_PACKAGES = new Set([
+    'typescript',
+    'tsx',
+    'ts-node',
+    'prisma',
+    '@prisma/client',
+    'prettier',
+    'eslint',
+    'postcss',
+    'autoprefixer',
+    'tailwindcss',
+    'vitest',
+    'jest',
+    'rimraf',
+    'nodemon',
+    'dotenv',
+    'sharp',
+    'husky',
+    'lint-staged',
+    'cross-env',
+  ])
+
   return deps.filter((d) => {
     // @types/* are ambient devDeps, never imported
     if (d.startsWith('@types/')) return false
+    // Common CLI, compiler, and build-time tooling used in scripts or configs
+    if (TOOLING_PACKAGES.has(d)) return false
     if (d.startsWith('@')) return !blob.includes(d)
     const escaped = d.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
     return !new RegExp(`\\b${escaped}\\b`).test(blob)
@@ -248,7 +272,7 @@ export function perfFindings(metrics: {
       category: 'performance',
       severity: 'info',
       title: 'Raw <img> tags used',
-      detail: `${metrics.imgTags} raw <img> tags; Next.js projects should prefer next/image.`,
+      detail: `${metrics.imgTags} raw <img> tags; consider using an optimized image component or loading="lazy".`,
       count: metrics.imgTags,
     })
   }

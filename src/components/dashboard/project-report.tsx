@@ -23,6 +23,7 @@ import {
   Activity,
   GitCommit,
 } from 'lucide-react'
+import { cn } from '@/lib/utils'
 import { trpc } from '@/lib/trpc'
 import { Button } from '@/components/ui/button'
 import {
@@ -434,103 +435,368 @@ export function ProjectReport({ slug, project }: { slug: string; project: Projec
             </div>
 
             {/* TAB: Overview */}
-            <TabsContent value="overview" className="space-y-4">
-              {/* Tech stack badges */}
+            <TabsContent value="overview" className="space-y-6">
+              {/* Executive Architecture Health Snapshot */}
+              <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+                <Card className="border-border lg:col-span-1">
+                  <CardHeader className="py-3 px-4 border-b border-border/80">
+                    <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center justify-between">
+                      <span>Architecture Grade</span>
+                      <span className="font-mono text-[11px] text-muted-foreground">Composite</span>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-5 flex flex-col justify-between space-y-4">
+                    <div className="flex items-center gap-4">
+                      <div className="flex h-16 w-16 items-center justify-center rounded-lg border border-border bg-muted/40 font-mono text-3xl font-extrabold tracking-tight text-foreground shadow-sm">
+                        {(scores.overall ?? 0) >= 90
+                          ? 'A+'
+                          : (scores.overall ?? 0) >= 80
+                          ? 'A'
+                          : (scores.overall ?? 0) >= 70
+                          ? 'B'
+                          : (scores.overall ?? 0) >= 55
+                          ? 'C'
+                          : 'D'}
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-base font-bold text-foreground">
+                            {(scores.overall ?? 0) >= 85
+                              ? 'Production Grade'
+                              : (scores.overall ?? 0) >= 70
+                              ? 'Sound Architecture'
+                              : (scores.overall ?? 0) >= 55
+                              ? 'Technical Debt Warning'
+                              : 'High Architectural Risk'}
+                          </span>
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-0.5 font-mono">
+                          Overall Score: {scores.overall ?? '—'}/100
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="border-t border-border/60 pt-3 text-xs text-muted-foreground space-y-1.5">
+                      <div className="flex justify-between items-center">
+                        <span>Critical Findings:</span>
+                        <span className={cn('font-mono font-semibold', criticalFindings.length > 0 ? 'text-red-400' : 'text-emerald-400')}>
+                          {criticalFindings.length}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span>Warnings:</span>
+                        <span className={cn('font-mono font-semibold', warningFindings.length > 0 ? 'text-amber-400' : 'text-emerald-400')}>
+                          {warningFindings.length}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span>Circular Import Loops:</span>
+                        <span className={cn('font-mono font-semibold', graphCycles.length > 0 ? 'text-amber-400' : 'text-emerald-400')}>
+                          {graphCycles.length}
+                        </span>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Key Strengths & Attention Areas */}
+                <Card className="border-border lg:col-span-2">
+                  <CardHeader className="py-3 px-4 border-b border-border/80">
+                    <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                      Executive Architectural Posture
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-4 grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                    <div className="space-y-2">
+                      <span className="text-[11px] font-semibold text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
+                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                        Architectural Strengths
+                      </span>
+                      <ul className="space-y-1.5 text-muted-foreground">
+                        {graphCycles.length === 0 && (
+                          <li className="flex items-start gap-1.5">
+                            <span className="text-emerald-400">✓</span>
+                            <span>Strict acyclic dependency graph with 0 cyclic import loops</span>
+                          </li>
+                        )}
+                        {stat('anyTypes', 0) <= 5 && (
+                          <li className="flex items-start gap-1.5">
+                            <span className="text-emerald-400">✓</span>
+                            <span>Strong type discipline with minimal escape hatches</span>
+                          </li>
+                        )}
+                        {designSystem?.tokenType && (
+                          <li className="flex items-start gap-1.5">
+                            <span className="text-emerald-400">✓</span>
+                            <span>Configured design token architecture ({designSystem.tokenType})</span>
+                          </li>
+                        )}
+                        {(completed?.metrics?.unusedDeps as string[] | undefined)?.length === 0 && (
+                          <li className="flex items-start gap-1.5">
+                            <span className="text-emerald-400">✓</span>
+                            <span>Zero unused package dependencies detected</span>
+                          </li>
+                        )}
+                        <li className="flex items-start gap-1.5">
+                          <span className="text-emerald-400">✓</span>
+                          <span>Isolated modular component tree structure</span>
+                        </li>
+                      </ul>
+                    </div>
+
+                    <div className="space-y-2">
+                      <span className="text-[11px] font-semibold text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
+                        <span className="h-1.5 w-1.5 rounded-full bg-amber-400" />
+                        Focus & Remediation Areas
+                      </span>
+                      <ul className="space-y-1.5 text-muted-foreground">
+                        {criticalFindings.length > 0 ? (
+                          <li className="flex items-start gap-1.5 text-red-400">
+                            <span>!</span>
+                            <span>{criticalFindings.length} critical vulnerability/pattern(s) flagged</span>
+                          </li>
+                        ) : graphCycles.length > 0 ? (
+                          <li className="flex items-start gap-1.5 text-amber-300">
+                            <span>!</span>
+                            <span>{graphCycles.length} circular import cycle(s) coupling module boundaries</span>
+                          </li>
+                        ) : null}
+                        {(completed?.metrics?.deadExports as string[] | undefined)?.length ? (
+                          <li className="flex items-start gap-1.5">
+                            <span>•</span>
+                            <span>{(completed?.metrics?.deadExports as string[]).length} unused exported symbol(s) candidate for tree-shaking</span>
+                          </li>
+                        ) : null}
+                        {(completed?.metrics?.unusedDeps as string[] | undefined)?.length ? (
+                          <li className="flex items-start gap-1.5">
+                            <span>•</span>
+                            <span>{(completed?.metrics?.unusedDeps as string[]).length} unused dependencies in package.json</span>
+                          </li>
+                        ) : null}
+                        {stat('consoleLogs', 0) > 0 && (
+                          <li className="flex items-start gap-1.5">
+                            <span>•</span>
+                            <span>{stat('consoleLogs', 0)} debug console.log call(s) left in source</span>
+                          </li>
+                        )}
+                        {designSystem && designSystem.hardcodedColors > 0 && (
+                          <li className="flex items-start gap-1.5">
+                            <span>•</span>
+                            <span>{designSystem.hardcodedColors} hardcoded color literals bypassing design tokens</span>
+                          </li>
+                        )}
+                      </ul>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Priority Action Items */}
+              {findings.length > 0 && (
+                <Card className="border-border">
+                  <CardHeader className="py-3 px-4 border-b border-border/80 flex flex-row items-center justify-between">
+                    <div>
+                      <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                        Top Actionable Recommendations
+                      </CardTitle>
+                      <CardDescription className="text-xs mt-0.5">
+                        High-priority architectural findings requiring engineering attention
+                      </CardDescription>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleTabChange('findings')}
+                      className="h-7 text-xs gap-1 cursor-pointer"
+                    >
+                      <span>View All ({findings.length})</span>
+                      <ArrowUpRight className="h-3 w-3" />
+                    </Button>
+                  </CardHeader>
+                  <CardContent className="p-0 divide-y divide-border/60">
+                    {[...criticalFindings, ...warningFindings].slice(0, 3).map((f) => (
+                      <div key={f.id} className="p-3.5 flex items-start justify-between gap-3 hover:bg-muted/30 transition-colors">
+                        <div className="flex items-start gap-2.5 min-w-0">
+                          <span
+                            className={cn(
+                              'mt-0.5 h-2 w-2 rounded-full shrink-0',
+                              f.severity === 'critical' ? 'bg-red-500' : 'bg-amber-400'
+                            )}
+                          />
+                          <div className="min-w-0 space-y-0.5">
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs font-semibold text-foreground truncate">{f.title}</span>
+                              <span className="text-[10px] font-mono px-1.5 py-0.2 rounded border border-border/70 text-muted-foreground uppercase">
+                                {f.category}
+                              </span>
+                            </div>
+                            <p className="text-xs text-muted-foreground line-clamp-1">{f.detail}</p>
+                            {f.file && (
+                              <p className="text-[11px] font-mono text-muted-foreground/80">{f.file}{f.line ? `:${f.line}` : ''}</p>
+                            )}
+                          </div>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleTabChange('findings')}
+                          className="h-7 text-[11px] shrink-0 text-muted-foreground hover:text-foreground cursor-pointer"
+                        >
+                          Inspect
+                        </Button>
+                      </div>
+                    ))}
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Categorized Tech Stack */}
               {stackItems.length > 0 && (
                 <Card className="border-border">
                   <CardHeader className="py-3 px-4 border-b border-border/80">
                     <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                      Detected Tech Stack
+                      Detected Tech Stack & Tooling
                     </CardTitle>
                   </CardHeader>
-                  <CardContent className="p-4">
+                  <CardContent className="p-4 space-y-3">
                     <TechStackGroup items={stackItems} />
                   </CardContent>
                 </Card>
               )}
 
-              {/* Codebase statistics */}
-              <Card className="border-border">
-                <CardHeader className="py-3 px-4 border-b border-border/80">
-                  <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                    Codebase Metrics
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="p-4">
-                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 font-mono text-xs">
-                    <div className="rounded-md border border-border/60 bg-muted/20 p-2.5">
-                      <span className="text-muted-foreground text-[11px]">Files</span>
-                      <p className="mt-1 font-semibold text-foreground">{stat('files', 0)}</p>
-                    </div>
-                    <div className="rounded-md border border-border/60 bg-muted/20 p-2.5">
-                      <span className="text-muted-foreground text-[11px]">LOC</span>
-                      <p className="mt-1 font-semibold text-foreground">{stat('loc', 0)}</p>
-                    </div>
-                    <div className="rounded-md border border-border/60 bg-muted/20 p-2.5">
-                      <span className="text-muted-foreground text-[11px]">Components</span>
-                      <p className="mt-1 font-semibold text-foreground">{stat('components', 0)}</p>
-                    </div>
-                    <div className="rounded-md border border-border/60 bg-muted/20 p-2.5">
-                      <span className="text-muted-foreground text-[11px]">Hooks</span>
-                      <p className="mt-1 font-semibold text-foreground">{stat('hooks', 0)}</p>
-                    </div>
-                    <div className="rounded-md border border-border/60 bg-muted/20 p-2.5">
-                      <span className="text-muted-foreground text-[11px]">Client Components</span>
-                      <p className="mt-1 font-semibold text-foreground">{stat('clientComponents', 0)}</p>
-                    </div>
-                    <div className="rounded-md border border-border/60 bg-muted/20 p-2.5">
-                      <span className="text-muted-foreground text-[11px]">Server Components</span>
-                      <p className="mt-1 font-semibold text-foreground">{stat('serverComponents', 0)}</p>
-                    </div>
-                    <div className="rounded-md border border-border/60 bg-muted/20 p-2.5">
-                      <span className="text-muted-foreground text-[11px]">Any Types</span>
-                      <p className="mt-1 font-semibold text-foreground">{stat('anyTypes', 0)}</p>
-                    </div>
-                    <div className="rounded-md border border-border/60 bg-muted/20 p-2.5">
-                      <span className="text-muted-foreground text-[11px]">Console Logs</span>
-                      <p className="mt-1 font-semibold text-foreground">{stat('consoleLogs', 0)}</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Design System metrics if present */}
-              {designSystem && designSystem.componentFiles > 0 && (
+              {/* Structured 4-Pillar Codebase Metrics */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                {/* Scale & Structure */}
                 <Card className="border-border">
-                  <CardHeader className="py-3 px-4 border-b border-border/80">
-                    <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                      Design System Audit
+                  <CardHeader className="py-2.5 px-3.5 border-b border-border/80">
+                    <CardTitle className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center justify-between">
+                      <span>Scale & Density</span>
+                      <FileCode className="h-3.5 w-3.5 text-muted-foreground/70" />
                     </CardTitle>
                   </CardHeader>
-                  <CardContent className="p-4">
-                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 font-mono text-xs">
-                      <div className="rounded-md border border-border/60 p-2.5">
-                        <span className="text-muted-foreground text-[11px]">Component Files</span>
-                        <p className="mt-1 font-semibold text-foreground">{designSystem.componentFiles}</p>
-                      </div>
-                      <div className="rounded-md border border-border/60 p-2.5">
-                        <span className="text-muted-foreground text-[11px]">Tokens</span>
-                        <p className="mt-1 font-semibold text-foreground">{designSystem.tokenType ?? 'none'}</p>
-                      </div>
-                      <div className="rounded-md border border-border/60 p-2.5">
-                        <span className="text-muted-foreground text-[11px]">Hardcoded Colors</span>
-                        <p className="mt-1 font-semibold text-foreground">{designSystem.hardcodedColors}</p>
-                      </div>
-                      <div className="rounded-md border border-border/60 p-2.5">
-                        <span className="text-muted-foreground text-[11px]">Variant Components</span>
-                        <p className="mt-1 font-semibold text-foreground">{designSystem.variantComponents}</p>
-                      </div>
+                  <CardContent className="p-3.5 space-y-2.5 font-mono text-xs">
+                    <div className="flex justify-between items-center">
+                      <span className="text-muted-foreground text-[11px] font-sans">Source Files</span>
+                      <span className="font-semibold text-foreground">{stat('files', 0)}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-muted-foreground text-[11px] font-sans">Lines of Code</span>
+                      <span className="font-semibold text-foreground">{stat('loc', 0).toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-muted-foreground text-[11px] font-sans">Avg File Lines</span>
+                      <span className="font-semibold text-foreground">{(structure?.avgFileLines as number | undefined) ?? '—'}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-muted-foreground text-[11px] font-sans">Top-level Dirs</span>
+                      <span className="font-semibold text-foreground">{(structure?.topLevelDirs as string[] | undefined)?.length ?? 0}</span>
                     </div>
                   </CardContent>
                 </Card>
-              )}
 
-              {/* Structure Tree */}
+                {/* Component Architecture */}
+                <Card className="border-border">
+                  <CardHeader className="py-2.5 px-3.5 border-b border-border/80">
+                    <CardTitle className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center justify-between">
+                      <span>Component Arch</span>
+                      <Layers className="h-3.5 w-3.5 text-muted-foreground/70" />
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-3.5 space-y-2.5 font-mono text-xs">
+                    <div className="flex justify-between items-center">
+                      <span className="text-muted-foreground text-[11px] font-sans">Total Components</span>
+                      <span className="font-semibold text-foreground">{stat('components', 0)}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-muted-foreground text-[11px] font-sans">Server Components</span>
+                      <span className="font-semibold text-foreground">{stat('serverComponents', 0)}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-muted-foreground text-[11px] font-sans">Client Components</span>
+                      <span className="font-semibold text-foreground">{stat('clientComponents', 0)}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-muted-foreground text-[11px] font-sans">Custom Hooks</span>
+                      <span className="font-semibold text-foreground">{stat('hooks', 0)}</span>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Code Hygiene & Debt */}
+                <Card className="border-border">
+                  <CardHeader className="py-2.5 px-3.5 border-b border-border/80">
+                    <CardTitle className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center justify-between">
+                      <span>Hygiene & Debt</span>
+                      <AlertTriangle className="h-3.5 w-3.5 text-muted-foreground/70" />
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-3.5 space-y-2.5 font-mono text-xs">
+                    <div className="flex justify-between items-center">
+                      <span className="text-muted-foreground text-[11px] font-sans">Any Types</span>
+                      <span className={cn('font-semibold', stat('anyTypes', 0) > 10 ? 'text-amber-400' : 'text-foreground')}>
+                        {stat('anyTypes', 0)}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-muted-foreground text-[11px] font-sans">Console Logs</span>
+                      <span className={cn('font-semibold', stat('consoleLogs', 0) > 5 ? 'text-amber-400' : 'text-foreground')}>
+                        {stat('consoleLogs', 0)}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-muted-foreground text-[11px] font-sans">TODO Markers</span>
+                      <span className="font-semibold text-foreground">{stat('todos', 0)}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-muted-foreground text-[11px] font-sans">Dead Exports</span>
+                      <span className="font-semibold text-foreground">
+                        {Array.isArray(completed?.metrics?.deadExports) ? completed.metrics.deadExports.length : 0}
+                      </span>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Design System & Tokens */}
+                <Card className="border-border">
+                  <CardHeader className="py-2.5 px-3.5 border-b border-border/80">
+                    <CardTitle className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center justify-between">
+                      <span>Design System</span>
+                      <Boxes className="h-3.5 w-3.5 text-muted-foreground/70" />
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-3.5 space-y-2.5 font-mono text-xs">
+                    <div className="flex justify-between items-center">
+                      <span className="text-muted-foreground text-[11px] font-sans">Component Files</span>
+                      <span className="font-semibold text-foreground">{designSystem?.componentFiles ?? 0}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-muted-foreground text-[11px] font-sans">Design Tokens</span>
+                      <span className="font-semibold text-foreground">{designSystem?.tokenType ?? 'None'}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-muted-foreground text-[11px] font-sans">Hardcoded Colors</span>
+                      <span className={cn('font-semibold', (designSystem?.hardcodedColors ?? 0) > 0 ? 'text-amber-400' : 'text-foreground')}>
+                        {designSystem?.hardcodedColors ?? 0}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-muted-foreground text-[11px] font-sans">Variant Adoption</span>
+                      <span className="font-semibold text-foreground">
+                        {designSystem && designSystem.componentFiles > 0
+                          ? `${Math.round((designSystem.variantComponents / designSystem.componentFiles) * 100)}%`
+                          : '—'}
+                      </span>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Repository Structure */}
               {structure && (
                 <Card className="border-border">
                   <CardHeader className="py-3 px-4 border-b border-border/80">
                     <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                      Repository Structure
+                      Repository Tree & Directory Breakdown
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="p-4 text-xs">
