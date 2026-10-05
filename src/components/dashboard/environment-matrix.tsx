@@ -314,7 +314,7 @@ export function EnvironmentMatrix({ slug }: { slug: string }) {
                 <TableCell>
                   <input
                     type="checkbox"
-                    className="h-3.5 w-3.5 rounded border-border"
+                    className="h-3.5 w-3.5 rounded border-border cursor-pointer"
                     checked={selected.has(row.key)}
                     onChange={() => toggleSelect(row.key)}
                   />
@@ -334,12 +334,12 @@ export function EnvironmentMatrix({ slug }: { slug: string }) {
                           value={cell.status}
                           onValueChange={(value) => onStatusChange(cell.id, value as Status)}
                         >
-                          <SelectTrigger className="h-7 w-[100px] border-0 bg-transparent shadow-none text-xs">
+                          <SelectTrigger className="h-7 w-[100px] border border-transparent bg-transparent shadow-none text-xs hover:bg-muted/70 hover:border-border cursor-pointer rounded transition-all">
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
                             {Object.entries(STATUS_LABELS).map(([value, label]) => (
-                              <SelectItem key={value} value={value}>
+                              <SelectItem key={value} value={value} className="cursor-pointer">
                                 <span className="flex items-center gap-2">
                                   <StatusIcon status={value as Status} />
                                   {label}
@@ -359,7 +359,7 @@ export function EnvironmentMatrix({ slug }: { slug: string }) {
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-7 w-7"
+                      className="h-7 w-7 text-muted-foreground hover:bg-red-500/15 hover:text-red-500 transition-colors cursor-pointer"
                       onClick={() => {
                         const firstCell = Array.from(row.cells.values())[0]
                         if (!firstCell) return

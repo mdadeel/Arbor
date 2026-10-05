@@ -77,10 +77,23 @@ export function FindingItem({ finding, repoUrl, commitSha, className }: FindingI
           <div className="flex flex-wrap items-center justify-between gap-2 pt-1 font-mono text-[11px] text-muted-foreground/80">
             <div className="flex items-center gap-1.5 truncate">
               <FileCode className="h-3 w-3 shrink-0" />
-              <span className="truncate">
-                {finding.file}
-                {finding.line ? `:${finding.line}` : ''}
-              </span>
+              {githubFileUrl ? (
+                <a
+                  href={githubFileUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="truncate hover:text-foreground hover:underline transition-colors cursor-pointer"
+                  title="View on GitHub"
+                >
+                  {finding.file}
+                  {finding.line ? `:${finding.line}` : ''}
+                </a>
+              ) : (
+                <span className="truncate">
+                  {finding.file}
+                  {finding.line ? `:${finding.line}` : ''}
+                </span>
+              )}
             </div>
 
             <div className="flex items-center gap-2 opacity-80 group-hover:opacity-100 transition-opacity">
@@ -89,7 +102,7 @@ export function FindingItem({ finding, repoUrl, commitSha, className }: FindingI
                   href={githubFileUrl}
                   target="_blank"
                   rel="noreferrer"
-                  className="inline-flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground transition-colors"
+                  className="inline-flex items-center gap-1 rounded border border-border/60 bg-muted/40 px-1.5 py-0.5 text-[10px] text-muted-foreground hover:border-foreground/40 hover:bg-muted/90 hover:text-foreground transition-all cursor-pointer active:scale-[0.98]"
                   title="View line on GitHub"
                 >
                   <ExternalLink className="h-2.5 w-2.5" />
@@ -99,7 +112,7 @@ export function FindingItem({ finding, repoUrl, commitSha, className }: FindingI
               {vscodeUrl && (
                 <a
                   href={vscodeUrl}
-                  className="inline-flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground transition-colors"
+                  className="inline-flex items-center gap-1 rounded border border-border/60 bg-muted/40 px-1.5 py-0.5 text-[10px] text-muted-foreground hover:border-foreground/40 hover:bg-muted/90 hover:text-foreground transition-all cursor-pointer active:scale-[0.98]"
                   title="Open in VS Code"
                 >
                   <Code2 className="h-2.5 w-2.5" />

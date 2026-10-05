@@ -26,10 +26,10 @@ export function Logo({
 
   return (
     <div className={cn('inline-flex items-center gap-2.5 select-none', className)} {...props}>
-      {/* Visual Glyph Mark */}
+      {/* Visual Glyph Mark: AST Syntax Tree & "A" Monogram */}
       <div
         className={cn(
-          'relative shrink-0 flex items-center justify-center rounded-lg shadow-sm transition-transform duration-200 hover:scale-105',
+          'relative shrink-0 flex items-center justify-center border border-border dark:border-line-strong bg-card shadow-xs transition-transform duration-150 hover:scale-[1.02]',
           box
         )}
       >
@@ -39,45 +39,41 @@ export function Logo({
           xmlns="http://www.w3.org/2000/svg"
           className="h-full w-full"
         >
-          <defs>
-            <linearGradient id="arbor-brand-grad" x1="4" y1="28" x2="28" y2="4" gradientUnits="userSpaceOnUse">
-              <stop offset="0%" stopColor="#5E6AD2" />
-              <stop offset="50%" stopColor="#00F2FE" />
-              <stop offset="100%" stopColor="#10B981" />
-            </linearGradient>
-            <linearGradient id="arbor-bg-glow" x1="0" y1="0" x2="32" y2="32" gradientUnits="userSpaceOnUse">
-              <stop offset="0%" stopColor="#5E6AD2" stopOpacity="0.25" />
-              <stop offset="100%" stopColor="#00F2FE" stopOpacity="0.08" />
-            </linearGradient>
-          </defs>
+          {/* Canopy Background Frame */}
+          <rect width="32" height="32" fill="#0B0F0C" />
+          <rect x="0.5" y="0.5" width="31" height="31" stroke="#2D3930" strokeWidth="1" />
 
-          {/* Background Frame */}
-          <rect width="32" height="32" rx="9" fill="#070809" />
-          <rect width="32" height="32" rx="9" fill="url(#arbor-bg-glow)" />
-          <rect x="0.5" y="0.5" width="31" height="31" rx="8.5" stroke="#ffffff" strokeOpacity="0.12" />
+          {/* AST Edges: Outer "A" Legs */}
+          <line x1="16" y1="7" x2="10" y2="16" stroke="#EDF4EE" strokeWidth="1.8" strokeLinecap="round" />
+          <line x1="16" y1="7" x2="22" y2="16" stroke="#EDF4EE" strokeWidth="1.8" strokeLinecap="round" />
+          <line x1="10" y1="16" x2="6" y2="25" stroke="#EDF4EE" strokeWidth="1.8" strokeLinecap="round" />
+          <line x1="22" y1="16" x2="26" y2="25" stroke="#EDF4EE" strokeWidth="1.8" strokeLinecap="round" />
 
-          {/* Stylized "A" Monogram + AST Tree Graph */}
-          {/* Outer A Apex & Legs */}
-          <path d="M7 25 L16 7 L25 25" stroke="url(#arbor-brand-grad)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
-          
-          {/* AST Crossbar & Graph Bridge */}
-          <path d="M11 17 H21" stroke="url(#arbor-brand-grad)" strokeWidth="2" strokeLinecap="round" />
-          
-          {/* Central AST Trunk */}
-          <path d="M16 7 V17 M16 17 V25" stroke="url(#arbor-brand-grad)" strokeWidth="1.6" strokeDasharray="2.5 2" strokeLinecap="round" />
+          {/* AST Bridge Crossbar */}
+          <line x1="10" y1="16" x2="22" y2="16" stroke="#EDF4EE" strokeWidth="1.8" strokeLinecap="round" />
 
-          {/* Micro Graph Nodes at Key Vertices */}
-          <circle cx="16" cy="7" r="2.2" fill="#00F2FE" />
-          <circle cx="11" cy="17" r="1.8" fill="#5E6AD2" />
-          <circle cx="21" cy="17" r="1.8" fill="#10B981" />
-          <circle cx="7" cy="25" r="1.8" fill="#5E6AD2" />
-          <circle cx="25" cy="25" r="1.8" fill="#10B981" />
+          {/* Central AST Spine (Dashed Graph Edge) */}
+          <line x1="16" y1="7" x2="16" y2="16" stroke="#B7ED69" strokeWidth="1.4" strokeDasharray="2 1.5" strokeLinecap="round" />
+          <line x1="16" y1="16" x2="16" y2="25" stroke="#B7ED69" strokeWidth="1.4" strokeDasharray="2 1.5" strokeLinecap="round" />
+
+          {/* Branch Vertices (Graph Nodes) */}
+          <circle cx="10" cy="16" r="1.8" fill="#0B0F0C" stroke="#EDF4EE" strokeWidth="1.4" />
+          <circle cx="16" cy="16" r="1.8" fill="#B7ED69" />
+          <circle cx="22" cy="16" r="1.8" fill="#0B0F0C" stroke="#EDF4EE" strokeWidth="1.4" />
+
+          {/* Apex Root AST Node (Accent) */}
+          <circle cx="16" cy="7" r="2.2" fill="#B7ED69" />
+
+          {/* Leaf Syntax Tokens (Terminal Square Nodes) */}
+          <rect x="4.5" y="23.5" width="3" height="3" fill="#EDF4EE" />
+          <rect x="14.5" y="23.5" width="3" height="3" fill="#B7ED69" />
+          <rect x="24.5" y="23.5" width="3" height="3" fill="#EDF4EE" />
         </svg>
       </div>
 
       {/* Optional Wordmark */}
       {showWordmark && (
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-2">
           <span
             className={cn(
               'font-display font-extrabold tracking-tight text-foreground leading-none',
@@ -87,7 +83,7 @@ export function Logo({
           >
             Arbor
           </span>
-          <span className="rounded-full bg-primary/10 px-2 py-0.5 font-mono text-[9px] font-bold text-primary border border-primary/20">
+          <span className="border border-border dark:border-line-strong bg-muted/40 px-1.5 py-0.5 font-mono text-[9px] font-bold text-emerald-600 dark:text-acid uppercase tracking-wider">
             DEV
           </span>
         </div>

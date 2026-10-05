@@ -339,10 +339,10 @@ export function ApiExplorer({ slug }: ApiExplorerProps) {
                       setMethodFilter(m)
                       setSelectedEndpointIndex(0)
                     }}
-                    className={`rounded px-2 py-0.5 text-[10px] font-mono font-medium transition-colors ${
+                    className={`rounded px-2 py-0.5 text-[10px] font-mono font-medium transition-all duration-150 cursor-pointer ${
                       methodFilter === m
-                        ? 'bg-primary text-primary-foreground'
-                        : 'bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground'
+                        ? 'bg-primary text-primary-foreground shadow-xs'
+                        : 'bg-muted/60 text-muted-foreground hover:bg-muted/90 hover:text-foreground'
                     }`}
                   >
                     {m}
@@ -368,8 +368,8 @@ export function ApiExplorer({ slug }: ApiExplorerProps) {
                         setSelectedEndpointIndex(idx)
                         setProxyResult(null)
                       }}
-                      className={`w-full text-left p-2.5 transition-colors flex items-start gap-2.5 hover:bg-accent/40 ${
-                        isSelected ? 'bg-primary/10 border-l-2 border-primary' : ''
+                      className={`w-full text-left p-2.5 transition-all duration-150 flex items-start gap-2.5 hover:bg-accent/60 cursor-pointer ${
+                        isSelected ? 'bg-primary/10 border-l-2 border-primary font-medium' : ''
                       }`}
                     >
                       <div className="pt-0.5">
@@ -412,7 +412,7 @@ export function ApiExplorer({ slug }: ApiExplorerProps) {
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-6 w-6 text-muted-foreground hover:text-foreground"
+                        className="h-6 w-6 text-muted-foreground hover:text-foreground cursor-pointer"
                         onClick={() => copyToClipboard(selectedEndpoint.path)}
                         title="Copy path"
                       >
@@ -443,10 +443,10 @@ export function ApiExplorer({ slug }: ApiExplorerProps) {
                     <button
                       type="button"
                       onClick={() => setActiveTab('docs')}
-                      className={`rounded px-2.5 py-1 text-xs font-medium transition-colors ${
+                      className={`rounded px-2.5 py-1 text-xs font-medium transition-all duration-150 cursor-pointer ${
                         activeTab === 'docs'
-                          ? 'bg-background text-foreground shadow-sm'
-                          : 'text-muted-foreground hover:text-foreground'
+                          ? 'bg-background text-foreground shadow-xs'
+                          : 'text-muted-foreground hover:text-foreground hover:bg-background/40'
                       }`}
                     >
                       Documentation
@@ -454,10 +454,10 @@ export function ApiExplorer({ slug }: ApiExplorerProps) {
                     <button
                       type="button"
                       onClick={() => setActiveTab('try')}
-                      className={`flex items-center gap-1.5 rounded px-2.5 py-1 text-xs font-medium transition-colors ${
+                      className={`flex items-center gap-1.5 rounded px-2.5 py-1 text-xs font-medium transition-all duration-150 cursor-pointer ${
                         activeTab === 'try'
-                          ? 'bg-background text-primary shadow-sm font-semibold'
-                          : 'text-muted-foreground hover:text-foreground'
+                          ? 'bg-background text-primary shadow-xs font-semibold'
+                          : 'text-muted-foreground hover:text-foreground hover:bg-background/40'
                       }`}
                     >
                       <Play className="h-3 w-3 fill-current" />

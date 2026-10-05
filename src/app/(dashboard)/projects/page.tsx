@@ -121,11 +121,11 @@ export default async function ProjectsPage() {
                   ].filter(Boolean)
 
                   return (
-                    <TableRow key={project.id} className="transition-colors hover:bg-muted/40">
+                    <TableRow key={project.id} className="transition-colors hover:bg-muted/50 cursor-pointer">
                       <TableCell className="font-medium">
                         <Link
                           href={`/projects/${project.slug}`}
-                          className="group flex flex-col gap-0.5"
+                          className="group flex flex-col gap-0.5 cursor-pointer"
                         >
                           <div className="flex items-center gap-1.5">
                             <span className="font-semibold text-foreground group-hover:text-primary transition-colors">
@@ -162,7 +162,7 @@ export default async function ProjectsPage() {
                       </TableCell>
 
                       <TableCell className="text-right">
-                        <Button asChild variant="ghost" size="sm" className="h-8 gap-1 text-xs">
+                        <Button asChild variant="ghost" size="sm" className="h-8 gap-1 text-xs hover:bg-muted hover:border-border border border-transparent cursor-pointer">
                           <Link href={`/projects/${project.slug}`}>
                             View
                             <ArrowUpRight className="h-3.5 w-3.5" />

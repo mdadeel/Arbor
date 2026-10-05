@@ -195,11 +195,11 @@ export default async function DashboardPage() {
                     ].filter(Boolean)
 
                     return (
-                      <TableRow key={project.id} className="transition-colors hover:bg-muted/40">
+                      <TableRow key={project.id} className="transition-colors hover:bg-muted/50 cursor-pointer">
                         <TableCell className="font-medium">
                           <Link
                             href={`/projects/${project.slug}`}
-                            className="group flex flex-col gap-0.5"
+                            className="group flex flex-col gap-0.5 cursor-pointer"
                           >
                             <div className="flex items-center gap-1.5">
                               <span className="font-semibold text-foreground group-hover:text-primary transition-colors">
@@ -232,7 +232,7 @@ export default async function DashboardPage() {
                         </TableCell>
 
                         <TableCell className="text-right">
-                          <Button asChild variant="ghost" size="sm" className="h-7 text-xs gap-1">
+                          <Button asChild variant="ghost" size="sm" className="h-7 text-xs gap-1 hover:bg-muted hover:border-border border border-transparent cursor-pointer">
                             <Link href={`/projects/${project.slug}`}>
                               View
                               <ArrowUpRight className="h-3 w-3" />
@@ -272,7 +272,7 @@ export default async function DashboardPage() {
                       <Link
                         key={project.id}
                         href={`/projects/${project.slug}`}
-                        className="group flex items-start justify-between gap-3 py-2.5 px-2 rounded transition-colors hover:bg-muted/40"
+                        className="group flex items-start justify-between gap-3 py-2.5 px-2 rounded-md transition-all duration-150 hover:bg-muted/60 cursor-pointer"
                       >
                         <div className="flex items-start gap-2.5 min-w-0">
                           {severity === 'critical' ? (
@@ -287,7 +287,7 @@ export default async function DashboardPage() {
                             <p className="text-[11px] text-muted-foreground truncate">{reason}</p>
                           </div>
                         </div>
-                        <ArrowUpRight className="h-3.5 w-3.5 text-muted-foreground shrink-0 opacity-60 group-hover:opacity-100" />
+                        <ArrowUpRight className="h-3.5 w-3.5 text-muted-foreground shrink-0 opacity-60 group-hover:opacity-100 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all" />
                       </Link>
                     ))}
                   </div>
@@ -314,7 +314,7 @@ export default async function DashboardPage() {
                       <Link
                         key={analysis.id}
                         href={`/projects/${analysis.project.slug}`}
-                        className="group flex items-center justify-between gap-3 py-2 px-2 rounded transition-colors hover:bg-muted/40"
+                        className="group flex items-center justify-between gap-3 py-2 px-2 rounded-md transition-all duration-150 hover:bg-muted/60 cursor-pointer"
                       >
                         <div className="min-w-0">
                           <p className="text-xs font-medium text-foreground group-hover:text-primary transition-colors truncate">

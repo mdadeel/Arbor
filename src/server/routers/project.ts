@@ -37,6 +37,13 @@ export const projectRouter = router({
       })
     }
     const project = await createProject(userId, input)
+
+    // Auto-trigger first analysis so the project doesn't sit idle
+    const analysis = await prisma.analysis.create({
+      data: { projectId: project.id, branch: input.defaultBranch, status: 'queued' },
+    })
+    await getAnalysisQueue().add('analyze', { analysisId: analysis.id })
+
     logAuditEvent({
       userId,
       projectId: project.id,
@@ -45,6 +52,7 @@ export const projectRouter = router({
       entityId: project.id,
       metadata: { name: project.name, repoFullName: project.repoFullName },
     }).catch(() => {})
+    appCache.clearPrefix('analyses:')
     return project
   }),
   list: protectedProcedure

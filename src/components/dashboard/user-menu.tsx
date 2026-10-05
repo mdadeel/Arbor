@@ -73,12 +73,12 @@ export function UserMenu({ user, showDetails = false }: UserMenuProps) {
   return (
     <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
       <div className="group relative w-full">
-        <DropdownMenuTrigger className="w-full outline-none focus-visible:ring-0 focus-visible:ring-transparent">
+        <DropdownMenuTrigger className="w-full outline-none focus-visible:ring-0 focus-visible:ring-transparent cursor-pointer">
           <div
             className={cn(
-              'flex w-full items-center gap-2.5 rounded-xl border p-2.5 transition-all duration-200',
-              'border-border/60 bg-muted/30 hover:border-border hover:bg-muted/60 hover:shadow-sm',
-              isOpen && 'border-border bg-muted/60 shadow-sm'
+              'flex w-full items-center gap-2.5 rounded-xl border p-2.5 transition-all duration-150',
+              'border-border/60 bg-muted/30 hover:border-border hover:bg-muted/70 hover:shadow-xs cursor-pointer',
+              isOpen && 'border-border bg-muted/70 shadow-xs'
             )}
           >
             <div className="relative shrink-0">
@@ -112,7 +112,7 @@ export function UserMenu({ user, showDetails = false }: UserMenuProps) {
         {/* Bending line indicator */}
         <div
           className={cn(
-            'pointer-events-none absolute -right-3 top-1/2 -translate-y-1/2 transition-all duration-200',
+            'pointer-events-none absolute -right-3 top-1/2 -translate-y-1/2 transition-all duration-150',
             isOpen ? 'opacity-100' : 'opacity-0 group-hover:opacity-60'
           )}
           aria-hidden="true"
@@ -123,7 +123,7 @@ export function UserMenu({ user, showDetails = false }: UserMenuProps) {
             viewBox="0 0 12 24"
             fill="none"
             className={cn(
-              'transition-all duration-200',
+              'transition-all duration-150',
               isOpen ? 'scale-110 text-primary' : 'text-muted-foreground/50'
             )}
           >
@@ -142,23 +142,23 @@ export function UserMenu({ user, showDetails = false }: UserMenuProps) {
         side="top"
         align="start"
         sideOffset={8}
-        className="w-64 rounded-2xl border-border/60 p-2 shadow-xl shadow-zinc-900/5"
+        className="w-64 rounded-xl border border-border bg-card p-1.5 shadow-lg"
       >
         <div className="space-y-1">
           {menuItems.map((item) => (
             <DropdownMenuItem key={item.label} asChild>
               <Link
                 href={item.href}
-                className="flex items-center rounded-xl border border-transparent p-3 transition-all duration-200 hover:border-border/50 hover:bg-accent/80 hover:shadow-sm"
+                className="flex items-center rounded-lg border border-transparent p-2.5 text-xs transition-all duration-150 hover:border-border/60 hover:bg-accent/80 cursor-pointer"
               >
                 <div className="flex flex-1 items-center gap-2.5">
                   {item.icon}
-                  <span className="whitespace-nowrap text-sm font-medium leading-tight tracking-tight text-foreground">
+                  <span className="whitespace-nowrap text-xs font-medium text-foreground">
                     {item.label}
                   </span>
                 </div>
                 {item.value && (
-                  <span className="ml-auto shrink-0 rounded-md border border-primary/10 bg-primary/10 px-2 py-1 text-xs font-medium tracking-tight text-primary">
+                  <span className="ml-auto shrink-0 rounded border border-primary/20 bg-primary/10 px-1.5 py-0.5 text-[10px] font-mono font-medium text-primary">
                     {item.value}
                   </span>
                 )}
@@ -167,14 +167,14 @@ export function UserMenu({ user, showDetails = false }: UserMenuProps) {
           ))}
         </div>
 
-        <DropdownMenuSeparator className="my-3 bg-gradient-to-r from-transparent via-border to-transparent" />
+        <DropdownMenuSeparator className="my-1.5 bg-border" />
 
         <DropdownMenuItem
-          className="group rounded-xl border border-transparent bg-destructive/10 transition-all duration-200 hover:border-destructive/30 hover:bg-destructive/20"
+          className="group rounded-lg border border-transparent bg-destructive/10 p-2.5 text-xs transition-all duration-150 hover:border-destructive/30 hover:bg-destructive/20 cursor-pointer"
           onClick={() => signOut({ callbackUrl: '/login' })}
         >
           <LogOut className="h-4 w-4 shrink-0 text-destructive group-hover:text-destructive" />
-          <span className="ml-2 text-sm font-medium text-destructive">
+          <span className="ml-2 font-medium text-destructive">
             Sign Out
           </span>
         </DropdownMenuItem>

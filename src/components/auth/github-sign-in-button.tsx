@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { useSearchParams, useRouter } from 'next/navigation'
-import { signIn, useSession } from 'next-auth/react'
+import { useState } from 'react'
+import { useSearchParams } from 'next/navigation'
+import { signIn } from 'next-auth/react'
 import { AlertCircle, AlertTriangle, ArrowRight, Github, Loader2, Lock, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
@@ -10,17 +10,9 @@ export function GithubSignInButton({ configured }: { configured: boolean }) {
   const [loading, setLoading] = useState(false)
   const [dismissedError, setDismissedError] = useState(false)
 
-  const router = useRouter()
   const searchParams = useSearchParams()
   const error = searchParams.get('error')
   const callbackUrl = searchParams.get('callbackUrl')
-  const { status } = useSession()
-
-  useEffect(() => {
-    if (status === 'authenticated') {
-      router.replace(callbackUrl || '/dashboard')
-    }
-  }, [status, router, callbackUrl])
 
   const getErrorMessage = (err: string) => {
     switch (err) {

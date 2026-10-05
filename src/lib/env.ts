@@ -20,6 +20,7 @@ export const env = createEnv({
     ADMIN_USERNAME: z.string().default('adeel'),
     ADMIN_PASSWORD: z.string().default('adeel1212'),
     APP_URL: z.string().default('https://arborgit.vercel.app'),
+    CRON_SECRET: z.string().default(''),
   },
   client: {},
   experimental__runtimeEnv: {

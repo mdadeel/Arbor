@@ -323,7 +323,7 @@ export function CommandMenu({ open, onOpenChange, projects = [] }: CommandMenuPr
           ) : query ? (
             <button
               onClick={() => setQuery('')}
-              className="text-[10px] font-mono font-semibold text-muted-foreground hover:text-foreground px-1.5 py-0.5 rounded border border-border/60 bg-muted/30"
+              className="text-[10px] font-mono font-semibold text-muted-foreground hover:text-foreground px-1.5 py-0.5 rounded border border-border/60 bg-muted/30 cursor-pointer transition-colors"
             >
               Clear
             </button>
@@ -359,10 +359,10 @@ export function CommandMenu({ open, onOpenChange, projects = [] }: CommandMenuPr
                         onClick={() => handleSelect(item.href)}
                         onMouseEnter={() => setSelectedIndex(flatIndex)}
                         className={cn(
-                          'flex w-full items-center justify-between gap-3 rounded-md px-2.5 py-2 text-xs transition-colors text-left',
+                          'flex w-full items-center justify-between gap-3 rounded-md px-2.5 py-2 text-xs transition-colors text-left cursor-pointer',
                           isSelected
                             ? 'bg-accent text-accent-foreground ring-1 ring-border/80'
-                            : 'text-foreground hover:bg-accent/50'
+                            : 'text-foreground hover:bg-accent/60'
                         )}
                       >
                         <div className="flex items-center gap-2.5 min-w-0">

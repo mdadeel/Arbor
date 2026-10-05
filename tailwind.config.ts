@@ -79,6 +79,10 @@ const config: Config = {
         success: '#22c55e',
         warning: '#eab308',
         error: '#ef4444',
+        canopy: '#0b0f0c',
+        paper: '#f5f6f1',
+        acid: '#b7ed69',
+        forest: '#266d45',
         brand: {
           indigo: '#5E6AD2',
           cyan: '#00F2FE',
@@ -87,9 +91,9 @@ const config: Config = {
         },
       },
       fontFamily: {
-        sans: ['Plus Jakarta Sans', 'Inter', 'system-ui', 'sans-serif'],
-        display: ['Plus Jakarta Sans', 'Inter', 'sans-serif'],
-        mono: ['JetBrains Mono', 'monospace'],
+        sans: ['Manrope', 'Plus Jakarta Sans', 'Inter', 'system-ui', 'sans-serif'],
+        display: ['Manrope', 'Plus Jakarta Sans', 'sans-serif'],
+        mono: ['"IBM Plex Mono"', 'JetBrains Mono', 'monospace'],
       },
       borderRadius: {
         lg: 'var(--radius)',

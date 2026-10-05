@@ -37,12 +37,12 @@ export function LandingNavbar({ user }: LandingNavbarProps) {
         </Link>
 
         {/* Desktop Nav Links */}
-        <nav className="hidden md:flex items-center gap-7 text-sm font-medium text-muted-foreground">
+        <nav className="hidden md:flex items-center gap-1.5 text-xs font-mono font-medium text-muted-foreground">
           {navLinks.map((link) => (
             <a
               key={link.href}
               href={link.href}
-              className="transition-colors hover:text-foreground"
+              className="px-2.5 py-1.5 border border-transparent transition-all duration-150 hover:text-foreground hover:border-border dark:hover:border-line-strong hover:bg-card cursor-pointer"
             >
               {link.label}
             </a>

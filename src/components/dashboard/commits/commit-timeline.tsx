@@ -348,7 +348,7 @@ export function CommitTimeline({ slug }: CommitTimelineProps) {
                                   {hasBody && (
                                     <button
                                       onClick={() => toggleExpand(commit.sha)}
-                                      className="text-muted-foreground hover:text-foreground shrink-0 p-0.5"
+                                      className="text-muted-foreground hover:text-foreground shrink-0 p-0.5 rounded hover:bg-muted/60 transition-colors cursor-pointer"
                                       aria-label="Toggle commit details"
                                     >
                                       {isExpanded ? (
@@ -374,7 +374,7 @@ export function CommitTimeline({ slug }: CommitTimelineProps) {
                                 href={commit.url}
                                 target="_blank"
                                 rel="noreferrer"
-                                className="inline-flex items-center gap-1 rounded bg-muted/60 px-2 py-0.5 font-mono text-[11px] font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+                                className="inline-flex items-center gap-1 rounded border border-border/60 bg-muted/50 px-2 py-0.5 font-mono text-[11px] font-medium text-muted-foreground hover:border-foreground/30 hover:bg-muted/90 hover:text-foreground transition-all cursor-pointer active:scale-[0.98]"
                               >
                                 <span>{commit.shortSha}</span>
                                 <ExternalLink className="h-2.5 w-2.5" />

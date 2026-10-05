@@ -84,8 +84,8 @@ export function Sidebar({ user, projects = [], className, onNavigate }: SidebarP
                 href={item.href}
                 onClick={handleLinkClick}
                 className={cn(
-                  'flex items-center gap-2.5 rounded-md px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground',
-                  isActive && 'bg-accent font-semibold text-accent-foreground'
+                  'flex items-center gap-2.5 rounded-md px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition-all duration-150 hover:bg-accent/80 hover:text-foreground cursor-pointer active:scale-[0.98]',
+                  isActive && 'bg-accent font-semibold text-accent-foreground shadow-xs'
                 )}
               >
                 <item.icon className="h-4 w-4 shrink-0" />
@@ -105,17 +105,21 @@ export function Sidebar({ user, projects = [], className, onNavigate }: SidebarP
               <Link
                 href="/projects"
                 onClick={handleLinkClick}
-                className="flex items-center gap-1 text-[11px] font-medium text-primary hover:underline"
+                className="flex items-center gap-1 text-[11px] font-medium text-primary hover:underline cursor-pointer"
               >
                 <ArrowLeft className="h-3 w-3" />
                 <span>Back</span>
               </Link>
             </div>
 
-            {/* Current Project Card in Sidebar */}
-            <div className="rounded-lg border border-border/90 bg-accent/40 p-2.5 shadow-sm">
+            {/* Current Project Card in Sidebar (Clickable to jump to project root) */}
+            <Link
+              href={`/projects/${currentSlug}`}
+              onClick={handleLinkClick}
+              className="group block rounded-lg border border-border/90 bg-accent/40 p-2.5 shadow-xs transition-all duration-150 hover:bg-accent/70 hover:border-foreground/30 cursor-pointer active:scale-[0.99]"
+            >
               <div className="flex items-center justify-between gap-1.5">
-                <span className="font-semibold text-xs text-foreground truncate">
+                <span className="font-semibold text-xs text-foreground group-hover:text-primary transition-colors truncate">
                   {currentProject?.name ?? currentSlug}
                 </span>
                 {currentProject && (
@@ -133,7 +137,7 @@ export function Sidebar({ user, projects = [], className, onNavigate }: SidebarP
                   {currentProject.repoFullName}
                 </p>
               )}
-            </div>
+            </Link>
 
             {/* Other Projects for Fast Switching */}
             {projects.filter((p) => p.slug !== currentSlug).length > 0 && (
@@ -153,7 +157,7 @@ export function Sidebar({ user, projects = [], className, onNavigate }: SidebarP
                           key={p.id}
                           href={`/projects/${p.slug}`}
                           onClick={handleLinkClick}
-                          className="flex items-center justify-between rounded-md px-2 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+                          className="flex items-center justify-between rounded-md px-2 py-1.5 text-xs text-muted-foreground transition-all duration-150 hover:bg-accent/80 hover:text-foreground cursor-pointer active:scale-[0.98]"
                         >
                           <span className="truncate">{p.name}</span>
                           <ScoreBadge score={effectiveScore} size="sm" />
@@ -172,7 +176,7 @@ export function Sidebar({ user, projects = [], className, onNavigate }: SidebarP
                   <Link
                     href="/projects/new"
                     onClick={handleLinkClick}
-                    className="text-muted-foreground hover:text-foreground"
+                    className="p-1 rounded text-muted-foreground hover:bg-accent hover:text-foreground transition-colors cursor-pointer"
                     title="Add project"
                   >
                     <Plus className="h-3.5 w-3.5" />
@@ -197,8 +201,8 @@ export function Sidebar({ user, projects = [], className, onNavigate }: SidebarP
                           href={`/projects/${p.slug}`}
                           onClick={handleLinkClick}
                           className={cn(
-                            'flex items-center justify-between rounded-md px-2 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground',
-                            isActive && 'bg-accent font-medium text-accent-foreground'
+                            'flex items-center justify-between rounded-md px-2 py-1.5 text-xs text-muted-foreground transition-all duration-150 hover:bg-accent/80 hover:text-foreground cursor-pointer active:scale-[0.98]',
+                            isActive && 'bg-accent font-medium text-accent-foreground shadow-xs'
                           )}
                         >
                           <span className="truncate">{p.name}</span>

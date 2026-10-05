@@ -45,8 +45,8 @@ export function ScoreRow({ scores, running = false, className }: ScoreRowProps) 
           <div
             key={key}
             className={cn(
-              'flex flex-col justify-between p-3.5 transition-colors bg-card',
-              isPrimary ? 'bg-accent/25 col-span-2 sm:col-span-2 lg:col-span-1' : ''
+              'flex flex-col justify-between p-3.5 transition-colors bg-card hover:bg-muted/40',
+              isPrimary ? 'bg-accent/25 hover:bg-accent/40 col-span-2 sm:col-span-2 lg:col-span-1' : ''
             )}
           >
             <div className="flex items-center justify-between gap-1 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">

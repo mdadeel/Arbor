@@ -72,7 +72,7 @@ function DocNodeItem({
           {hasChildren ? (
             <button
               type="button"
-              className="p-0.5 hover:text-foreground text-muted-foreground/80"
+              className="p-0.5 hover:text-foreground text-muted-foreground/80 hover:bg-muted/70 rounded transition-colors cursor-pointer"
               onClick={(e) => {
                 e.stopPropagation()
                 setIsOpen(!isOpen)

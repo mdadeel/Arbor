@@ -23,7 +23,7 @@ type Selection =
 function ModuleNode({ data, selected }: NodeProps<{ label: string; fileCount: number }>) {
   return (
     <div
-      className={`rounded-lg border bg-card px-3 py-2 text-sm shadow-sm ${
+      className={`rounded-lg border bg-card px-3 py-2 text-sm shadow-xs transition-colors cursor-pointer hover:border-foreground/50 ${
         selected ? 'border-foreground ring-1 ring-foreground' : 'border-border'
       }`}
       style={{ width: NODE_WIDTH }}

@@ -10,6 +10,7 @@ import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet'
 import { Sidebar } from '@/components/dashboard/sidebar'
 import { ThemeToggle } from '@/components/dashboard/theme-toggle'
 import { Logo } from '@/components/ui/logo'
+import { cn } from '@/lib/utils'
 
 interface HeaderProps {
   projects?: CommandProject[]
@@ -51,7 +52,7 @@ export function Header({ projects = [], user }: HeaderProps) {
           <nav aria-label="Breadcrumb" className="flex items-center gap-1.5 text-xs text-muted-foreground truncate">
             <Link
               href="/dashboard"
-              className="inline-flex items-center gap-1.5 transition-colors hover:text-foreground font-medium"
+              className="inline-flex items-center gap-1.5 transition-colors hover:text-foreground font-medium cursor-pointer"
             >
               <Logo size="xs" />
               <span className="font-semibold text-foreground">Arbor</span>
@@ -63,7 +64,10 @@ export function Header({ projects = [], user }: HeaderProps) {
                 {segments[0] === 'projects' && (
                   <Link
                     href="/projects"
-                    className={segments.length === 1 ? 'text-foreground font-semibold' : 'hover:text-foreground'}
+                    className={cn(
+                      'transition-colors cursor-pointer',
+                      segments.length === 1 ? 'text-foreground font-semibold' : 'hover:text-foreground'
+                    )}
                   >
                     Projects
                   </Link>
@@ -106,7 +110,7 @@ export function Header({ projects = [], user }: HeaderProps) {
             variant="outline"
             size="sm"
             onClick={() => setCommandOpen(true)}
-            className="h-8 w-full justify-between border-border/80 bg-muted/30 px-2.5 text-xs text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+            className="h-8 w-full justify-between border-border/80 bg-muted/30 px-2.5 text-xs text-muted-foreground hover:bg-muted/80 hover:border-foreground/30 hover:text-foreground transition-all duration-150 cursor-pointer"
           >
             <div className="flex items-center gap-2 truncate">
               <Search className="h-3.5 w-3.5 shrink-0" />

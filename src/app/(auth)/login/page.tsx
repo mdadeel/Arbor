@@ -1,5 +1,8 @@
 import { Suspense } from 'react'
 import Link from 'next/link'
+import { redirect } from 'next/navigation'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
 import { githubConfigured } from '@/lib/env'
 import { GithubSignInButton } from '@/components/auth/github-sign-in-button'
 import { Logo } from '@/components/ui/logo'
@@ -11,7 +14,15 @@ export const metadata = {
   description: 'Sign in to Arbor with GitHub to analyze repositories and generate automated architectural audits.',
 }
 
-export default function LoginPage() {
+export default async function LoginPage({
+  searchParams,
+}: {
+  searchParams?: { callbackUrl?: string; error?: string }
+}) {
+  const session = await getServerSession(authOptions)
+  if (session?.user) {
+    redirect(searchParams?.callbackUrl || '/dashboard')
+  }
   return (
     <div className="relative min-h-screen flex flex-col justify-between bg-background text-foreground antialiased">
       {/* Top Navigation */}
