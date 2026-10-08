@@ -75,6 +75,50 @@ describe('audit service', () => {
 
     await expect(
       listAuditLogs('user-stranger', { workspaceId: 'ws-secret' })
-    ).rejects.toThrow('Unauthorized')
+    ).rejects.toMatchObject({ code: 'FORBIDDEN' })
+  })
+
+  it('denies workspace audit history to non-admin members', async () => {
+    ;(prisma.workspaceMember.findUnique as any).mockResolvedValue({
+      id: 'mem-viewer',
+      workspaceId: 'ws-1',
+      userId: 'user-viewer',
+      role: 'viewer',
+    })
+
+    await expect(listAuditLogs('user-viewer', { workspaceId: 'ws-1' }))
+      .rejects.toMatchObject({ code: 'FORBIDDEN' })
+    expect(prisma.auditLog.findMany).not.toHaveBeenCalled()
+  })
+
+  it('does not grant former workspace project owners access after membership removal', async () => {
+    ;(prisma.project.findFirst as any).mockResolvedValue(null)
+
+    await expect(listAuditLogs('former-owner', { projectId: 'project-1' }))
+      .rejects.toThrow('Unauthorized')
+    expect(prisma.project.findFirst).toHaveBeenCalledWith({
+      where: {
+        id: 'project-1',
+        OR: [
+          { userId: 'former-owner', workspaceId: null },
+          { workspace: { members: { some: { userId: 'former-owner' } } } },
+        ],
+      },
+      select: { id: true, userId: true, workspaceId: true },
+    })
+    expect(prisma.auditLog.findMany).not.toHaveBeenCalled()
+  })
+
+  it('requires a workspace admin even when the caller created the project', async () => {
+    ;(prisma.project.findFirst as any).mockResolvedValue({
+      id: 'project-1', userId: 'member-1', workspaceId: 'ws-1',
+    })
+    ;(prisma.workspaceMember.findUnique as any).mockResolvedValue({
+      id: 'member-row', workspaceId: 'ws-1', userId: 'member-1', role: 'member',
+    })
+
+    await expect(listAuditLogs('member-1', { projectId: 'project-1' }))
+      .rejects.toMatchObject({ code: 'FORBIDDEN' })
+    expect(prisma.auditLog.findMany).not.toHaveBeenCalled()
   })
 })

@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation'
-import { Building2, CheckCircle2, Github, Shield, Sliders, Sparkles, User } from 'lucide-react'
+import { BellRing, Building2, CheckCircle2, Github, Shield, Sliders, Sparkles, User } from 'lucide-react'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { githubConfigured } from '@/lib/env'
@@ -11,6 +11,7 @@ import { WorkspaceSettings } from '@/components/dashboard/settings/workspace-set
 import { AuditLogTimeline } from '@/components/dashboard/audit/audit-log-timeline'
 import { AiSettings } from '@/components/dashboard/settings/ai-settings'
 import { GitHubConnections } from '@/components/dashboard/settings/github-connections'
+import { NotificationPreferences } from '@/components/dashboard/analysis-tools'
 
 export default async function SettingsPage({
   searchParams,
@@ -49,6 +50,10 @@ export default async function SettingsPage({
           <TabsTrigger value="ai" className="text-xs gap-1.5">
             <Sparkles className="h-3.5 w-3.5" />
             AI Integrations (BYOK)
+          </TabsTrigger>
+          <TabsTrigger value="notifications" className="text-xs gap-1.5">
+            <BellRing className="h-3.5 w-3.5" />
+            Notifications
           </TabsTrigger>
           <TabsTrigger value="audit" className="text-xs gap-1.5">
             <Shield className="h-3.5 w-3.5" />
@@ -108,6 +113,11 @@ export default async function SettingsPage({
         {/* AI Integrations (BYOK) Tab */}
         <TabsContent value="ai" className="space-y-4">
           <AiSettings />
+        </TabsContent>
+
+        {/* Notifications */}
+        <TabsContent value="notifications" className="space-y-4">
+          <NotificationPreferences />
         </TabsContent>
 
         {/* Audit Trail Tab */}

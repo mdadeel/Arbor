@@ -1,9 +1,13 @@
 import SwaggerParser from '@apidevtools/swagger-parser'
 import yaml from 'js-yaml'
+import http from 'node:http'
+import https from 'node:https'
+import net from 'node:net'
 import { prisma } from '@/lib/prisma'
 import { TRPCError } from '@trpc/server'
 import type { OpenAPI, OpenAPIV3 } from 'openapi-types'
-import { validateSafeUrl } from '@/lib/ssrf'
+import { resolveSafeUrl } from '@/lib/ssrf'
+import type { SafeAddress } from '@/lib/ssrf'
 
 export type ParsedEndpoint = {
   method: string
@@ -30,7 +34,16 @@ export type ParsedSpec = {
   version: string
 }
 
+const MAX_RAW_SPEC_BYTES = 1_000_000
+const MAX_SPEC_PATHS = 1_000
+const MAX_SPEC_ENDPOINTS = 2_000
+const MAX_SPEC_SCHEMAS = 2_000
+
 export async function parseOpenApiSpec(rawSpec: string): Promise<ParsedSpec> {
+  if (Buffer.byteLength(rawSpec, 'utf8') > MAX_RAW_SPEC_BYTES) {
+    throw new Error(`OpenAPI spec exceeds the ${MAX_RAW_SPEC_BYTES.toLocaleString()} byte limit.`)
+  }
+
   let specObj: unknown
   try {
     specObj = JSON.parse(rawSpec)
@@ -46,9 +59,21 @@ export async function parseOpenApiSpec(rawSpec: string): Promise<ParsedSpec> {
     throw new Error('Invalid OpenAPI spec: Content must be an object')
   }
 
-  // Deep clone to avoid mutating input
+  const rawPaths = (specObj as { paths?: unknown }).paths
+  const rawSchemas = (specObj as { components?: { schemas?: unknown } }).components?.schemas
+  if (rawPaths && typeof rawPaths === 'object' && Object.keys(rawPaths).length > MAX_SPEC_PATHS) {
+    throw new Error(`OpenAPI spec exceeds the ${MAX_SPEC_PATHS} path limit.`)
+  }
+  if (rawSchemas && typeof rawSchemas === 'object' && Object.keys(rawSchemas).length > MAX_SPEC_SCHEMAS) {
+    throw new Error(`OpenAPI spec exceeds the ${MAX_SPEC_SCHEMAS} schema limit.`)
+  }
+
+  // Deep clone to avoid mutating input. External $refs are disabled: validating
+  // user-supplied specs must never fetch arbitrary URLs or local files.
   const parsedClone = JSON.parse(JSON.stringify(specObj))
-  const api = (await SwaggerParser.validate(parsedClone as OpenAPI.Document)) as OpenAPIV3.Document
+  const api = (await SwaggerParser.validate(parsedClone as OpenAPI.Document, {
+    resolve: { external: false },
+  })) as OpenAPIV3.Document
 
   const endpoints: ParsedEndpoint[] = []
   for (const [path, pathItem] of Object.entries(api.paths ?? {})) {
@@ -56,6 +81,9 @@ export async function parseOpenApiSpec(rawSpec: string): Promise<ParsedSpec> {
     for (const method of ['get', 'post', 'put', 'patch', 'delete'] as const) {
       const op = (pathItem as Record<string, unknown>)[method] as OpenAPIV3.OperationObject | undefined
       if (!op) continue
+      if (endpoints.length >= MAX_SPEC_ENDPOINTS) {
+        throw new Error(`OpenAPI spec exceeds the ${MAX_SPEC_ENDPOINTS} operation limit.`)
+      }
       endpoints.push({
         method: method.toUpperCase(),
         path,
@@ -163,40 +191,134 @@ export type ProxyResponse = {
   durationMs: number
 }
 
+const MAX_PROXY_REQUEST_BYTES = 1_000_000
+const MAX_PROXY_RESPONSE_BYTES = 2_000_000
+const MAX_PROXY_HEADERS = 50
+const MAX_PROXY_HEADER_VALUE_LENGTH = 8_192
+const PROXY_TIMEOUT_MS = 10_000
+
+function pinnedLookup(addresses: SafeAddress[]) {
+  return ((_: string, options: any, callback: (...args: any[]) => void) => {
+    const requestedFamily = typeof options === 'number' ? options : options?.family ?? 0
+    const matching = addresses.filter((record) => !requestedFamily || record.family === requestedFamily)
+    if (!matching.length) {
+      callback(Object.assign(new Error('No validated address matches the requested address family.'), { code: 'ENOTFOUND' }))
+      return
+    }
+    if (typeof options === 'object' && options?.all) {
+      callback(null, matching)
+      return
+    }
+    callback(null, matching[0].address, matching[0].family)
+  }) as any
+}
+
+function validateProxyHeaders(headers: Record<string, string>): Record<string, string> {
+  const entries = Object.entries(headers)
+  if (entries.length > MAX_PROXY_HEADERS) throw new Error(`At most ${MAX_PROXY_HEADERS} request headers are allowed.`)
+
+  const blocked = new Set([
+    'host', 'cookie', 'set-cookie', 'connection', 'proxy-authorization',
+    'content-length', 'transfer-encoding', 'accept-encoding',
+  ])
+  const safe: Record<string, string> = { 'accept-encoding': 'identity' }
+  for (const [name, value] of entries) {
+    if (!/^[!#$%&'*+.^_`|~0-9A-Za-z-]+$/.test(name)) throw new Error('Invalid request header name.')
+    if (value.length > MAX_PROXY_HEADER_VALUE_LENGTH || /[\r\n]/.test(value)) {
+      throw new Error(`Request header '${name}' is too long or contains invalid characters.`)
+    }
+    if (!blocked.has(name.toLowerCase())) safe[name] = value
+  }
+  return safe
+}
+
 export async function proxyRequest(
-  url: string,
+  rawUrl: string,
   method: string,
   headers: Record<string, string>,
   body?: string
 ): Promise<ProxyResponse> {
-  const safeUrl = await validateSafeUrl(url)
+  const normalizedMethod = method.toUpperCase()
+  if (!['GET', 'POST', 'PUT', 'PATCH', 'DELETE'].includes(normalizedMethod)) {
+    throw new Error('Unsupported proxy method.')
+  }
+  const bodyBuffer = body == null || normalizedMethod === 'GET' ? undefined : Buffer.from(body, 'utf8')
+  if (bodyBuffer && bodyBuffer.byteLength > MAX_PROXY_REQUEST_BYTES) {
+    throw new Error(`Request body exceeds the ${MAX_PROXY_REQUEST_BYTES.toLocaleString()} byte proxy limit.`)
+  }
+
   const start = Date.now()
+  let dnsTimeoutId: ReturnType<typeof setTimeout> | undefined
+  const resolved = await Promise.race([
+    resolveSafeUrl(rawUrl),
+    new Promise<never>((_, reject) => {
+      dnsTimeoutId = setTimeout(() => reject(new Error('DNS validation timed out.')), 5_000)
+    }),
+  ]).finally(() => {
+    if (dnsTimeoutId) clearTimeout(dnsTimeoutId)
+  })
+  const requestHeaders = validateProxyHeaders(headers)
+  if (bodyBuffer) requestHeaders['content-length'] = String(bodyBuffer.byteLength)
 
-  const sanitizedHeaders: Record<string, string> = {}
-  const DANGEROUS_HEADERS = new Set(['host', 'cookie', 'set-cookie'])
-  for (const [k, v] of Object.entries(headers)) {
-    if (!DANGEROUS_HEADERS.has(k.toLowerCase())) {
-      sanitizedHeaders[k] = v
+  return new Promise<ProxyResponse>((resolve, reject) => {
+    let settled = false
+    let responseBytes = 0
+    const chunks: Buffer[] = []
+    const timeoutId = setTimeout(() => request.destroy(new Error('Upstream request timed out.')), PROXY_TIMEOUT_MS)
+    const finishError = (error: Error) => {
+      if (settled) return
+      settled = true
+      clearTimeout(timeoutId)
+      reject(error)
     }
-  }
 
-  const controller = new AbortController()
-  const timeoutId = setTimeout(() => controller.abort(), 10_000)
-
-  try {
-    const resp = await fetch(safeUrl.toString(), {
-      method,
-      headers: sanitizedHeaders,
-      body: ['GET', 'HEAD'].includes(method.toUpperCase()) ? undefined : body,
-      signal: controller.signal,
+    const requestOptions = {
+      protocol: resolved.url.protocol,
+      hostname: resolved.hostname,
+      port: resolved.url.port ? Number(resolved.url.port) : undefined,
+      path: `${resolved.url.pathname}${resolved.url.search}`,
+      method: normalizedMethod,
+      headers: requestHeaders,
+      lookup: pinnedLookup(resolved.addresses),
+      servername: net.isIP(resolved.hostname) ? undefined : resolved.hostname,
+      agent: false,
+      maxHeaderSize: 32 * 1024,
+    }
+    const requestFn = resolved.url.protocol === 'https:' ? https.request : http.request
+    const request = requestFn(requestOptions as any, (response) => {
+      response.on('data', (chunk: Buffer | string) => {
+        const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk)
+        responseBytes += buffer.byteLength
+        if (responseBytes > MAX_PROXY_RESPONSE_BYTES) {
+          const error = new Error(`Upstream response exceeds the ${MAX_PROXY_RESPONSE_BYTES.toLocaleString()} byte proxy limit.`)
+          response.destroy(error)
+          request.destroy(error)
+          return
+        }
+        chunks.push(buffer)
+      })
+      response.on('end', () => {
+        if (settled) return
+        settled = true
+        clearTimeout(timeoutId)
+        const responseHeaders: Record<string, string> = {}
+        for (const [name, value] of Object.entries(response.headers)) {
+          if (name.toLowerCase() === 'set-cookie' || value == null) continue
+          responseHeaders[name] = Array.isArray(value) ? value.join(', ') : String(value)
+        }
+        resolve({
+          status: response.statusCode ?? 502,
+          statusText: response.statusMessage ?? '',
+          headers: responseHeaders,
+          body: Buffer.concat(chunks).toString('utf8'),
+          durationMs: Date.now() - start,
+        })
+      })
+      response.on('aborted', () => finishError(new Error('Upstream response was interrupted.')))
+      response.on('error', finishError)
     })
-    const durationMs = Date.now() - start
-    const respBody = await resp.text()
-    const respHeaders: Record<string, string> = {}
-    resp.headers.forEach((v, k) => { respHeaders[k] = v })
-    delete respHeaders['set-cookie']
-    return { status: resp.status, statusText: resp.statusText, headers: respHeaders, body: respBody, durationMs }
-  } finally {
-    clearTimeout(timeoutId)
-  }
+
+    request.on('error', finishError)
+    request.end(bodyBuffer)
+  })
 }

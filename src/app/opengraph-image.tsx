@@ -2,7 +2,7 @@ import { ImageResponse } from 'next/og'
 
 export const runtime = 'edge'
 
-export const alt = 'Arbor — Developer Portal & Codebase Intelligence'
+export const alt = 'Arbor — Map and Understand Your Codebase'
 export const size = {
   width: 1200,
   height: 630,
@@ -88,7 +88,7 @@ export default async function Image() {
               backgroundColor: 'rgba(16, 185, 129, 0.1)',
             }}
           >
-            v1.0 AST Engine
+            AST-based analysis
           </span>
         </div>
 
@@ -106,7 +106,7 @@ export default async function Image() {
               color: 'transparent',
             }}
           >
-            Arbor: Automated Codebase Intelligence in 30 Seconds.
+            See how your codebase fits together.
           </h1>
           <p
             style={{
@@ -148,7 +148,7 @@ export default async function Image() {
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
               <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#3b82f6' }} />
               <span style={{ fontSize: '18px', color: '#cbd5e1', fontWeight: 500 }}>
-                Zero Code Stored
+                Copy removed after analysis
               </span>
             </div>
           </div>
@@ -166,7 +166,7 @@ export default async function Image() {
             }}
           >
             <span style={{ fontSize: '14px', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '1px' }}>
-              Audit Score
+              Sample Score
             </span>
             <span style={{ fontSize: '26px', fontWeight: 800, color: '#34d399' }}>
               88 / 100

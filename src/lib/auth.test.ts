@@ -5,8 +5,10 @@ vi.mock('@/lib/env', () => ({
     GITHUB_CLIENT_ID: 'mock_gh_client_id',
     GITHUB_CLIENT_SECRET: 'mock_gh_client_secret',
     NEXTAUTH_SECRET: 'mock_nextauth_secret_32_chars_long',
-    ADMIN_USERNAME: 'adeel',
-    ADMIN_PASSWORD: 'adeel1212',
+    ADMIN_USERNAME: 'test-admin',
+    ADMIN_PASSWORD: 'long-test-only-password',
+    ADMIN_EMAILS: 'admin@example.com',
+    ADMIN_GITHUB_USERNAMES: 'admin-gh',
   },
   githubConfigured: true,
 }))
@@ -83,6 +85,7 @@ describe('authOptions callbacks', () => {
     it('links existing user by email without unique constraint violation', async () => {
       const existingUser = {
         id: 'user-cuid-existing',
+        status: 'active',
         email: 'adeel@example.com',
         name: 'Adeel',
         githubId: 99999999,
@@ -107,6 +110,24 @@ describe('authOptions callbacks', () => {
           data: expect.objectContaining({ githubId: 12345 }),
         })
       )
+    })
+
+    it('denies GitHub sign-in for a suspended existing user', async () => {
+      vi.mocked(prisma.user.findFirst).mockResolvedValueOnce({
+        id: 'suspended-user',
+        status: 'suspended',
+        email: 'suspended@example.com',
+      } as any)
+
+      const result = await callSignIn({
+        user: { id: 'gh-suspended', name: 'suspended', email: 'suspended@example.com' },
+        account: { provider: 'github', type: 'oauth', access_token: 'ghp_secret' },
+        profile: { id: 12346, login: 'suspended' },
+      })
+
+      expect(result).toBe(false)
+      expect(prisma.user.update).not.toHaveBeenCalled()
+      expect(prisma.user.create).not.toHaveBeenCalled()
     })
 
     it('creates new user when no matching user is found', async () => {
@@ -196,20 +217,20 @@ describe('authOptions callbacks', () => {
       vi.mocked(checkRateLimit).mockResolvedValueOnce({ allowed: true, remaining: 5 })
       vi.mocked(prisma.user.findFirst).mockResolvedValueOnce({
         id: 'admin-cuid',
-        name: 'Adeel (Admin)',
-        email: 'adeel@admin.local',
+        name: 'Test Admin',
+        email: 'admin@example.com',
         avatarUrl: null,
       } as any)
 
       const result = await authorize({
-        username: 'adeel',
-        password: 'adeel1212',
+        username: 'test-admin',
+        password: 'long-test-only-password',
       })
 
       expect(result).toEqual({
         id: 'admin-cuid',
-        name: 'Adeel (Admin)',
-        email: 'adeel@admin.local',
+        name: 'Test Admin',
+        email: 'admin@example.com',
         image: null,
       })
     })
@@ -219,7 +240,7 @@ describe('authOptions callbacks', () => {
       vi.mocked(checkRateLimit).mockResolvedValueOnce({ allowed: true, remaining: 5 })
 
       const result = await authorize({
-        username: 'adeel',
+        username: 'test-admin',
         password: 'wrongpassword',
       })
 
@@ -243,7 +264,7 @@ describe('authOptions callbacks', () => {
 
       await expect(
         authorize({
-          username: 'adeel',
+          username: 'test-admin',
           password: 'wrongpassword',
         })
       ).rejects.toThrow('Too many login attempts')

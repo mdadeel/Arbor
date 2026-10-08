@@ -19,13 +19,13 @@ interface ScoreRowProps {
 }
 
 const SCORE_CATEGORIES = [
-  { key: 'overall', label: 'Overall', hint: 'Composite architecture health' },
-  { key: 'architecture', label: 'Architecture', hint: 'Modularity & boundaries' },
-  { key: 'techDebt', label: 'Tech Debt', hint: 'Cycles, dead code, unused deps' },
-  { key: 'performance', label: 'Performance', hint: 'Client runtime & asset loading' },
-  { key: 'documentation', label: 'Docs', hint: 'README, JSDoc & type coverage' },
-  { key: 'security', label: 'Security', hint: 'Secrets & env variable hygiene' },
-  { key: 'designSystem', label: 'Design System', hint: 'Tokens & component variants' },
+  { key: 'overall', label: 'Overall', hint: 'Weighted blend of the static category scores' },
+  { key: 'architecture', label: 'Architecture', hint: 'Entry points, folder shape, file size & import cycles' },
+  { key: 'techDebt', label: 'Tech Debt', hint: 'Static cycles, type escapes, exports & dependency hints' },
+  { key: 'performance', label: 'Performance', hint: 'Client-component ratio and image source patterns; not a runtime trace' },
+  { key: 'documentation', label: 'Docs', hint: 'README presence, comments and JSDoc markers' },
+  { key: 'security', label: 'Security', hint: 'Secret-like patterns and environment documentation; not a full audit' },
+  { key: 'designSystem', label: 'Design System', hint: 'Detected tokens, component variants and hardcoded colors' },
 ] as const
 
 function getScoreTier(val: number | null | undefined): { label: string; dot: string; bar: string } {

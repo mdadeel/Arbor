@@ -1,20 +1,15 @@
 import { z } from 'zod'
 import { publicProcedure, protectedProcedure, router } from '@/server/trpc'
-import { prisma } from '@/lib/prisma'
-import { slugify } from '@/server/services/project'
-import { TRPCError } from '@trpc/server'
+import { requireAccessibleProject, requireProjectEditor } from '@/server/services/project-access'
 import {
   getProjectHealth,
   syncProjectHealth,
   getWorkspaceHealth,
 } from '@/server/services/health'
 
-async function requireProject(userId: string, slug: string) {
-  const project = await prisma.project.findUnique({
-    where: { userId_slug: { userId, slug: slugify(slug) } },
-    select: { id: true },
-  })
-  if (!project) throw new TRPCError({ code: 'NOT_FOUND', message: 'Project not found' })
+async function requireProjectId(userId: string, slug: string, write = false) {
+  const project = await requireAccessibleProject(userId, slug)
+  if (write) await requireProjectEditor(userId, project)
   return project.id
 }
 
@@ -27,14 +22,14 @@ export const healthRouter = router({
   get: protectedProcedure
     .input(z.object({ slug: z.string() }))
     .query(async ({ ctx, input }) => {
-      const projectId = await requireProject(ctx.session.user.id, input.slug)
+      const projectId = await requireProjectId(ctx.session.user.id, input.slug)
       return getProjectHealth(ctx.session.user.id, projectId)
     }),
 
   sync: protectedProcedure
     .input(z.object({ slug: z.string() }))
     .mutation(async ({ ctx, input }) => {
-      const projectId = await requireProject(ctx.session.user.id, input.slug)
+      const projectId = await requireProjectId(ctx.session.user.id, input.slug, true)
       return syncProjectHealth(ctx.session.user.id, projectId)
     }),
 

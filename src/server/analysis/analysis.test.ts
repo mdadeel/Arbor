@@ -129,6 +129,9 @@ export function Button({ label }: { label: string }) {
     expect(report.metrics.clientFiles).toBe(1)
     expect(report.metrics.anyTypes).toBeGreaterThanOrEqual(2)
     expect(report.metrics.consoleLogs).toBeGreaterThanOrEqual(1)
+    expect(report.metrics.coverage.sourceFiles).toBe(4)
+    expect(report.metrics.coverage.parsedFiles).toBe(4)
+    expect(report.metrics.coverage.partial).toBe(false)
 
     // 4. Import Graph & Circular Dependencies
     expect(report.importGraph.nodes.length).toBeGreaterThan(0)
@@ -157,5 +160,6 @@ export function Button({ label }: { label: string }) {
     expect(report.findings.some((f) => f.id === 'circular-dep')).toBe(true)
     expect(report.findings.some((f) => f.id === 'unused-deps')).toBe(true)
     expect(report.findings.some((f) => f.id === 'env-docs')).toBe(true)
+    expect(report.findings.every((finding) => Boolean(finding.explanation && finding.impact && finding.recommendation && finding.confidence))).toBe(true)
   })
 })

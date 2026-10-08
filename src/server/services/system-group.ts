@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/prisma'
 import { TRPCError } from '@trpc/server'
 import { ProjectGroupRole, Prisma } from '@prisma/client'
+import { getSystemAnalysisQueue } from '@/server/queue'
 import {
   matchApiContracts,
   checkEnvironmentParity,
@@ -10,6 +11,11 @@ import {
   type FrontendCallSite,
 } from './system-analysis'
 import { buildModuleGraph } from '@/components/dashboard/architecture/module-graph'
+import {
+  requireProjectIdsAccessible,
+  requireWorkspaceMembership,
+  WORKSPACE_PROJECT_ROLES,
+} from './authorization'
 
 export function slugify(input: string): string {
   return (
@@ -33,6 +39,22 @@ async function uniqueGroupSlug(userId: string, base: string): Promise<string> {
   return `${base}-${n}`
 }
 
+async function accessibleProjectIds(userId: string, projectIds: string[]) {
+  const uniqueIds = [...new Set(projectIds)]
+  if (uniqueIds.length !== projectIds.length || uniqueIds.length === 0) return new Set<string>()
+  const projects = await prisma.project.findMany({
+    where: {
+      id: { in: uniqueIds },
+      OR: [
+        { userId, workspaceId: null },
+        { workspace: { members: { some: { userId } } } },
+      ],
+    },
+    select: { id: true },
+  })
+  return new Set(projects.map((project) => project.id))
+}
+
 export type CreateMemberInput = {
   projectId: string
   role: ProjectGroupRole
@@ -50,20 +72,39 @@ export type CreateGroupInput = {
  * Lists all project groups accessible by the user (direct or active workspace).
  */
 export async function listGroups(userId: string, workspaceId?: string) {
+  if (workspaceId) await requireWorkspaceMembership(userId, workspaceId)
+
   const whereClause: Prisma.ProjectGroupWhereInput = workspaceId
     ? {
         OR: [
-          { userId },
+          { userId, workspaceId: null },
           { workspaceId },
         ],
       }
-    : { userId }
+    : {
+        OR: [
+          { userId, workspaceId: null },
+          { workspace: { members: { some: { userId } } } },
+        ],
+      }
 
-  return prisma.projectGroup.findMany({
+  const groups = await prisma.projectGroup.findMany({
     where: whereClause,
-    include: {
+    select: {
+      id: true,
+      userId: true,
+      workspaceId: true,
+      name: true,
+      slug: true,
+      description: true,
+      latestScore: true,
+      systemData: true,
+      createdAt: true,
+      updatedAt: true,
       members: {
-        include: {
+        select: {
+          id: true,
+          role: true,
           project: {
             select: {
               id: true,
@@ -77,13 +118,13 @@ export async function listGroups(userId: string, workspaceId?: string) {
           },
         },
       },
-      analyses: {
-        orderBy: { createdAt: 'desc' },
-        take: 1,
-      },
     },
     orderBy: { updatedAt: 'desc' },
   })
+  const projectIds = groups.flatMap((group) => group.members.map((member) => member.project.id))
+  const accessibleIds = await accessibleProjectIds(userId, projectIds)
+  return groups.filter((group) => group.members.length > 0 &&
+    group.members.every((member) => accessibleIds.has(member.project.id)))
 }
 
 /**
@@ -91,7 +132,13 @@ export async function listGroups(userId: string, workspaceId?: string) {
  */
 export async function getGroupBySlug(userId: string, slug: string) {
   const group = await prisma.projectGroup.findFirst({
-    where: { slug },
+    where: {
+      slug,
+      OR: [
+        { userId, workspaceId: null },
+        { workspace: { members: { some: { userId } } } },
+      ],
+    },
     include: {
       members: {
         include: {
@@ -118,24 +165,12 @@ export async function getGroupBySlug(userId: string, slug: string) {
       },
     },
   })
-
   if (!group) return null
 
-  // Verify access: owner or workspace member
-  if (group.userId !== userId && group.workspaceId) {
-    const membership = await prisma.workspaceMember.findUnique({
-      where: {
-        workspaceId_userId: {
-          workspaceId: group.workspaceId,
-          userId,
-        },
-      },
-    })
-    if (!membership) return null
-  } else if (group.userId !== userId) {
-    return null
-  }
-
+  const projectIds = group.members.map((member) => member.projectId)
+  if (projectIds.length === 0) return null
+  const accessibleIds = await accessibleProjectIds(userId, projectIds)
+  if (!projectIds.every((projectId) => accessibleIds.has(projectId))) return null
   return group
 }
 
@@ -152,7 +187,11 @@ export async function createGroup(userId: string, input: CreateGroupInput) {
       message: 'A system group requires at least 2 member repositories (e.g. Frontend and Server)',
     })
   }
+  if (input.members.length > 25) {
+    throw new TRPCError({ code: 'BAD_REQUEST', message: 'A system group may contain at most 25 repositories.' })
+  }
 
+  await requireProjectIdsAccessible(userId, input.members.map((member) => member.projectId), input.workspaceId)
   const slug = await uniqueGroupSlug(userId, slugify(input.name))
 
   const group = await prisma.projectGroup.create({
@@ -172,8 +211,8 @@ export async function createGroup(userId: string, input: CreateGroupInput) {
     },
   })
 
-  // Automatically trigger first analysis
-  await runSystemAnalysis(group.id)
+  // Automatically trigger the first analysis asynchronously on the worker queue.
+  await enqueueSystemAnalysis(group.id)
 
   return (
     (await prisma.projectGroup.findUnique({
@@ -199,9 +238,13 @@ export async function createGroup(userId: string, input: CreateGroupInput) {
 export async function deleteGroup(userId: string, groupId: string) {
   const group = await prisma.projectGroup.findUnique({
     where: { id: groupId },
+    select: { id: true, userId: true, workspaceId: true },
   })
 
-  if (!group || group.userId !== userId) {
+  if (!group) throw new TRPCError({ code: 'NOT_FOUND', message: 'System group not found' })
+  if (group.workspaceId) {
+    await requireWorkspaceMembership(userId, group.workspaceId, ['owner', 'admin'])
+  } else if (group.userId !== userId) {
     throw new TRPCError({ code: 'NOT_FOUND', message: 'System group not found' })
   }
 
@@ -211,9 +254,34 @@ export async function deleteGroup(userId: string, groupId: string) {
 }
 
 /**
- * Runs cross-repository correlation analysis between member repositories.
+ * Enqueues a cross-repository correlation analysis for a project group.
+ * The heavy work runs on the BullMQ worker so request latency stays flat.
  */
-export async function runSystemAnalysis(groupId: string) {
+export async function enqueueSystemAnalysis(groupId: string) {
+  const pending = await prisma.systemAnalysis.findFirst({
+    where: { groupId, status: { in: ['queued', 'analyzing'] } },
+    select: { id: true },
+    orderBy: { createdAt: 'desc' },
+  })
+  if (pending) {
+    return prisma.systemAnalysis.findUniqueOrThrow({ where: { id: pending.id } })
+  }
+
+  const analysis = await prisma.systemAnalysis.create({
+    data: { groupId, status: 'queued' },
+  })
+  await getSystemAnalysisQueue().add(
+    'analyze-system',
+    { systemAnalysisId: analysis.id },
+    { jobId: analysis.id }
+  )
+  return analysis
+}
+
+/**
+ * Computes the fullstack correlation result for a group without persisting it.
+ */
+async function computeSystemAnalysis(groupId: string) {
   const startTime = Date.now()
 
   const group = await prisma.projectGroup.findUnique({
@@ -473,41 +541,81 @@ export async function runSystemAnalysis(groupId: string) {
 
   const durationMs = Date.now() - startTime
 
-  // 8. Persist System Analysis Record
-  const analysis = await prisma.systemAnalysis.create({
-    data: {
-      groupId: group.id,
-      status: 'completed',
-      overallScore: scores.overall,
-      contractScore: scores.contractScore,
-      envScore: scores.envScore,
-      frontendScore: scores.frontendScore,
-      backendScore: scores.backendScore,
-      contractMatrix: contractMatrix as unknown as Prisma.InputJsonValue,
-      envDrift: envDrift as unknown as Prisma.InputJsonValue,
-      systemGraph: systemGraph as unknown as Prisma.InputJsonValue,
-      findings: findings as unknown as Prisma.InputJsonValue,
-      durationMs,
-    },
-  })
+  return {
+    groupId: group.id,
+    scores,
+    contractMatrix,
+    envDrift,
+    systemGraph,
+    findings,
+    durationMs,
+    frontendName: feProject?.name ?? 'Frontend',
+    backendName: beProject?.name ?? 'Server',
+  }
+}
 
-  // 9. Update ProjectGroup Denormalized Summary
-  await prisma.projectGroup.update({
-    where: { id: group.id },
-    data: {
-      latestScore: scores.overall,
-      systemData: {
-        totalEndpoints: contractMatrix.total,
-        connected: contractMatrix.connected,
-        broken: contractMatrix.broken,
-        orphaned: contractMatrix.orphaned,
-        methodMismatch: contractMatrix.methodMismatch,
-        frontendName: feProject?.name ?? 'Frontend',
-        backendName: beProject?.name ?? 'Server',
-        lastAnalyzedAt: new Date().toISOString(),
+/**
+ * Processes a queued system analysis record. Called by the BullMQ worker; it
+ * claims the record atomically so duplicate jobs cannot double-process it.
+ */
+export async function processSystemAnalysis(systemAnalysisId: string) {
+  const claim = await prisma.systemAnalysis.updateMany({
+    where: { id: systemAnalysisId, status: 'queued' },
+    data: { status: 'analyzing' },
+  })
+  if (claim.count === 0) return
+
+  const record = await prisma.systemAnalysis.findUnique({
+    where: { id: systemAnalysisId },
+    select: { groupId: true },
+  })
+  if (!record) return
+
+  try {
+    const result = await computeSystemAnalysis(record.groupId)
+
+    await prisma.$transaction([
+      prisma.systemAnalysis.update({
+        where: { id: systemAnalysisId },
+        data: {
+          status: 'completed',
+          overallScore: result.scores.overall,
+          contractScore: result.scores.contractScore,
+          envScore: result.scores.envScore,
+          frontendScore: result.scores.frontendScore,
+          backendScore: result.scores.backendScore,
+          contractMatrix: result.contractMatrix as unknown as Prisma.InputJsonValue,
+          envDrift: result.envDrift as unknown as Prisma.InputJsonValue,
+          systemGraph: result.systemGraph as unknown as Prisma.InputJsonValue,
+          findings: result.findings as unknown as Prisma.InputJsonValue,
+          durationMs: result.durationMs,
+        },
+      }),
+      prisma.projectGroup.update({
+        where: { id: record.groupId },
+        data: {
+          latestScore: result.scores.overall,
+          systemData: {
+            totalEndpoints: result.contractMatrix.total,
+            connected: result.contractMatrix.connected,
+            broken: result.contractMatrix.broken,
+            orphaned: result.contractMatrix.orphaned,
+            methodMismatch: result.contractMatrix.methodMismatch,
+            frontendName: result.frontendName,
+            backendName: result.backendName,
+            lastAnalyzedAt: new Date().toISOString(),
+          },
+        },
+      }),
+    ])
+  } catch (error) {
+    await prisma.systemAnalysis.updateMany({
+      where: { id: systemAnalysisId, status: 'analyzing' },
+      data: {
+        status: 'failed',
+        errorMessage: error instanceof Error ? error.message.slice(0, 1000) : 'Unknown error',
       },
-    },
-  })
-
-  return analysis
+    }).catch(() => {})
+    throw error
+  }
 }

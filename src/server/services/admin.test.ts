@@ -1,4 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+
+const { getJobCountsMock } = vi.hoisted(() => ({ getJobCountsMock: vi.fn() }))
+vi.mock('@/server/queue', () => ({
+  getAnalysisQueue: () => ({ getJobCounts: getJobCountsMock }),
+}))
+
 import {
   checkIsAdmin,
   checkUserPermission,
@@ -89,11 +95,11 @@ describe('Admin Service', () => {
       expect(checkIsAdmin({ githubUsername: 'Arbor-Admin' })).toBe(true)
     })
 
-    it('returns true for configured primary admin credentials adeel and mdadeel', () => {
-      expect(checkIsAdmin({ githubUsername: 'adeel' })).toBe(true)
-      expect(checkIsAdmin({ githubUsername: 'mdadeel' })).toBe(true)
-      expect(checkIsAdmin({ email: 'adeel@admin.local' })).toBe(true)
-      expect(checkIsAdmin({ email: 'mdadeel125@gmail.com' })).toBe(true)
+    it('does not grant privileges to formerly hard-coded owner identities', () => {
+      expect(checkIsAdmin({ githubUsername: 'adeel' })).toBe(false)
+      expect(checkIsAdmin({ githubUsername: 'mdadeel' })).toBe(false)
+      expect(checkIsAdmin({ email: 'adeel@admin.local' })).toBe(false)
+      expect(checkIsAdmin({ email: 'mdadeel125@gmail.com' })).toBe(false)
     })
 
     it('returns true for users with database role admin or moderator', () => {
@@ -113,7 +119,7 @@ describe('Admin Service', () => {
 
   describe('checkUserPermission', () => {
     it('grants all permissions to superadmins and admin role', () => {
-      expect(checkUserPermission({ githubUsername: 'adeel' }, PLATFORM_PERMISSIONS.USERS_MANAGE)).toBe(true)
+      expect(checkUserPermission({ email: 'admin@arbor.dev' }, PLATFORM_PERMISSIONS.USERS_MANAGE)).toBe(true)
       expect(checkUserPermission({ role: 'admin' }, PLATFORM_PERMISSIONS.SYSTEM_MANAGE)).toBe(true)
     })
 
@@ -123,6 +129,11 @@ describe('Admin Service', () => {
       expect(checkUserPermission({ role: 'moderator' }, PLATFORM_PERMISSIONS.WORKSPACES_READ)).toBe(true)
       expect(checkUserPermission({ role: 'moderator' }, PLATFORM_PERMISSIONS.USERS_MANAGE)).toBe(false)
       expect(checkUserPermission({ role: 'moderator' }, PLATFORM_PERMISSIONS.SYSTEM_MANAGE)).toBe(false)
+      expect(checkUserPermission({ role: 'moderator' }, PLATFORM_PERMISSIONS.USERS_IMPERSONATE)).toBe(false)
+      expect(checkUserPermission({ role: 'moderator' }, PLATFORM_PERMISSIONS.EMAILS_READ)).toBe(false)
+      expect(checkUserPermission({ role: 'moderator' }, PLATFORM_PERMISSIONS.WAITLIST_READ)).toBe(false)
+      expect(checkUserPermission({ role: 'moderator' }, PLATFORM_PERMISSIONS.METRICS_READ)).toBe(false)
+      expect(checkUserPermission({ role: 'moderator' }, PLATFORM_PERMISSIONS.SYSTEM_READ)).toBe(false)
     })
 
     it('evaluates custom user permission overrides', () => {
@@ -152,23 +163,7 @@ describe('Admin Service', () => {
       vi.mocked(prisma.analysis.count).mockResolvedValueOnce(25) // completed
       vi.mocked(prisma.workspace.count).mockResolvedValueOnce(2) // workspaces
       vi.mocked(prisma.waitlistLead.count).mockResolvedValueOnce(5) // waitlist
-
-      vi.mocked(prisma.user.findMany).mockResolvedValueOnce([
-        {
-          id: 'u1',
-          projects: [
-            { id: 'p1', _count: { analyses: 2 } },
-            { id: 'p2', _count: { analyses: 2 } },
-            { id: 'p3', _count: { analyses: 1 } },
-          ],
-        },
-        {
-          id: 'u2',
-          projects: [
-            { id: 'p4', _count: { analyses: 1 } },
-          ],
-        },
-      ] as any)
+      vi.mocked(prisma.$queryRaw).mockResolvedValueOnce([{ proCandidatesCount: 1 }] as any)
 
       const metrics = await getAdminMetrics()
 
@@ -336,6 +331,7 @@ describe('Admin Service', () => {
       vi.mocked(prisma.analysis.count).mockResolvedValueOnce(3) // failed
       vi.mocked(prisma.analysis.count).mockResolvedValueOnce(1) // active
       vi.mocked(prisma.analysis.count).mockResolvedValueOnce(0) // queued
+      getJobCountsMock.mockResolvedValueOnce({ waiting: 2, active: 1, completed: 4, failed: 0, delayed: 0, paused: 0 })
 
       const health = await getSystemHealthForAdmin()
       expect(health.status).toBe('healthy')
@@ -343,6 +339,8 @@ describe('Admin Service', () => {
       expect(health.failedAnalysesCount).toBe(3)
       expect(health.activeAnalysesCount).toBe(1)
       expect(health.queuedAnalysesCount).toBe(0)
+      expect(health.redisStatus).toBe('healthy')
+      expect(health.queueBreakdown?.waiting).toBe(2)
       expect(health.memoryUsage).toBeDefined()
     })
   })

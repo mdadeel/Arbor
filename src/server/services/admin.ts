@@ -151,6 +151,11 @@ export const PLATFORM_PERMISSIONS = {
   AUDIT_READ: 'admin:audit:read',
   SYSTEM_MANAGE: 'admin:system:manage',
   WORKSPACES_READ: 'admin:workspaces:read',
+  USERS_IMPERSONATE: 'admin:users:impersonate',
+  EMAILS_READ: 'admin:emails:read',
+  WAITLIST_READ: 'admin:waitlist:read',
+  METRICS_READ: 'admin:metrics:read',
+  SYSTEM_READ: 'admin:system:read',
 } as const
 
 export type PlatformPermission = (typeof PLATFORM_PERMISSIONS)[keyof typeof PLATFORM_PERMISSIONS]
@@ -166,7 +171,7 @@ export const ROLE_PERMISSIONS: Record<string, PlatformPermission[]> = {
 }
 
 /**
- * Checks if user is a system superadmin via environment variables or hardcoded owner handles.
+ * Checks if a user matches an explicitly configured superadmin allowlist.
  */
 export function isSuperAdmin(user?: {
   email?: string | null
@@ -184,15 +189,6 @@ export function isSuperAdmin(user?: {
 
   const userEmail = user.email?.trim().toLowerCase()
   const userGithub = user.githubUsername?.trim().toLowerCase()
-
-  if (
-    userGithub === 'adeel' ||
-    userGithub === 'mdadeel' ||
-    userEmail === 'adeel@admin.local' ||
-    userEmail === 'mdadeel125@gmail.com'
-  ) {
-    return true
-  }
 
   if (adminEmails.length > 0 && userEmail && adminEmails.includes(userEmail)) {
     return true
@@ -325,7 +321,7 @@ export async function getAdminMetrics(): Promise<AdminMetrics> {
     completedAnalyses,
     totalWorkspaces,
     totalWaitlistLeads,
-    usersWithProjects,
+    proCandidateRows,
   ] = await Promise.all([
     prisma.user.count(),
     prisma.user.count({ where: { createdAt: { gte: sevenDaysAgo } } }),
@@ -336,30 +332,21 @@ export async function getAdminMetrics(): Promise<AdminMetrics> {
     prisma.analysis.count({ where: { status: 'completed' } }),
     prisma.workspace.count(),
     prisma.waitlistLead.count(),
-    prisma.user.findMany({
-      select: {
-        id: true,
-        projects: {
-          select: {
-            id: true,
-            _count: {
-              select: { analyses: true },
-            },
-          },
-        },
-      },
-    }),
+    prisma.$queryRaw<Array<{ proCandidatesCount: number }>>`
+      SELECT COUNT(*)::int AS "proCandidatesCount"
+      FROM (
+        SELECT u."id"
+        FROM "User" u
+        LEFT JOIN "Project" p ON p."userId" = u."id"
+        LEFT JOIN "Analysis" a ON a."projectId" = p."id"
+        GROUP BY u."id"
+        HAVING COUNT(DISTINCT p."id") >= 3 OR COUNT(a."id") >= 5
+      ) AS candidates
+    `,
   ])
 
-  // Calculate Pro candidates (>2 projects or >5 analyses)
-  let proCandidatesCount = 0
-  for (const u of usersWithProjects) {
-    const pCount = u.projects.length
-    const aCount = u.projects.reduce((sum, p) => sum + p._count.analyses, 0)
-    if (pCount >= 3 || aCount >= 5) {
-      proCandidatesCount++
-    }
-  }
+  // Aggregate in PostgreSQL so the app process never materializes the entire user/project tree.
+  const proCandidatesCount = Number(proCandidateRows[0]?.proCandidatesCount ?? 0)
 
   const estimatedPotentialMrr = proCandidatesCount * 15 // $15/mo Pro tier
 
@@ -614,10 +601,16 @@ export async function getSystemHealthForAdmin(): Promise<SystemHealthMetrics> {
     paused: 0,
   }
 
+  let queueTimeout: ReturnType<typeof setTimeout> | undefined
   try {
     const { getAnalysisQueue } = await import('@/server/queue')
     const queue = getAnalysisQueue()
-    const counts = await queue.getJobCounts('waiting', 'active', 'completed', 'failed', 'delayed', 'paused')
+    const counts = await Promise.race([
+      queue.getJobCounts('waiting', 'active', 'completed', 'failed', 'delayed', 'paused'),
+      new Promise<never>((_, reject) => {
+        queueTimeout = setTimeout(() => reject(new Error('Redis queue health check timed out')), 1_500)
+      }),
+    ])
     queueBreakdown = {
       waiting: counts.waiting ?? 0,
       active: counts.active ?? 0,
@@ -628,6 +621,8 @@ export async function getSystemHealthForAdmin(): Promise<SystemHealthMetrics> {
     }
   } catch {
     redisStatus = 'offline'
+  } finally {
+    if (queueTimeout) clearTimeout(queueTimeout)
   }
 
   return {

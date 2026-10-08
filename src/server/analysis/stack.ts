@@ -1,6 +1,6 @@
 import fs from 'node:fs'
 import path from 'node:path'
-import { listFiles } from './walk'
+import { listFiles, readText } from './walk'
 import type { DetectedTechStack } from './types'
 
 const FRAMEWORKS: [string, string][] = [
@@ -75,14 +75,14 @@ const LANGUAGES: [RegExp, string][] = [
 
 function readJson(dir: string, file: string): Record<string, unknown> | null {
   try {
-    return JSON.parse(fs.readFileSync(path.join(dir, file), 'utf8'))
+    const text = readText(path.join(dir, file))
+    return text == null ? null : JSON.parse(text)
   } catch {
     return null
   }
 }
 
-export function detectTechStack(dir: string): DetectedTechStack {
-  const files = listFiles(dir)
+export function detectTechStack(dir: string, files: string[] = listFiles(dir)): DetectedTechStack {
   const pkg = readJson(dir, 'package.json')
   const deps = { ...((pkg?.dependencies as object) ?? {}), ...((pkg?.devDependencies as object) ?? {}) }
   const depNames = Object.keys(deps)

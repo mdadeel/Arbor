@@ -5,6 +5,10 @@ export interface AnalyzeJob {
   analysisId: string
 }
 
+export interface SystemAnalysisJob {
+  systemAnalysisId: string
+}
+
 let queue: Queue<AnalyzeJob> | null = null
 
 export function getAnalysisQueue(): Queue<AnalyzeJob> {
@@ -20,4 +24,21 @@ export function getAnalysisQueue(): Queue<AnalyzeJob> {
     })
   }
   return queue
+}
+
+let systemQueue: Queue<SystemAnalysisJob> | null = null
+
+export function getSystemAnalysisQueue(): Queue<SystemAnalysisJob> {
+  if (!systemQueue) {
+    systemQueue = new Queue<SystemAnalysisJob>('system-analysis', {
+      connection: { url: env.REDIS_URL },
+      defaultJobOptions: {
+        attempts: 2,
+        backoff: { type: 'fixed', delay: 5_000 },
+        removeOnComplete: 1000,
+        removeOnFail: 500,
+      },
+    })
+  }
+  return systemQueue
 }

@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/prisma'
+import { requireWorkspaceMembership, WORKSPACE_AUDIT_ROLES } from './authorization'
 
 export interface LogAuditOptions {
   userId: string
@@ -40,19 +41,10 @@ export async function listAuditLogs(
 ) {
   const limit = Math.min(options.limit ?? 50, 100)
 
-  // Verify access
+  // Workspace audit records can contain actor PII and sensitive metadata, so
+  // workspace membership alone is not sufficient: only owners/admins may read.
   if (options.workspaceId) {
-    const isMember = await prisma.workspaceMember.findUnique({
-      where: {
-        workspaceId_userId: {
-          workspaceId: options.workspaceId,
-          userId,
-        },
-      },
-    })
-    if (!isMember) {
-      throw new Error('Unauthorized: User is not a member of this workspace')
-    }
+    await requireWorkspaceMembership(userId, options.workspaceId, WORKSPACE_AUDIT_ROLES)
   }
 
   if (options.projectId) {
@@ -60,13 +52,17 @@ export async function listAuditLogs(
       where: {
         id: options.projectId,
         OR: [
-          { userId },
+          { userId, workspaceId: null },
           { workspace: { members: { some: { userId } } } },
         ],
       },
+      select: { id: true, userId: true, workspaceId: true },
     })
     if (!project) {
       throw new Error('Unauthorized: User does not have access to this project')
+    }
+    if (project.workspaceId) {
+      await requireWorkspaceMembership(userId, project.workspaceId, WORKSPACE_AUDIT_ROLES)
     }
   }
 

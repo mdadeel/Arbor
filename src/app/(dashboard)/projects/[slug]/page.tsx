@@ -10,13 +10,14 @@ import { ProjectReport } from '@/components/dashboard/project-report'
 export default async function ProjectDetailPage({
   params,
 }: {
-  params: { slug: string }
+  params: Promise<{ slug: string }>
 }) {
+  const { slug } = await params
   const session = await getServerSession(authOptions)
   if (!session?.user) return notFound()
 
   const caller = await getServerCaller()
-  const project = await caller.project.bySlug({ slug: params.slug })
+  const project = await caller.project.bySlug({ slug })
   if (!project) return notFound()
 
   return (
@@ -53,7 +54,7 @@ export default async function ProjectDetailPage({
 
         <div className="flex items-center gap-2">
           <Link
-            href={project.repoUrl}
+            href={project.repoUrl.replace(/\.git\/?$/, '')}
             target="_blank"
             rel="noreferrer"
             className="inline-flex items-center gap-1.5 rounded-md border border-border bg-muted/40 px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-muted"
@@ -65,7 +66,7 @@ export default async function ProjectDetailPage({
       </div>
 
       {/* Main Project Report and Tabs */}
-      <ProjectReport slug={params.slug} project={project as never} />
+      <ProjectReport slug={slug} project={project as never} />
     </div>
   )
 }

@@ -9,6 +9,7 @@ import { CommandMenu, CommandProject } from '@/components/dashboard/command-menu
 import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet'
 import { Sidebar } from '@/components/dashboard/sidebar'
 import { ThemeToggle } from '@/components/dashboard/theme-toggle'
+import { NotificationCenter } from '@/components/dashboard/notification-center'
 import { Logo } from '@/components/ui/logo'
 import { cn } from '@/lib/utils'
 
@@ -124,6 +125,7 @@ export function Header({ projects = [], user }: HeaderProps) {
 
         {/* Right: Actions (ThemeToggle + Settings Icon) */}
         <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+          {user && <NotificationCenter />}
           <ThemeToggle />
 
           <Button asChild variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:bg-muted hover:text-foreground" aria-label="Settings">

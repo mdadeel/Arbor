@@ -6,6 +6,8 @@ export type FindingCategory =
   | 'security'
   | 'environment'
   | 'designSystem'
+  | 'accessibility'
+  | 'analysis'
 
 export type FindingSeverity = 'info' | 'warning' | 'critical'
 
@@ -15,6 +17,20 @@ export interface Finding {
   severity: FindingSeverity
   title: string
   detail: string
+  /** Why the static rule reported this finding. */
+  explanation?: string
+  /** Potential engineering or user impact if the signal is confirmed. */
+  impact?: string
+  /** A concrete, safe next step for the repository owner. */
+  recommendation?: string
+  /** Heuristic certainty; findings are not proof of a defect or exploit. */
+  confidence?: 'high' | 'medium' | 'low'
+  ruleId?: string
+  policyPack?: string
+  policyVersion?: string
+  policySuppressed?: boolean
+  fingerprint?: string
+  evidence?: string[]
   file?: string
   line?: number
   count?: number
@@ -57,9 +73,27 @@ export interface ImportGraph {
   edges: [string, string][]
 }
 
+export interface AnalysisCoverage {
+  filesIncluded: number
+  discoveredFilesAtLeast: number
+  sourceFiles: number
+  parsedFiles: number
+  parseFailedFiles: number
+  skippedLargeFiles: number
+  unsupportedSourceFiles: number
+  unreadableSourceFiles: number
+  truncated: boolean
+  partial: boolean
+  repoBytes: number
+  maxFiles: number
+  maxFileSizeBytes: number
+  maxParseFiles: number
+}
+
 export interface AnalysisMetrics {
   files: number
   loc: number
+  coverage: AnalysisCoverage
   components: number
   hooks: number
   anyTypes: number

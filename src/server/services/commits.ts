@@ -193,18 +193,18 @@ export async function getProjectCommits(
         { OR: [{ id: projectSlugOrId }, { slug: projectSlugOrId }] },
         {
           OR: [
-            { userId },
-            {
-              workspace: {
-                members: { some: { userId } },
-              },
-            },
+            { userId, workspaceId: null },
+            { workspace: { members: { some: { userId } } } },
           ],
         },
       ],
     },
-    include: {
-      user: true,
+    select: {
+      repoFullName: true,
+      repoPrivate: true,
+      defaultBranch: true,
+      userId: true,
+      githubAccountId: true,
     },
   })
 

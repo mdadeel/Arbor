@@ -17,11 +17,17 @@ import {
   Loader2,
   Play,
   Shield,
+  ShieldCheck,
   Sparkles,
   Globe,
   BookOpen,
   Activity,
   GitCommit,
+  TrendingUp,
+  PackageSearch,
+  SlidersHorizontal,
+  Link2,
+  GitPullRequest,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { trpc } from '@/lib/trpc'
@@ -63,6 +69,8 @@ import { ScoreBadge } from '@/components/dashboard/score-badge'
 import { StatusBadge } from '@/components/dashboard/status-badge'
 import { TechStackGroup } from '@/components/dashboard/tech-stack-badge'
 import { FindingItem, FindingData } from '@/components/dashboard/finding-item'
+import { PolicyControls } from '@/components/dashboard/policy-controls'
+import { PullRequestChecksView, ScheduleControls, ShareReportControl, SupplyChainView, TrendView } from '@/components/dashboard/analysis-tools'
 
 type StructureNode = {
   name: string
@@ -103,6 +111,11 @@ type AnalysisRow = {
   createdAt: string
 }
 
+type AnalysisSummary = Pick<
+  AnalysisRow,
+  'id' | 'status' | 'branch' | 'commitSha' | 'overallScore' | 'durationMs' | 'errorMessage' | 'createdAt'
+>
+
 type ProjectRow = {
   id: string
   slug: string
@@ -115,7 +128,8 @@ type ProjectRow = {
   latestScores: AuditScores | null
   detectedStack: TechStack | null
   lastAnalyzedAt: string | null
-  analyses: AnalysisRow[]
+  analyses: AnalysisSummary[]
+  latestCompletedAnalysis: AnalysisRow | null
 }
 
 const RUNNING_STATUSES = ['queued', 'cloning', 'analyzing']
@@ -129,6 +143,10 @@ const VALID_TABS = [
   'docs',
   'health',
   'commits',
+  'insights',
+  'dependencies',
+  'policies',
+  'pull-requests',
   'history',
 ]
 
@@ -179,10 +197,7 @@ export function ProjectReport({ slug, project }: { slug: string; project: Projec
     return () => window.clearTimeout(interval)
   }, [isRunning, router, latest?.status])
 
-  const completed = useMemo(
-    () => project.analyses.find((a) => a.status === 'completed'),
-    [project.analyses]
-  )
+  const completed = project.latestCompletedAnalysis
 
   const [copied, setCopied] = useState(false)
 
@@ -232,6 +247,18 @@ export function ProjectReport({ slug, project }: { slug: string; project: Projec
 
   const stack = completed?.techStack ?? project.detectedStack ?? null
   const metrics = completed?.metrics ?? null
+  const coverage = metrics?.coverage as {
+    filesIncluded?: number
+    discoveredFilesAtLeast?: number
+    sourceFiles?: number
+    parsedFiles?: number
+    parseFailedFiles?: number
+    skippedLargeFiles?: number
+    unsupportedSourceFiles?: number
+    unreadableSourceFiles?: number
+    partial?: boolean
+    repoBytes?: number
+  } | undefined
   const structure = completed?.structure ?? null
   const findings = completed?.findings ?? []
 
@@ -369,7 +396,7 @@ export function ProjectReport({ slug, project }: { slug: string; project: Projec
           <CardContent className="py-12 text-center text-xs text-muted-foreground space-y-2">
             <p className="font-medium text-foreground text-sm">No analysis completed yet.</p>
             <p className="max-w-md mx-auto">
-              Arbor clones the repository shallowly, parses your files using an AST engine, detects frameworks, imports, and debt, and scores your architecture in under 30 seconds.
+              Arbor shallow-clones the repository, then uses AST and rule-based checks to map its structure, dependencies, and health. Processing time varies with repository size and conditions.
             </p>
             <div className="pt-2">
               <Button
@@ -388,8 +415,74 @@ export function ProjectReport({ slug, project }: { slug: string; project: Projec
 
       {(completed || isRunning) && (
         <div className="space-y-6">
+          {/* Scan coverage explains what the static analyzer actually inspected. */}
+          {coverage && (
+            <section className={cn(
+              'rounded-xl border p-4 sm:p-5',
+              coverage.partial
+                ? 'border-amber-500/25 bg-amber-500/[0.04]'
+                : 'border-emerald-500/20 bg-emerald-500/[0.025]'
+            )} aria-label="Analysis scan coverage">
+              <div className="flex items-start gap-3">
+                <div className={cn(
+                  'flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border',
+                  coverage.partial
+                    ? 'border-amber-500/30 bg-amber-500/10 text-amber-300'
+                    : 'border-emerald-500/25 bg-emerald-500/10 text-emerald-300'
+                )}>
+                  {coverage.partial ? <AlertTriangle className="h-4 w-4" /> : <ShieldCheck className="h-4 w-4" />}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h2 className="text-sm font-semibold text-foreground">{coverage.partial ? 'Partial scan coverage' : 'Scan coverage'}</h2>
+                    <span className={cn(
+                      'rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide',
+                      coverage.partial
+                        ? 'border-amber-500/30 bg-amber-500/10 text-amber-300'
+                        : 'border-emerald-500/25 bg-emerald-500/10 text-emerald-300'
+                    )}>
+                      {coverage.partial ? 'Review limits' : 'Within limits'}
+                    </span>
+                  </div>
+                  <p className="mt-1 max-w-3xl text-xs leading-relaxed text-muted-foreground">
+                    Arbor inspects source statically; it does not execute the application, run tests, or prove that code is safe. {coverage.partial ? 'Some repository content was skipped, so scores describe only the inspected portion.' : 'The configured file and size budgets were not reached.'}
+                  </p>
+                  <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                    <div className="rounded-lg border border-border/60 bg-background/50 px-3 py-2">
+                      <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Files parsed</p>
+                      <p className="mt-1 font-mono text-sm font-semibold text-foreground">{coverage.parsedFiles ?? 0}<span className="text-muted-foreground"> / {coverage.sourceFiles ?? 0}</span></p>
+                    </div>
+                    <div className="rounded-lg border border-border/60 bg-background/50 px-3 py-2">
+                      <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Repository files</p>
+                      <p className="mt-1 font-mono text-sm font-semibold text-foreground">{coverage.filesIncluded ?? 0}{coverage.discoveredFilesAtLeast != null && coverage.discoveredFilesAtLeast > (coverage.filesIncluded ?? 0) ? <span className="text-muted-foreground">+ scanned limit</span> : null}</p>
+                    </div>
+                    <div className="rounded-lg border border-border/60 bg-background/50 px-3 py-2">
+                      <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Skipped large files</p>
+                      <p className="mt-1 font-mono text-sm font-semibold text-foreground">{coverage.skippedLargeFiles ?? 0}</p>
+                    </div>
+                    <div className="rounded-lg border border-border/60 bg-background/50 px-3 py-2">
+                      <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Indexed size</p>
+                      <p className="mt-1 font-mono text-sm font-semibold text-foreground">{((coverage.repoBytes ?? 0) / (1024 * 1024)).toFixed(1)} MiB</p>
+                    </div>
+                  </div>
+                  {coverage.partial && (
+                    <p className="mt-3 text-[11px] leading-relaxed text-amber-200/90">
+                      Check the “Partial analysis — review scan coverage” finding for exact parser/file limits and skipped-content details.
+                    </p>
+                  )}
+                </div>
+              </div>
+            </section>
+          )}
+
           {/* Reusable Horizontal Score Row */}
           <ScoreRow scores={scores} running={isRunning} />
+          <details className="rounded-lg border border-border/70 bg-card/35 px-3 py-2.5">
+            <summary className="cursor-pointer text-xs font-medium text-foreground">How to read these scores</summary>
+            <p className="mt-2 max-w-4xl text-xs leading-relaxed text-muted-foreground">
+              Scores are deterministic static heuristics based on the source patterns listed in Findings. They are useful for comparing trends within a repository, not as a security certification or a substitute for tests, a production build, runtime profiling, or human review. Performance and security scores cover only the signals Arbor currently measures.
+            </p>
+          </details>
 
           {/* Workbench Tabs */}
           <Tabs value={tab} onValueChange={handleTabChange} className="space-y-4">
@@ -426,6 +519,22 @@ export function ProjectReport({ slug, project }: { slug: string; project: Projec
                 <TabsTrigger value="commits" className="text-xs gap-1.5">
                   <GitCommit className="h-3.5 w-3.5" />
                   Commits
+                </TabsTrigger>
+                <TabsTrigger value="insights" className="text-xs gap-1.5">
+                  <TrendingUp className="h-3.5 w-3.5" />
+                  Insights
+                </TabsTrigger>
+                <TabsTrigger value="dependencies" className="text-xs gap-1.5">
+                  <PackageSearch className="h-3.5 w-3.5" />
+                  Dependencies
+                </TabsTrigger>
+                <TabsTrigger value="policies" className="text-xs gap-1.5">
+                  <SlidersHorizontal className="h-3.5 w-3.5" />
+                  Policies
+                </TabsTrigger>
+                <TabsTrigger value="pull-requests" className="text-xs gap-1.5">
+                  <GitPullRequest className="h-3.5 w-3.5" />
+                  Pull requests
                 </TabsTrigger>
                 <TabsTrigger value="history" className="text-xs gap-1.5">
                   <History className="h-3.5 w-3.5" />
@@ -888,6 +997,8 @@ export function ProjectReport({ slug, project }: { slug: string; project: Projec
                             finding={f}
                             repoUrl={project.repoUrl}
                             commitSha={completed?.commitSha}
+                            projectSlug={slug}
+                            analysisId={completed?.id}
                           />
                         ))}
                       </div>
@@ -907,6 +1018,8 @@ export function ProjectReport({ slug, project }: { slug: string; project: Projec
                             finding={f}
                             repoUrl={project.repoUrl}
                             commitSha={completed?.commitSha}
+                            projectSlug={slug}
+                            analysisId={completed?.id}
                           />
                         ))}
                       </div>
@@ -926,6 +1039,8 @@ export function ProjectReport({ slug, project }: { slug: string; project: Projec
                             finding={f}
                             repoUrl={project.repoUrl}
                             commitSha={completed?.commitSha}
+                            projectSlug={slug}
+                            analysisId={completed?.id}
                           />
                         ))}
                       </div>
@@ -958,6 +1073,34 @@ export function ProjectReport({ slug, project }: { slug: string; project: Projec
             {/* TAB: Commits & Activity */}
             <TabsContent value="commits" className="space-y-4">
               <CommitTimeline slug={slug} />
+            </TabsContent>
+
+            {/* TAB: Insights, sharing, and recoverable scheduled scans */}
+            <TabsContent value="insights" className="space-y-4">
+              <TrendView slug={slug} />
+              <div className="grid gap-4 xl:grid-cols-2">
+                <ScheduleControls slug={slug} defaultBranch={project.defaultBranch} />
+                {completed ? (
+                  <ShareReportControl slug={slug} analysisId={completed.id} />
+                ) : (
+                  <Card className="border-dashed"><CardContent className="flex min-h-40 flex-col items-center justify-center gap-2 px-6 text-center text-xs text-muted-foreground"><Link2 className="h-5 w-5 text-primary/70" /><p className="font-medium text-foreground">Complete a scan to share a report</p><p>Read-only links are pinned to a completed analysis snapshot.</p></CardContent></Card>
+                )}
+              </div>
+            </TabsContent>
+
+            {/* TAB: Dependency inventory and CycloneDX SBOM */}
+            <TabsContent value="dependencies" className="space-y-4">
+              <SupplyChainView slug={slug} />
+            </TabsContent>
+
+            {/* TAB: Versioned policy packs */}
+            <TabsContent value="policies" className="space-y-4">
+              <PolicyControls slug={slug} />
+            </TabsContent>
+
+            {/* TAB: GitHub pull-request health checks */}
+            <TabsContent value="pull-requests" className="space-y-4">
+              <PullRequestChecksView slug={slug} />
             </TabsContent>
 
             {/* TAB: History */}

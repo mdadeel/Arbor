@@ -392,6 +392,11 @@ export function CommandMenu({ open, onOpenChange, projects = [] }: CommandMenuPr
               </div>
             ))
           )}
+          {searchResults?.partialResults && debouncedQuery && (
+            <p role="status" className="rounded-md border border-amber-500/20 bg-amber-500/5 px-3 py-2 text-[11px] leading-relaxed text-muted-foreground">
+              Findings are searched across the 50 most recently updated projects. Open Projects to search beyond this quick-search limit.
+            </p>
+          )}
         </div>
 
         {/* Keyboard Navigation Footer */}

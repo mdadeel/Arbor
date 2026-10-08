@@ -63,7 +63,7 @@ export default async function LoginPage({
 
             <div className="border-t border-border/60 pt-4 text-center">
               <p className="text-[11px] text-muted-foreground/80 leading-relaxed">
-                Single-developer workbench mode · Ephemeral analysis · Zero source code stored
+                Temporary working copy · Removed after analysis · Reports contain findings, not source files
               </p>
             </div>
           </div>

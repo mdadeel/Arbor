@@ -8,7 +8,6 @@ import {
   CheckCircle2,
   FolderGit2,
   History,
-  Play,
   Plus,
   ShieldCheck,
 } from 'lucide-react'
@@ -29,6 +28,7 @@ import { ScoreBadge } from '@/components/dashboard/score-badge'
 import { TechStackGroup } from '@/components/dashboard/tech-stack-badge'
 import { StatusBadge } from '@/components/dashboard/status-badge'
 import { SummaryBar } from '@/components/dashboard/summary-bar'
+import { Button as CreateButton, ButtonLabel } from '@/components/ui/createui/button'
 
 export default async function DashboardPage() {
   const session = await getServerSession(authOptions)
@@ -107,6 +107,22 @@ export default async function DashboardPage() {
     }
   }
 
+  const visibleProjects = projects.slice(0, 6).map((project) => {
+    const health = project.healthData as { score?: number } | null
+    const scores = project.latestScores as { overall?: number } | null
+    const stack = project.detectedStack as {
+      framework?: string
+      languages?: string[]
+      databases?: string[]
+    } | null
+
+    return {
+      project,
+      effectiveScore: health?.score ?? scores?.overall,
+      stackItems: [stack?.framework, ...(stack?.languages ?? []).slice(0, 2), ...(stack?.databases ?? []).slice(0, 1)].filter(Boolean),
+    }
+  })
+
   return (
     <div className="space-y-6">
       {/* Workbench Header */}
@@ -119,12 +135,12 @@ export default async function DashboardPage() {
             Overview of repository audits, architectural health, and pending issues.
           </p>
         </div>
-        <Button asChild size="sm" className="gap-1.5 text-xs">
+        <CreateButton asChild variant="primary" size="sm" shape="pill">
           <Link href="/projects/new">
-            <Plus className="h-3.5 w-3.5" />
-            Add project
+            <Plus aria-hidden="true" />
+            <ButtonLabel>Add project</ButtonLabel>
           </Link>
-        </Button>
+        </CreateButton>
       </div>
 
       {/* 4-Metric Summary Bar */}
@@ -139,15 +155,15 @@ export default async function DashboardPage() {
             </div>
             <CardTitle className="text-base">No projects connected</CardTitle>
             <p className="max-w-sm text-xs text-muted-foreground">
-              Connect a GitHub repository to trigger your first 30-second automated architecture and quality audit.
+              Connect a GitHub repository to trigger your first automated architecture and quality audit.
             </p>
             <div className="pt-4">
-              <Button asChild size="sm">
+              <CreateButton asChild variant="primary" size="sm" shape="pill">
                 <Link href="/projects/new">
-                  <Plus className="mr-1.5 h-4 w-4" />
-                  Connect your first repo
+                  <Plus aria-hidden="true" />
+                  <ButtonLabel>Connect your first repo</ButtonLabel>
                 </Link>
-              </Button>
+              </CreateButton>
             </div>
           </CardHeader>
         </Card>
@@ -166,8 +182,8 @@ export default async function DashboardPage() {
               </Link>
             </CardHeader>
             <CardContent className="p-0">
-              <div className="overflow-x-auto">
-                <Table>
+              <div className="hidden overflow-x-auto lg:block">
+                <Table aria-label="Connected repositories">
                 <TableHeader>
                   <TableRow className="hover:bg-transparent">
                     <TableHead className="w-[300px]">Repository</TableHead>
@@ -178,24 +194,8 @@ export default async function DashboardPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {projects.slice(0, 6).map((project) => {
-                    const health = project.healthData as { score?: number } | null
-                    const scores = project.latestScores as { overall?: number } | null
-                    const effectiveScore = health?.score ?? scores?.overall
-                    const stack = project.detectedStack as {
-                      framework?: string
-                      languages?: string[]
-                      databases?: string[]
-                    } | null
-
-                    const stackItems = [
-                      stack?.framework,
-                      ...(stack?.languages ?? []).slice(0, 2),
-                      ...(stack?.databases ?? []).slice(0, 1),
-                    ].filter(Boolean)
-
-                    return (
-                      <TableRow key={project.id} className="transition-colors hover:bg-muted/50 cursor-pointer">
+                  {visibleProjects.map(({ project, effectiveScore, stackItems }) => (
+                      <TableRow key={project.id} className="transition-colors hover:bg-muted/50">
                         <TableCell className="font-medium">
                           <Link
                             href={`/projects/${project.slug}`}
@@ -240,12 +240,50 @@ export default async function DashboardPage() {
                           </Button>
                         </TableCell>
                       </TableRow>
-                    )
-                  })}
+                  ))}
                 </TableBody>
-              </Table>
-            </div>
-          </CardContent>
+                </Table>
+              </div>
+              <div className="divide-y divide-border lg:hidden">
+                {visibleProjects.map(({ project, effectiveScore, stackItems }) => (
+                  <article key={project.id} className="space-y-4 p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <Link href={`/projects/${project.slug}`} className="truncate text-sm font-semibold text-foreground hover:text-primary">
+                            {project.name}
+                          </Link>
+                          {project.repoPrivate && <ShieldCheck className="size-3.5 shrink-0 text-muted-foreground" aria-label="Private repository" />}
+                        </div>
+                        <p className="mt-0.5 truncate font-mono text-[11px] text-muted-foreground">{project.repoFullName}</p>
+                      </div>
+                      <ScoreBadge score={effectiveScore} showOutOf size="sm" />
+                    </div>
+
+                    <div className="flex min-w-0 flex-wrap items-center gap-2">
+                      <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Stack</span>
+                      {stackItems.length > 0 ? (
+                        <TechStackGroup items={stackItems} />
+                      ) : (
+                        <span className="text-xs text-muted-foreground">Not detected</span>
+                      )}
+                    </div>
+
+                    <div className="flex items-center justify-between gap-3 border-t border-border/70 pt-3 text-xs">
+                      <span className="text-muted-foreground">Default branch</span>
+                      <code className="max-w-[60%] truncate text-right font-mono text-foreground">{project.defaultBranch}</code>
+                    </div>
+
+                    <CreateButton asChild variant="neutral-light" appearance="outline" size="sm" shape="pill" className="w-full">
+                      <Link href={`/projects/${project.slug}`}>
+                        <ButtonLabel>Open report</ButtonLabel>
+                        <ArrowUpRight aria-hidden="true" />
+                      </Link>
+                    </CreateButton>
+                  </article>
+                ))}
+              </div>
+            </CardContent>
           </Card>
 
           {/* Two-Column Bottom Workbench Panels */}

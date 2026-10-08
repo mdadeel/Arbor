@@ -50,7 +50,6 @@ export function computeScores(i: ScoreInput): Scores {
   if (i.clientRatio > 0.85) performance -= 15
   else if (i.clientRatio > 0.6) performance -= 10
   if (i.hasNextImage && i.imgTags > 0) performance -= Math.min(15, i.imgTags * 2)
-  if (i.avgFileLines > 250) performance -= 10
 
   let documentation = 0
   if (i.readme) documentation += 50

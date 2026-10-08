@@ -122,10 +122,6 @@ export async function getWorkspace(userId: string, workspaceIdOrSlug: string) {
         },
         orderBy: { createdAt: 'asc' },
       },
-      invitations: {
-        where: { status: 'pending' },
-        orderBy: { createdAt: 'desc' },
-      },
       projects: {
         select: {
           id: true,
@@ -209,16 +205,27 @@ export async function inviteMember(
     }
   }
 
-  const token = crypto.randomBytes(24).toString('hex')
+  const token = crypto.randomBytes(32).toString('base64url')
+  const tokenHash = crypto.createHash('sha256').update(token).digest('hex')
   const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 days
 
   const invitation = await prisma.workspaceInvitation.create({
     data: {
       workspaceId: input.workspaceId,
-      email: input.email.toLowerCase(),
+      email: input.email.trim().toLowerCase(),
       role: input.role,
-      token,
+      tokenHash,
       expiresAt,
+    },
+    select: {
+      id: true,
+      workspaceId: true,
+      email: true,
+      role: true,
+      status: true,
+      expiresAt: true,
+      createdAt: true,
+      updatedAt: true,
     },
   })
 
@@ -231,19 +238,26 @@ export async function inviteMember(
     metadata: { email: input.email, role: input.role },
   })
 
-  return invitation
+  // The raw token is returned exactly once so the inviter can share it; only its hash is persisted.
+  return { ...invitation, token }
 }
 
 export async function acceptInvitation(userId: string, token: string) {
-  const invitation = await prisma.workspaceInvitation.findUnique({
-    where: { token },
-  })
+  const tokenHash = crypto.createHash('sha256').update(token).digest('hex')
+  const [invitation, user] = await Promise.all([
+    prisma.workspaceInvitation.findUnique({ where: { tokenHash } }),
+    prisma.user.findUnique({ where: { id: userId }, select: { email: true } }),
+  ])
 
   if (!invitation || invitation.status !== 'pending') {
     throw new TRPCError({
       code: 'NOT_FOUND',
       message: 'Invalid or already accepted invitation',
     })
+  }
+
+  if (!user?.email || user.email.trim().toLowerCase() !== invitation.email.trim().toLowerCase()) {
+    throw new TRPCError({ code: 'FORBIDDEN', message: 'This invitation belongs to a different email address.' })
   }
 
   if (new Date() > invitation.expiresAt) {
@@ -254,10 +268,14 @@ export async function acceptInvitation(userId: string, token: string) {
   }
 
   const member = await prisma.$transaction(async (tx) => {
-    await tx.workspaceInvitation.update({
-      where: { id: invitation.id },
+    // The conditional write makes acceptance single-use even if requests race.
+    const consumed = await tx.workspaceInvitation.updateMany({
+      where: { id: invitation.id, status: 'pending', expiresAt: { gt: new Date() } },
       data: { status: 'accepted' },
     })
+    if (consumed.count !== 1) {
+      throw new TRPCError({ code: 'NOT_FOUND', message: 'Invitation is invalid, expired, or already accepted.' })
+    }
 
     return tx.workspaceMember.upsert({
       where: {
@@ -266,9 +284,9 @@ export async function acceptInvitation(userId: string, token: string) {
           userId,
         },
       },
-      update: {
-        role: invitation.role,
-      },
+      // An invitation cannot escalate or overwrite a role if membership was
+      // created after the invitation was issued.
+      update: {},
       create: {
         workspaceId: invitation.workspaceId,
         userId,

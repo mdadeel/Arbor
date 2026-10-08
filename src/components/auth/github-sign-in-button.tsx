@@ -81,7 +81,7 @@ export function GithubSignInButton({ configured }: { configured: boolean }) {
 
           <div className="flex items-center justify-center gap-1.5 text-[11px] text-muted-foreground/70">
             <Lock className="h-3 w-3" />
-            <span>Read-only GitHub access · No code stored</span>
+            <span>Review requested permissions · Temporary clone removed after analysis</span>
           </div>
         </div>
       ) : (

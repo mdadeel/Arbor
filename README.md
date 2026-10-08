@@ -2,7 +2,7 @@
 
 The developer portal that understands your codebase.
 
-Connect a GitHub repo. Get a full architectural audit in ~30 seconds. No YAML. No AI. No configuration.
+Connect a GitHub repository to get an inspectable architecture map and health report. Arbor uses deterministic AST and static checks; processing time varies by repository size. No workflow file or local setup required.
 
 ## Quick Start
 

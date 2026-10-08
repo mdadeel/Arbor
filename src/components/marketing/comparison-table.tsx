@@ -1,5 +1,3 @@
-'use client'
-
 import { ChevronLeft } from 'lucide-react'
 
 interface MatrixRow {
@@ -29,43 +27,43 @@ const MATRIX_DATA: MatrixRow[] = [
     linters: 'Single-file regex / rules',
   },
   {
-    capability: 'Source Code Retention',
-    arbor: '0 bytes (ephemeral clone, purged in ~30s)',
+    capability: 'Source Code Handling',
+    arbor: 'Temporary analysis copy removed after processing',
     arborHighlight: true,
-    manual: 'Copied to external wiki cloud',
-    llm: 'Transmitted to LLM cloud providers',
-    linters: 'Local machine only',
+    manual: 'Depends on the documentation tool',
+    llm: 'Depends on the provider and configuration',
+    linters: 'Depends on local or CI setup',
   },
   {
     capability: 'Analysis Latency',
-    arbor: '< 30s single-pass audit',
+    arbor: 'Typically about 30s; varies by repository',
     arborHighlight: true,
-    manual: 'Hours to weeks of authoring',
-    llm: '2–5 minutes token streaming',
-    linters: 'Instant (surface syntax only)',
+    manual: 'Varies by project and reviewer',
+    llm: 'Varies by model, prompt, and context',
+    linters: 'Local execution; ruleset-dependent',
   },
   {
     capability: 'Interactive Dependency Graph',
-    arbor: 'Full route & service DAG canvas',
+    arbor: 'Interactive dependency graph',
     arborHighlight: true,
     manual: 'Static outdated PNG/SVG exports',
     llm: 'None',
     linters: 'None',
   },
   {
-    capability: 'Hallucination Probability',
-    arbor: '0% (100% reproducible AST)',
+    capability: 'Repeatability',
+    arbor: 'Same source and rules produce the same structural checks',
     arborHighlight: true,
-    manual: 'High (memory drift & stale docs)',
-    llm: 'Significant (fabricates imports)',
-    linters: '0% (rule-based)',
+    manual: 'Depends on reviewer and documentation age',
+    llm: 'Depends on model, prompt, and available context',
+    linters: 'Depends on configured rules',
   },
   {
     capability: 'Setup & Configuration',
-    arbor: 'Zero (1-click read-only GitHub OAuth)',
-    manual: 'Continuous manual maintenance',
-    llm: 'Prompt engineering & API keys',
-    linters: 'Complex config files & rulesets',
+    arbor: 'Connect GitHub and choose a repository',
+    manual: 'Create and maintain a map',
+    llm: 'Configure prompts and provider access',
+    linters: 'Configure a ruleset',
   },
 ]
 
@@ -149,7 +147,7 @@ export function ComparisonTable() {
 
         {/* Footer Note */}
         <div className="p-3.5 border-t border-border dark:border-line text-[11px] text-muted-foreground bg-muted/10 flex flex-wrap items-center justify-between gap-2">
-          <span>Zero third-party code storage · Read-only GitHub OAuth integration</span>
+          <span>Temporary analysis copy removed after processing · Review GitHub permissions first</span>
           <span className="font-semibold text-foreground">Deterministic AST v2.1</span>
         </div>
       </div>

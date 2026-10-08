@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { Logo } from '@/components/ui/logo'
-import { Button } from '@/components/ui/button'
+import { Button, ButtonLabel } from '@/components/ui/createui/button'
 import { ThemeToggle } from '@/components/dashboard/theme-toggle'
 import { ArrowRight, Github, LayoutDashboard, Menu, X } from 'lucide-react'
 
@@ -15,117 +15,108 @@ interface LandingNavbarProps {
   } | null
 }
 
+const navLinks = [
+  { label: 'Product', href: '#features' },
+  { label: 'How it works', href: '#how-it-works' },
+  { label: 'Security', href: '#security' },
+  { label: 'Pricing', href: '#pricing' },
+]
+
 export function LandingNavbar({ user }: LandingNavbarProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const primaryHref = user ? '/dashboard' : '/login'
 
-  const navLinks = [
-    { label: 'Features', href: '#features' },
-    { label: 'AST Engine', href: '#architecture' },
-    { label: 'Health Pulse', href: '#health' },
-    { label: 'Comparison', href: '#comparison' },
-    { label: 'Pricing', href: '#pricing' },
-    { label: 'Admin', href: '/admin' },
-    { label: 'FAQ', href: '#faq' },
-  ]
+  const closeMobileMenu = () => setMobileMenuOpen(false)
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-border bg-background/95 backdrop-blur-md transition-colors shadow-sm">
-      <div className="flex h-16 w-full items-center justify-between px-4 sm:px-6 lg:px-8">
-        {/* Brand Logo */}
-        <Link href="/" className="flex items-center gap-2 transition-opacity hover:opacity-90">
+    <header className="sticky top-0 z-50 w-full border-b border-border/80 bg-background/90 backdrop-blur-md">
+      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
+        <Link href="/" className="flex shrink-0 items-center gap-2 transition-opacity hover:opacity-85" aria-label="Arbor home">
           <Logo size="md" showWordmark />
         </Link>
 
-        {/* Desktop Nav Links */}
-        <nav className="hidden md:flex items-center gap-1.5 text-xs font-mono font-medium text-muted-foreground">
+        <nav aria-label="Primary navigation" className="hidden items-center gap-1 lg:flex">
           {navLinks.map((link) => (
             <a
               key={link.href}
               href={link.href}
-              className="px-2.5 py-1.5 border border-transparent transition-all duration-150 hover:text-foreground hover:border-border dark:hover:border-line-strong hover:bg-card cursor-pointer"
+              className="rounded-md px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted/70 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               {link.label}
             </a>
           ))}
         </nav>
 
-        {/* Right Actions */}
-        <div className="flex items-center gap-2.5 sm:gap-3">
+        <div className="flex shrink-0 items-center gap-2">
           <ThemeToggle />
 
           {user ? (
-            <div className="flex items-center gap-2">
-              <Button asChild variant="outline" size="sm" className="hidden sm:inline-flex gap-1.5">
-                <Link href="/admin">
-                  <span>Admin</span>
-                </Link>
-              </Button>
-              <Button asChild size="sm" className="gap-2 shadow-sm">
-                <Link href="/dashboard">
-                  <LayoutDashboard className="h-4 w-4" />
-                  <span className="hidden sm:inline">Dashboard</span>
-                  <ArrowRight className="h-3.5 w-3.5 opacity-70" />
-                </Link>
-              </Button>
-            </div>
+            <Button asChild variant="neutral-light" appearance="outline" size="sm" shape="pill" className="hidden sm:inline-flex">
+              <Link href="/dashboard">
+                <LayoutDashboard aria-hidden="true" />
+                <ButtonLabel>Dashboard</ButtonLabel>
+              </Link>
+            </Button>
           ) : (
-            <div className="flex items-center gap-2">
-              <Button asChild variant="ghost" size="sm" className="hidden sm:inline-flex text-muted-foreground hover:text-foreground">
-                <Link href="/login">Sign in</Link>
-              </Button>
-              <Button asChild size="sm" className="gap-2 shadow-sm">
-                <Link href="/login">
-                  <Github className="h-4 w-4" />
-                  <span className="hidden sm:inline">Analyze Repo Free</span>
-                  <span className="sm:hidden">Sign in</span>
-                </Link>
-              </Button>
-            </div>
+            <Button asChild variant="neutral-light" appearance="ghost" size="sm" shape="pill" className="hidden sm:inline-flex">
+              <Link href="/login">
+                <ButtonLabel>Sign in</ButtonLabel>
+              </Link>
+            </Button>
           )}
 
-          {/* Mobile Menu Toggle Button */}
+          <Button asChild variant="primary" size="sm" shape="pill" className="gap-1.5">
+            <Link href={primaryHref}>
+              {!user && <Github aria-hidden="true" />}
+              <ButtonLabel>{user ? 'Open workbench' : 'Analyze a repo'}</ButtonLabel>
+              <ArrowRight className="hidden sm:block" aria-hidden="true" />
+            </Link>
+          </Button>
+
           <Button
-            variant="ghost"
-            size="icon"
-            className="md:hidden h-9 w-9 text-muted-foreground hover:text-foreground"
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            aria-label="Toggle navigation menu"
+            variant="neutral-light"
+            appearance="ghost"
+            size="md"
+            shape="rounded"
+            iconOnly
+            className="lg:hidden"
+            aria-label={mobileMenuOpen ? 'Close navigation menu' : 'Open navigation menu'}
+            aria-expanded={mobileMenuOpen}
+            aria-controls="landing-mobile-navigation"
+            onClick={() => setMobileMenuOpen((open) => !open)}
           >
-            {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+            {mobileMenuOpen ? <X aria-hidden="true" /> : <Menu aria-hidden="true" />}
           </Button>
         </div>
       </div>
 
-      {/* Mobile Menu Dropdown Drawer */}
-      {mobileMenuOpen && (
-        <div className="md:hidden border-b border-border bg-background px-4 pt-2 pb-6 space-y-3 animate-in slide-in-from-top-2 duration-200">
-          <nav className="flex flex-col space-y-2">
+      <div
+        id="landing-mobile-navigation"
+        hidden={!mobileMenuOpen}
+        className="border-t border-border bg-background px-4 py-3 lg:hidden"
+      >
+          <nav aria-label="Mobile navigation" className="mx-auto flex max-w-7xl flex-col gap-1">
             {navLinks.map((link) => (
               <a
                 key={link.href}
                 href={link.href}
-                onClick={() => setMobileMenuOpen(false)}
-                className="px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded-lg transition-colors"
+                onClick={closeMobileMenu}
+                className="rounded-md px-3 py-3 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted/70 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 {link.label}
               </a>
             ))}
             {!user && (
-              <Button
-                asChild
-                size="sm"
-                onClick={() => setMobileMenuOpen(false)}
-                className="mt-2 gap-2 shadow-sm"
+              <Link
+                href="/login"
+                onClick={closeMobileMenu}
+                className="rounded-md px-3 py-3 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted/70 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
-                <Link href="/login">
-                  <Github className="h-4 w-4" />
-                  Analyze Repo Free with GitHub
-                </Link>
-              </Button>
+                Sign in
+              </Link>
             )}
           </nav>
-        </div>
-      )}
+      </div>
     </header>
   )
 }
