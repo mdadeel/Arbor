@@ -54,7 +54,8 @@ Thumbs.db
 
 # stitch
 .stitch/designs
-/docs
+/docs/*
+!/docs/backend-review-feature-roadmap.md
 .ai 
 .claude
 .stitch

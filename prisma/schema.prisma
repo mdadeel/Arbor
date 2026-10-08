@@ -99,6 +99,47 @@ enum SystemAnalysisStatus {
   failed
 }
 
+enum PullRequestAnalysisStatus {
+  queued
+  analyzing
+  completed
+  failed
+  closed
+}
+
+enum FindingTriageStatus {
+  open
+  accepted_risk
+  false_positive
+  resolved
+}
+
+enum ScanCadence {
+  daily
+  weekly
+}
+
+enum NotificationKind {
+  critical_finding
+  finding_alert
+  score_regression
+  scan_completed
+}
+
+enum WebhookDeliveryStatus {
+  received
+  processing
+  queued
+  ignored
+  failed
+}
+
+enum PatchSuggestionStatus {
+  proposed
+  accepted
+  dismissed
+}
+
 // ─────────────────────────────────────────────
 // IDENTITY CONTEXT
 // ─────────────────────────────────────────────
@@ -121,6 +162,10 @@ model User {
   auditLogs      AuditLog[]
   githubAccounts GitHubAccount[]
   projectGroups  ProjectGroup[]
+  notifications Notification[]
+  notificationPreference NotificationPreference?
+  findingTriageEvents FindingTriageEvent[]
+  patchSuggestions PatchSuggestion[]
 
   // AI Integration (BYOK)
   openaiApiKey    String?
@@ -177,6 +222,13 @@ model Project {
   documents     Document[]
   auditLogs     AuditLog[]
   groupMembers  ProjectGroupMember[]
+  pullRequestAnalyses PullRequestAnalysis[]
+  policyPackSettings PolicyPackSetting[]
+  findingTriages FindingTriage[]
+  scanSchedule ScanSchedule?
+  notifications Notification[]
+  reportShareLinks ReportShareLink[]
+  patchSuggestions PatchSuggestion[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -222,11 +274,13 @@ model Analysis {
 
   // Status
   status AnalysisStatus @default(queued)
+  analysisVersion Int @default(1) // Bump when score/finding semantics change; trends only compare matching versions.
 
   // Git info (populated after clone)
-  commitSha     String?
-  commitMessage String?
-  branch        String
+  commitSha          String?
+  requestedCommitSha String?
+  commitMessage      String?
+  branch             String
 
   // Scores (0-100, null until completed)
   overallScore       Int?
@@ -244,6 +298,10 @@ model Analysis {
   dependencyGraph Json? // { nodes: [], edges: [] }
   metrics         Json? // { files, loc, components, hooks, routes, ... }
   designSystem    Json? // DesignSystemAudit
+  dependencyInventory Json? // Normalized direct/transitive package inventory
+  dependencyAdvisories Json? // Bounded advisory lookup with source/freshness metadata
+  sbom Json? // CycloneDX 1.5 JSON export
+  policySnapshot Json? // Versioned effective policies applied to this immutable run
 
   // Timing
   durationMs   Int?
@@ -251,6 +309,10 @@ model Analysis {
 
   // Relations
   project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  pullRequestAnalysis PullRequestAnalysis? @relation("PullRequestAnalysisToAnalysis")
+  reportShareLinks ReportShareLink[]
+  notifications Notification[]
+  patchSuggestions PatchSuggestion[]
 
   startedAt   DateTime?
   completedAt DateTime?
@@ -394,6 +456,7 @@ model Workspace {
   projects      Project[]
   projectGroups ProjectGroup[]
   auditLogs     AuditLog[]
+  policyPackSettings PolicyPackSetting[]
 
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -423,7 +486,7 @@ model WorkspaceInvitation {
   workspaceId String
   email       String
   role        WorkspaceRole    @default(member)
-  token       String           @unique
+  tokenHash   String           @unique @map("token") // SHA-256 of the one-time invite token
   status      InvitationStatus @default(pending)
   expiresAt   DateTime
 
@@ -567,3 +630,196 @@ model AdminEmail {
   @@index([createdAt(sort: Desc)])
 }
 
+
+
+// ─────────────────────────────────────────────
+// ROADMAP: PR CHECKS, POLICY, NOTIFICATIONS, SHARING & PATCH REVIEW
+// ─────────────────────────────────────────────
+
+model GitHubWebhookDelivery {
+  id             String                 @id // GitHub X-GitHub-Delivery idempotency key
+  event          String
+  action         String?
+  repository     String?
+  status         WebhookDeliveryStatus  @default(received)
+  errorMessage   String?
+  createdAt      DateTime               @default(now())
+  updatedAt      DateTime               @updatedAt
+
+  @@index([status, createdAt])
+}
+
+model PullRequestAnalysis {
+  id           String                    @id @default(cuid())
+  projectId    String
+  number       Int
+  title        String
+  baseBranch   String
+  headBranch   String
+  baseSha      String
+  headSha      String
+  status       PullRequestAnalysisStatus @default(queued)
+  analysisId   String?                   @unique
+  checkRunId   String?
+  checkUrl     String?
+  checkError   String?
+  errorMessage String?
+  startedAt    DateTime?
+  completedAt  DateTime?
+  createdAt    DateTime                  @default(now())
+  updatedAt    DateTime                  @updatedAt
+
+  project  Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  analysis Analysis? @relation("PullRequestAnalysisToAnalysis", fields: [analysisId], references: [id], onDelete: SetNull)
+
+  @@unique([projectId, number, headSha])
+  @@index([projectId, number, createdAt(sort: Desc)])
+  @@index([status, createdAt])
+}
+
+model PolicyPackSetting {
+  id          String   @id @default(cuid())
+  workspaceId String?
+  projectId   String?
+  packKey     String
+  version     String   @default("1.0.0")
+  enabled     Boolean  @default(true)
+  overrides   Json     @default("{}")
+  updatedById String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  workspace Workspace? @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  project   Project?   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, packKey])
+  @@unique([projectId, packKey])
+  @@index([workspaceId])
+  @@index([projectId])
+}
+
+model FindingTriage {
+  id           String             @id @default(cuid())
+  projectId    String
+  fingerprint  String
+  ruleId       String
+  title        String
+  status       FindingTriageStatus @default(open)
+  assigneeId   String?
+  note         String?            @db.Text
+  updatedById  String
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+
+  project Project              @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  events  FindingTriageEvent[]
+
+  @@unique([projectId, fingerprint])
+  @@index([projectId, status, updatedAt(sort: Desc)])
+}
+
+model FindingTriageEvent {
+  id        String             @id @default(cuid())
+  triageId  String
+  actorId   String
+  fromStatus FindingTriageStatus?
+  toStatus   FindingTriageStatus
+  note       String?            @db.Text
+  createdAt  DateTime           @default(now())
+
+  triage FindingTriage @relation(fields: [triageId], references: [id], onDelete: Cascade)
+  actor  User          @relation(fields: [actorId], references: [id], onDelete: Cascade)
+
+  @@index([triageId, createdAt])
+  @@index([actorId, createdAt])
+}
+
+model ScanSchedule {
+  id          String      @id @default(cuid())
+  projectId   String      @unique
+  cadence     ScanCadence @default(weekly)
+  enabled     Boolean     @default(true)
+  branch      String
+  nextRunAt   DateTime
+  lastRunAt   DateTime?
+  lastError   String?
+  createdById String
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([enabled, nextRunAt])
+}
+
+model NotificationPreference {
+  userId                    String   @id
+  enabled                   Boolean  @default(true)
+  minimumSeverity           String   @default("critical")
+  scoreRegressionThreshold  Int      @default(10)
+  createdAt                 DateTime @default(now())
+  updatedAt                 DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Notification {
+  id         String           @id @default(cuid())
+  userId     String
+  projectId  String?
+  analysisId String?
+  kind       NotificationKind
+  dedupeKey  String           @unique
+  title      String
+  body       String           @db.Text
+  data       Json?
+  readAt     DateTime?
+  createdAt  DateTime         @default(now())
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project  Project?  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  analysis Analysis? @relation(fields: [analysisId], references: [id], onDelete: Cascade)
+
+  @@index([userId, readAt, createdAt(sort: Desc)])
+  @@index([projectId, createdAt(sort: Desc)])
+}
+
+model ReportShareLink {
+  id          String    @id @default(cuid())
+  tokenHash   String    @unique
+  analysisId  String
+  projectId   String
+  createdById String
+  expiresAt   DateTime
+  revokedAt   DateTime?
+  createdAt   DateTime  @default(now())
+
+  analysis Analysis @relation(fields: [analysisId], references: [id], onDelete: Cascade)
+  project  Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId, createdAt(sort: Desc)])
+  @@index([expiresAt, revokedAt])
+}
+
+model PatchSuggestion {
+  id                 String               @id @default(cuid())
+  projectId          String
+  analysisId         String
+  userId             String
+  findingFingerprint String
+  provider           String
+  model              String
+  summary             String              @db.Text
+  diff                String              @db.Text
+  validation          Json?
+  status              PatchSuggestionStatus @default(proposed)
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+
+  project  Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  analysis Analysis @relation(fields: [analysisId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([projectId, createdAt(sort: Desc)])
+  @@index([analysisId, findingFingerprint])
+}

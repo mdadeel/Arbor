@@ -5,6 +5,7 @@ import { ScoreBadge, getScoreColor } from './score-badge'
 import { SummaryBar } from './summary-bar'
 import { TechStackBadge, TechStackGroup } from './tech-stack-badge'
 import { StatusBadge } from './status-badge'
+import { AnalysisProgress } from './analysis-progress'
 import { FindingItem } from './finding-item'
 import { MethodBadge } from './method-badge'
 import { MarkdownViewer, extractToc } from './docs/markdown-viewer'
@@ -59,7 +60,33 @@ describe('TechStackBadge', () => {
 describe('StatusBadge', () => {
   it('renders status labels accurately', () => {
     render(<StatusBadge status="completed" />)
-    expect(screen.getByText('completed')).toBeDefined()
+    expect(screen.getByText('Completed')).toBeDefined()
+  })
+
+  it('uses a friendly label and spinner for running analyses', () => {
+    const view = render(<StatusBadge status="cloning" />)
+    expect(view.container.textContent).toContain('Preparing repository')
+    expect(view.container.querySelector('svg.animate-spin')).not.toBeNull()
+  })
+})
+
+describe('AnalysisProgress', () => {
+  it.each([
+    ['queued', 'Queued'],
+    ['cloning', 'Preparing repository'],
+    ['analyzing', 'Inspecting codebase'],
+  ])('shows a live progress state for %s analyses', (status, stage) => {
+    const view = render(<AnalysisProgress status={status} />)
+    const content = view.container.textContent ?? ''
+    expect(view.container.querySelector('[role="status"]')).not.toBeNull()
+    expect(content).toContain('Analysis in progress')
+    expect(content).toContain(stage)
+    expect(content).toContain('No percentage or completion time is estimated')
+  })
+
+  it('does not show a running indicator for completed analyses', () => {
+    const { container } = render(<AnalysisProgress status="completed" />)
+    expect(container.firstChild).toBeNull()
   })
 })
 

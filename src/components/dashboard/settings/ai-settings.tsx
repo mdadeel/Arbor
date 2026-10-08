@@ -22,10 +22,19 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 
+const AI_MODELS = [
+  'gpt-4o',
+  'gpt-4o-mini',
+  'claude-3-5-sonnet-20240620',
+  'claude-3-haiku-20240307',
+] as const
+
+type AiModel = (typeof AI_MODELS)[number]
+
 export function AiSettings() {
   const [openaiKey, setOpenaiKey] = useState('')
   const [anthropicKey, setAnthropicKey] = useState('')
-  const [model, setModel] = useState('gpt-4o')
+  const [model, setModel] = useState<AiModel>('gpt-4o')
   const [saved, setSaved] = useState(false)
 
   const updateSettings = trpc.ai.updateSettings.useMutation({
@@ -62,7 +71,12 @@ export function AiSettings() {
               <Bot className="h-3.5 w-3.5 text-primary" />
               Default Model Preference
             </label>
-            <Select value={model} onValueChange={setModel}>
+            <Select
+              value={model}
+              onValueChange={(value) => {
+                if (AI_MODELS.includes(value as AiModel)) setModel(value as AiModel)
+              }}
+            >
               <SelectTrigger className="text-xs h-9">
                 <SelectValue placeholder="Select model" />
               </SelectTrigger>

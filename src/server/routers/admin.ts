@@ -24,8 +24,6 @@ import {
   updateUserBenefitsForAdmin,
 } from '@/server/services/admin'
 
-import { adminCache, TTL_ADMIN_USER_VERIFY } from '@/server/services/admin-cache'
-
 async function ensureAdmin(
   ctx: { prisma: any; session: { user: { id: string }; isImpersonating?: boolean } },
   requiredPermission?: PlatformPermission
@@ -37,20 +35,13 @@ async function ensureAdmin(
     })
   }
 
-  const cacheKey = `admin:user-full:${ctx.session.user.id}`
-  let user = adminCache.get<{ email: string | null; githubUsername: string | null; role: string; permissions: any }>(cacheKey)
+  // Permission changes must take effect immediately; do not cache this security decision.
+  const user = await ctx.prisma.user.findUnique({
+    where: { id: ctx.session.user.id },
+    select: { email: true, githubUsername: true, role: true, status: true, permissions: true },
+  })
 
-  if (!user) {
-    user = await ctx.prisma.user.findUnique({
-      where: { id: ctx.session.user.id },
-      select: { email: true, githubUsername: true, role: true, permissions: true },
-    })
-    if (user) {
-      adminCache.set(cacheKey, user, TTL_ADMIN_USER_VERIFY)
-    }
-  }
-
-  if (!checkIsAdmin(user ?? undefined)) {
+  if (!user || user.status !== 'active' || !checkIsAdmin(user)) {
     throw new TRPCError({
       code: 'FORBIDDEN',
       message: 'Administrative privileges required',
@@ -79,7 +70,7 @@ export const adminRouter = router({
   }),
 
   getMetrics: protectedProcedure.query(async ({ ctx }) => {
-    await ensureAdmin(ctx)
+    await ensureAdmin(ctx, PLATFORM_PERMISSIONS.METRICS_READ)
     return getAdminMetrics()
   }),
 
@@ -153,12 +144,12 @@ export const adminRouter = router({
     }),
 
   listEmails: protectedProcedure.query(async ({ ctx }) => {
-    await ensureAdmin(ctx)
+    await ensureAdmin(ctx, PLATFORM_PERMISSIONS.EMAILS_READ)
     return listAdminEmailsForAdmin()
   }),
 
   listWaitlistLeads: protectedProcedure.query(async ({ ctx }) => {
-    await ensureAdmin(ctx)
+    await ensureAdmin(ctx, PLATFORM_PERMISSIONS.WAITLIST_READ)
     return listWaitlistLeadsForAdmin()
   }),
 
@@ -184,7 +175,7 @@ export const adminRouter = router({
   }),
 
   getSystemHealth: protectedProcedure.query(async ({ ctx }) => {
-    await ensureAdmin(ctx)
+    await ensureAdmin(ctx, PLATFORM_PERMISSIONS.SYSTEM_READ)
     return getSystemHealthForAdmin()
   }),
 

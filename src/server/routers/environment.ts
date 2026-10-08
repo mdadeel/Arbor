@@ -1,9 +1,7 @@
 import { z } from 'zod'
-import { TRPCError } from '@trpc/server'
 import { router, protectedProcedure } from '@/server/trpc'
-import { prisma } from '@/lib/prisma'
-import { slugify } from '@/server/services/project'
 import { logAuditEvent } from '@/server/services/audit'
+import { requireAccessibleProject, requireProjectEditor } from '@/server/services/project-access'
 import {
   createVariable,
   deleteVariable,
@@ -14,12 +12,9 @@ import {
   updateVariableStatus,
 } from '@/server/services/environment'
 
-async function requireProject(userId: string, slug: string) {
-  const project = await prisma.project.findUnique({
-    where: { userId_slug: { userId, slug: slugify(slug) } },
-    select: { id: true },
-  })
-  if (!project) throw new TRPCError({ code: 'NOT_FOUND' })
+async function requireProjectId(userId: string, slug: string, write = false) {
+  const project = await requireAccessibleProject(userId, slug)
+  if (write) await requireProjectEditor(userId, project)
   return project.id
 }
 
@@ -27,14 +22,14 @@ export const environmentRouter = router({
   matrix: protectedProcedure
     .input(z.object({ slug: z.string() }))
     .query(async ({ ctx, input }) => {
-      const projectId = await requireProject(ctx.session.user.id, input.slug)
+      const projectId = await requireProjectId(ctx.session.user.id, input.slug)
       return getMatrix(projectId)
     }),
 
   setup: protectedProcedure
     .input(z.object({ slug: z.string() }))
     .mutation(async ({ ctx, input }) => {
-      const projectId = await requireProject(ctx.session.user.id, input.slug)
+      const projectId = await requireProjectId(ctx.session.user.id, input.slug, true)
       const res = await setupEnvironments(projectId)
       logAuditEvent({
         userId: ctx.session.user.id,
@@ -55,7 +50,7 @@ export const environmentRouter = router({
       })
     )
     .mutation(async ({ ctx, input }) => {
-      const projectId = await requireProject(ctx.session.user.id, input.slug)
+      const projectId = await requireProjectId(ctx.session.user.id, input.slug, true)
       const res = await updateVariableStatus(projectId, input.variableId, input.status)
       logAuditEvent({
         userId: ctx.session.user.id,
@@ -80,7 +75,7 @@ export const environmentRouter = router({
       })
     )
     .mutation(async ({ ctx, input }) => {
-      const projectId = await requireProject(ctx.session.user.id, input.slug)
+      const projectId = await requireProjectId(ctx.session.user.id, input.slug, true)
       const res = await createVariable(projectId, input.environmentId, input.key, {
         required: input.required,
         category: input.category,
@@ -100,7 +95,7 @@ export const environmentRouter = router({
   deleteVariable: protectedProcedure
     .input(z.object({ slug: z.string(), variableId: z.string() }))
     .mutation(async ({ ctx, input }) => {
-      const projectId = await requireProject(ctx.session.user.id, input.slug)
+      const projectId = await requireProjectId(ctx.session.user.id, input.slug, true)
       const res = await deleteVariable(projectId, input.variableId)
       logAuditEvent({
         userId: ctx.session.user.id,
@@ -115,7 +110,7 @@ export const environmentRouter = router({
   generateTemplate: protectedProcedure
     .input(z.object({ slug: z.string() }))
     .mutation(async ({ ctx, input }) => {
-      const projectId = await requireProject(ctx.session.user.id, input.slug)
+      const projectId = await requireProjectId(ctx.session.user.id, input.slug)
       return generateEnvTemplate(projectId)
     }),
 
@@ -126,7 +121,7 @@ export const environmentRouter = router({
       status: z.enum(['set', 'missing', 'different', 'unknown']),
     }))
     .mutation(async ({ ctx, input }) => {
-      const projectId = await requireProject(ctx.session.user.id, input.slug)
+      const projectId = await requireProjectId(ctx.session.user.id, input.slug, true)
       const res = await bulkUpdateStatus(projectId, input.variableIds, input.status)
       logAuditEvent({
         userId: ctx.session.user.id,

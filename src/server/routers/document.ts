@@ -1,9 +1,7 @@
 import { z } from 'zod'
-import { TRPCError } from '@trpc/server'
 import { router, protectedProcedure } from '@/server/trpc'
-import { prisma } from '@/lib/prisma'
-import { slugify } from '@/server/services/project'
 import { logAuditEvent } from '@/server/services/audit'
+import { requireAccessibleProject, requireProjectEditor } from '@/server/services/project-access'
 import {
   createDocument,
   updateDocument,
@@ -24,12 +22,9 @@ const docCategoryEnum = z.enum([
   'general',
 ])
 
-async function requireProject(userId: string, slug: string) {
-  const project = await prisma.project.findUnique({
-    where: { userId_slug: { userId, slug: slugify(slug) } },
-    select: { id: true },
-  })
-  if (!project) throw new TRPCError({ code: 'NOT_FOUND' })
+async function requireProjectId(userId: string, slug: string, write = false) {
+  const project = await requireAccessibleProject(userId, slug)
+  if (write) await requireProjectEditor(userId, project)
   return project.id
 }
 
@@ -37,14 +32,14 @@ export const documentRouter = router({
   tree: protectedProcedure
     .input(z.object({ slug: z.string() }))
     .query(async ({ ctx, input }) => {
-      const projectId = await requireProject(ctx.session.user.id, input.slug)
+      const projectId = await requireProjectId(ctx.session.user.id, input.slug)
       return getDocTree(projectId)
     }),
 
   get: protectedProcedure
     .input(z.object({ slug: z.string(), docId: z.string() }))
     .query(async ({ ctx, input }) => {
-      const projectId = await requireProject(ctx.session.user.id, input.slug)
+      const projectId = await requireProjectId(ctx.session.user.id, input.slug)
       return getDocument(projectId, input.docId)
     }),
 
@@ -61,7 +56,7 @@ export const documentRouter = router({
       })
     )
     .mutation(async ({ ctx, input }) => {
-      const projectId = await requireProject(ctx.session.user.id, input.slug)
+      const projectId = await requireProjectId(ctx.session.user.id, input.slug, true)
       const doc = await createDocument(projectId, {
         title: input.title,
         content: input.content,
@@ -96,7 +91,7 @@ export const documentRouter = router({
       })
     )
     .mutation(async ({ ctx, input }) => {
-      const projectId = await requireProject(ctx.session.user.id, input.slug)
+      const projectId = await requireProjectId(ctx.session.user.id, input.slug, true)
       const doc = await updateDocument(projectId, input.docId, {
         title: input.title,
         content: input.content,
@@ -120,7 +115,7 @@ export const documentRouter = router({
   delete: protectedProcedure
     .input(z.object({ slug: z.string(), docId: z.string() }))
     .mutation(async ({ ctx, input }) => {
-      const projectId = await requireProject(ctx.session.user.id, input.slug)
+      const projectId = await requireProjectId(ctx.session.user.id, input.slug, true)
       const res = await deleteDocument(projectId, input.docId)
       logAuditEvent({
         userId: ctx.session.user.id,
@@ -141,7 +136,7 @@ export const documentRouter = router({
       })
     )
     .mutation(async ({ ctx, input }) => {
-      const projectId = await requireProject(ctx.session.user.id, input.slug)
+      const projectId = await requireProjectId(ctx.session.user.id, input.slug, true)
       const doc = await restoreDocVersion(projectId, input.docId, input.version)
       logAuditEvent({
         userId: ctx.session.user.id,
@@ -157,7 +152,7 @@ export const documentRouter = router({
   checkStaleness: protectedProcedure
     .input(z.object({ slug: z.string() }))
     .mutation(async ({ ctx, input }) => {
-      const projectId = await requireProject(ctx.session.user.id, input.slug)
+      const projectId = await requireProjectId(ctx.session.user.id, input.slug, true)
       return checkStaleness(projectId)
     }),
 })

@@ -21,7 +21,7 @@ describe('Badge API Route', () => {
     vi.mocked(prisma.project.findFirst).mockResolvedValueOnce(null)
 
     const req = new NextRequest('http://localhost:3000/api/badge/nonexistent')
-    const res = await GET(req, { params: { slug: 'nonexistent' } })
+    const res = await GET(req, { params: Promise.resolve({ slug: 'nonexistent' }) })
 
     expect(res.status).toBe(200)
     expect(res.headers.get('content-type')).toBe('image/svg+xml')
@@ -37,7 +37,7 @@ describe('Badge API Route', () => {
     } as any)
 
     const req = new NextRequest('http://localhost:3000/api/badge/unscored')
-    const res = await GET(req, { params: { slug: 'unscored' } })
+    const res = await GET(req, { params: Promise.resolve({ slug: 'unscored' }) })
 
     expect(res.status).toBe(200)
     const svg = await res.text()
@@ -52,7 +52,7 @@ describe('Badge API Route', () => {
     } as any)
 
     const req = new NextRequest('http://localhost:3000/api/badge/health-only')
-    const res = await GET(req, { params: { slug: 'health-only' } })
+    const res = await GET(req, { params: Promise.resolve({ slug: 'health-only' }) })
 
     expect(res.status).toBe(200)
     const svg = await res.text()
@@ -67,7 +67,7 @@ describe('Badge API Route', () => {
     } as any)
 
     const req = new NextRequest('http://localhost:3000/api/badge/healthy')
-    const res = await GET(req, { params: { slug: 'healthy' } })
+    const res = await GET(req, { params: Promise.resolve({ slug: 'healthy' }) })
 
     expect(res.status).toBe(200)
     const svg = await res.text()
@@ -82,7 +82,7 @@ describe('Badge API Route', () => {
     } as any)
 
     const req = new NextRequest('http://localhost:3000/api/badge/warning')
-    const res = await GET(req, { params: { slug: 'warning' } })
+    const res = await GET(req, { params: Promise.resolve({ slug: 'warning' }) })
 
     expect(res.status).toBe(200)
     const svg = await res.text()
@@ -97,7 +97,7 @@ describe('Badge API Route', () => {
     } as any)
 
     const req = new NextRequest('http://localhost:3000/api/badge/critical')
-    const res = await GET(req, { params: { slug: 'critical' } })
+    const res = await GET(req, { params: Promise.resolve({ slug: 'critical' }) })
 
     expect(res.status).toBe(200)
     const svg = await res.text()

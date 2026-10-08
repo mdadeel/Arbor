@@ -86,8 +86,8 @@ function isComponentDefinition(p: NodePath): boolean {
   return hasJsx
 }
 
-export function parseFile(file: string): FileAnalysis {
-  const text = readText(file)
+export function parseFile(file: string, suppliedText?: string | null, repoRoot?: string): FileAnalysis {
+  const text = suppliedText === undefined ? readText(file) : suppliedText
   const result: FileAnalysis = {
     imports: [],
     exportedNames: [],
@@ -139,7 +139,7 @@ export function parseFile(file: string): FileAnalysis {
     return result
   }
 
-  const repoDir = guessRepoDir(file)
+  const repoDir = repoRoot ?? guessRepoDir(file)
   let reactImport = false
   let jsxElements = 0
 
@@ -201,6 +201,9 @@ export function parseFile(file: string): FileAnalysis {
         callee.name === 'require' &&
         p.node.arguments[0]?.type === 'StringLiteral'
       ) {
+        result.imports.push(p.node.arguments[0].value)
+      }
+      if (callee.type === 'Import' && p.node.arguments[0]?.type === 'StringLiteral') {
         result.imports.push(p.node.arguments[0].value)
       }
       if (

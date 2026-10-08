@@ -10,7 +10,7 @@ export const dynamic = 'force-dynamic'
 
 export async function GET(req: Request) {
   try {
-    const cookieStore = cookies()
+    const cookieStore = await cookies()
     const token = cookieStore.get(IMPERSONATION_COOKIE_NAME)?.value
 
     if (token) {
@@ -31,7 +31,9 @@ export async function GET(req: Request) {
 
     const url = new URL(req.url)
     const destination = url.searchParams.get('redirect') || '/admin/users'
-    const response = NextResponse.redirect(new URL(destination, req.url))
+    const candidate = new URL(destination, url)
+    const safeDestination = candidate.origin === url.origin ? candidate : new URL('/admin/users', url)
+    const response = NextResponse.redirect(safeDestination)
 
     response.cookies.set({
       name: IMPERSONATION_COOKIE_NAME,

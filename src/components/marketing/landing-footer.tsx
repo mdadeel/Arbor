@@ -1,197 +1,65 @@
-'use client'
-
 import Link from 'next/link'
 import { Logo } from '@/components/ui/logo'
-import { ExternalLink, Github, ShieldCheck } from 'lucide-react'
+import { ArrowUpRight, ShieldCheck } from 'lucide-react'
+
+const productLinks = [
+  { label: 'How it works', href: '#how-it-works' },
+  { label: 'Architecture map', href: '#architecture' },
+  { label: 'Repository health', href: '#health' },
+  { label: 'Example findings', href: '#security' },
+  { label: 'Pricing', href: '#pricing' },
+]
 
 export function LandingFooter() {
   const currentYear = new Date().getFullYear()
 
   return (
-    <footer className="border-t border-border bg-card text-muted-foreground text-xs" aria-labelledby="footer-heading">
-      <h2 id="footer-heading" className="sr-only">Footer Navigation</h2>
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-16 sm:py-20">
-        {/* 4-Column SEO Footer Matrix */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8 lg:gap-10 pb-16 border-b border-border">
-          {/* Column 1: Product */}
+    <footer className="border-t border-border bg-card text-sm text-muted-foreground" aria-labelledby="footer-heading">
+      <h2 id="footer-heading" className="sr-only">Arbor footer</h2>
+      <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 sm:py-12 lg:px-8">
+        <div className="grid gap-10 border-b border-border pb-9 sm:grid-cols-[1.5fr_1fr_1fr]">
           <div className="space-y-4">
-            <h3 className="font-mono text-[11px] font-semibold tracking-wider text-foreground uppercase">
-              Product
-            </h3>
-            <ul className="space-y-2.5">
-              <li>
-                <a href="#architecture" className="hover:text-foreground transition-colors">
-                  Visual Architecture Graph
-                </a>
-              </li>
-              <li>
-                <a href="#architecture" className="hover:text-foreground transition-colors">
-                  Deterministic AST Engine
-                </a>
-              </li>
-              <li>
-                <a href="#health" className="hover:text-foreground transition-colors">
-                  Health Pulse &amp; Velocity
-                </a>
-              </li>
-              <li>
-                <a href="#features" className="hover:text-foreground transition-colors">
-                  Tech Debt &amp; Secret Shield
-                </a>
-              </li>
-              <li>
-                <a href="#comparison" className="hover:text-foreground transition-colors">
-                  Arbor vs Traditional Tools
-                </a>
-              </li>
-              <li>
-                <Link href="/login" className="hover:text-foreground transition-colors">
-                  Dynamic SVG README Badges
-                </Link>
-              </li>
-            </ul>
+            <Link href="/" className="inline-flex transition-opacity hover:opacity-85" aria-label="Arbor home">
+              <Logo size="sm" showWordmark />
+            </Link>
+            <p className="max-w-sm text-sm leading-relaxed">
+              A clearer map of your codebase, grounded in the structure of the code you ship.
+            </p>
           </div>
 
-          {/* Column 2: Resources */}
-          <div className="space-y-4">
-            <h3 className="font-mono text-[11px] font-semibold tracking-wider text-foreground uppercase">
-              Resources
-            </h3>
-            <ul className="space-y-2.5">
-              <li>
-                <Link href="/admin" className="hover:text-[#65DCD5] transition-colors font-medium text-foreground/90">
-                  Admin &amp; Metrics Panel
-                </Link>
-              </li>
-              <li>
-                <Link href="/login" className="hover:text-foreground transition-colors">
-                  Documentation Hub
-                </Link>
-              </li>
-              <li>
-                <a href="/llms.txt" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 hover:text-foreground transition-colors">
-                  <span>llms.txt (AI Search Manifest)</span>
-                  <ExternalLink className="h-3 w-3 opacity-60" />
-                </a>
-              </li>
-              <li>
-                <a href="#architecture" className="hover:text-foreground transition-colors">
-                  Babel AST Parsing Spec
-                </a>
-              </li>
-              <li>
-                <a href="#health" className="hover:text-foreground transition-colors">
-                  Conventional Commits Grammar
-                </a>
-              </li>
-              <li>
-                <Link href="/login" className="hover:text-foreground transition-colors">
-                  OpenAPI 3.0 Runner Proxy
-                </Link>
-              </li>
-              <li>
-                <Link href="/login" className="hover:text-foreground transition-colors">
-                  Personal Access Tokens (PAT)
-                </Link>
-              </li>
+          <nav aria-label="Footer product navigation" className="space-y-3">
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-foreground">Product</h3>
+            <ul className="space-y-2.5 text-sm">
+              {productLinks.map((link) => (
+                <li key={link.href}>
+                  <a href={link.href} className="transition-colors hover:text-foreground">{link.label}</a>
+                </li>
+              ))}
             </ul>
-          </div>
+          </nav>
 
-          {/* Column 3: Solutions */}
-          <div className="space-y-4">
-            <h3 className="font-mono text-[11px] font-semibold tracking-wider text-foreground uppercase">
-              Solutions
-            </h3>
-            <ul className="space-y-2.5">
+          <div className="space-y-3">
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-foreground">Account &amp; trust</h3>
+            <ul className="space-y-2.5 text-sm">
               <li>
-                <Link href="/login" className="hover:text-foreground transition-colors">
-                  Solo Developers &amp; Builders
-                </Link>
+                <Link href="/login" className="transition-colors hover:text-foreground">Sign in with GitHub</Link>
               </li>
               <li>
-                <Link href="/login" className="hover:text-foreground transition-colors">
-                  Engineering Leads &amp; Architects
-                </Link>
-              </li>
-              <li>
-                <a href="#comparison" className="hover:text-foreground transition-colors">
-                  Monorepo Dependency Triage
+                <a href="/llms.txt" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 transition-colors hover:text-foreground">
+                  Product overview <ArrowUpRight className="size-3.5" aria-hidden="true" />
                 </a>
               </li>
-              <li>
-                <a href="#features" className="hover:text-foreground transition-colors">
-                  Rapid Codebase Onboarding
-                </a>
-              </li>
-              <li>
-                <a href="#comparison" className="hover:text-foreground transition-colors">
-                  Pre-Merge Architecture Checks
-                </a>
-              </li>
-            </ul>
-          </div>
-
-          {/* Column 4: Company, Security & Legal */}
-          <div className="space-y-4 col-span-2 sm:col-span-1">
-            <h3 className="font-mono text-[11px] font-semibold tracking-wider text-foreground uppercase">
-              Company &amp; Trust
-            </h3>
-            <ul className="space-y-2.5">
-              <li className="flex items-center gap-1.5 text-emerald-400 font-medium">
-                <ShieldCheck className="h-3.5 w-3.5 shrink-0" />
-                <span>Zero source code stored</span>
-              </li>
-              <li>
-                <a href="#faq" className="hover:text-foreground transition-colors">
-                  Ephemeral in-memory sandbox
-                </a>
-              </li>
-              <li>
-                <a href="#faq" className="hover:text-foreground transition-colors">
-                  Read-only OAuth scope requested
-                </a>
-              </li>
-              <li>
-                <Link href="/login" className="hover:text-foreground transition-colors">
-                  Privacy Policy
-                </Link>
-              </li>
-              <li>
-                <Link href="/login" className="hover:text-foreground transition-colors">
-                  Terms of Service
-                </Link>
+              <li className="flex items-center gap-2 pt-1 text-emerald-700 dark:text-emerald-300">
+                <ShieldCheck className="size-4 shrink-0" aria-hidden="true" />
+                <span>Choose repositories · source removed after analysis</span>
               </li>
             </ul>
           </div>
         </div>
 
-        {/* Bottom Bar: Brand, Status, Copyright */}
-        <div className="pt-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-muted-foreground">
-          <div className="flex flex-wrap items-center justify-center sm:justify-start gap-4">
-            <Link href="/" className="transition-opacity hover:opacity-90">
-              <Logo size="sm" showWordmark />
-            </Link>
-            <span className="hidden sm:inline text-border">|</span>
-            <span className="text-[11px]">
-              &copy; {currentYear} Arbor. Built for software engineers who demand deterministic clarity.
-            </span>
-          </div>
-
-          <div className="flex items-center gap-5 text-[11px]">
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-0.5 font-mono text-[10px] font-medium text-emerald-400 border border-emerald-500/20">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
-              All Systems Operational
-            </span>
-            <a
-              href="https://github.com"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 hover:text-foreground transition-colors"
-            >
-              <Github className="h-3.5 w-3.5" />
-              <span>GitHub</span>
-            </a>
-          </div>
+        <div className="flex flex-col gap-3 pt-6 text-xs sm:flex-row sm:items-center sm:justify-between">
+          <p>© {currentYear} Arbor. Built for developers who want to understand the system they are changing.</p>
+          <Link href="/" className="w-fit transition-colors hover:text-foreground">Back to top ↑</Link>
         </div>
       </div>
     </footer>

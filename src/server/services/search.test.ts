@@ -13,12 +13,16 @@ vi.mock('@/lib/prisma', () => ({
     document: {
       findMany: vi.fn(),
     },
+    workspaceMember: {
+      findMany: vi.fn(),
+    },
   },
 }))
 
 describe('globalSearch service', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.mocked(prisma.workspaceMember.findMany).mockResolvedValue([] as any)
   })
 
   it('returns static actions when query is empty', async () => {
@@ -44,9 +48,9 @@ describe('globalSearch service', () => {
     ]
 
     ;(prisma.project.findMany as any).mockImplementation((args: any) => {
-      // First call for matching projects
-      if (args.where?.OR) return Promise.resolve(mockProjects)
-      // Second call for active projects findings
+      // Matching-project query uses an AND of access and text filters.
+      if (args.where?.AND) return Promise.resolve(mockProjects)
+      // Second call for active projects findings.
       return Promise.resolve([])
     })
     ;(prisma.apiSpec.findMany as any).mockResolvedValue([])
@@ -90,7 +94,7 @@ describe('globalSearch service', () => {
     ]
 
     ;(prisma.project.findMany as any).mockImplementation((args: any) => {
-      if (args.where?.OR) return Promise.resolve([])
+      if (args.where?.AND) return Promise.resolve([])
       return Promise.resolve(mockActiveProjects)
     })
     ;(prisma.apiSpec.findMany as any).mockResolvedValue([])
@@ -109,7 +113,8 @@ describe('globalSearch service', () => {
     })
   })
 
-  it('searches OpenAPI endpoints and documents', async () => {
+  it('searches OpenAPI endpoints and documents within current workspace access', async () => {
+    vi.mocked(prisma.workspaceMember.findMany).mockResolvedValue([{ workspaceId: 'workspace-1' }] as any)
     ;(prisma.project.findMany as any).mockResolvedValue([])
     ;(prisma.apiSpec.findMany as any).mockResolvedValue([
       {
@@ -143,5 +148,16 @@ describe('globalSearch service', () => {
     expect(results.documents.length).toBe(1)
     expect(results.documents[0].title).toBe('Checkout Flow Guide')
     expect(results.documents[0].badge).toBe('guide')
+    expect(prisma.document.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({
+        project: {
+          status: 'active',
+          OR: [
+            { userId: 'user-1', workspaceId: null },
+            { workspaceId: { in: ['workspace-1'] } },
+          ],
+        },
+      }),
+    }))
   })
 })

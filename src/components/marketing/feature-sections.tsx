@@ -1,5 +1,3 @@
-'use client'
-
 import {
   Activity,
   CheckCircle2,
@@ -12,16 +10,16 @@ import {
   Zap,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/createui/badge'
 import Link from 'next/link'
 
 const healthDimensions = [
-  { name: 'Architecture & Layer Isolation', score: 91 },
-  { name: 'Tech Debt & Large Files', score: 78 },
-  { name: 'Maintainability', score: 84 },
-  { name: 'Dependency Health', score: 72 },
-  { name: 'Runtime / Bundle Performance', score: 88 },
-  { name: 'Security & Secret Audits', score: 96 },
-  { name: 'Documentation Coverage', score: 63 },
+  { name: 'Architecture', score: 91 },
+  { name: 'Tech Debt', score: 78 },
+  { name: 'Performance', score: 88 },
+  { name: 'Documentation', score: 63 },
+  { name: 'Security', score: 96 },
+  { name: 'Design System', score: 84 },
 ]
 
 const commits = [
@@ -45,15 +43,15 @@ export function FeatureSections() {
               Architecture &amp; Import Graph
             </h2>
             <p className="text-base text-muted-foreground leading-relaxed text-balance">
-              Arbor walks every source file with a Babel AST parser and constructs an interactive
-              Directed Acyclic Graph of your entire codebase. Forbidden cross-layer imports and cyclic
-              dependencies are flagged before code is merged.
+              Arbor parses supported JavaScript and TypeScript files to map local imports. Explore
+              module relationships in a graph, then inspect detected cycles and other structural
+              findings in the report.
             </p>
             <ul className="space-y-3 text-sm text-muted-foreground">
               {[
-                'Live dependency DAG with module boundary isolation',
-                'Unidirectional layer enforcement: Routes → Services → Database',
-                'Automated architectural health checks in <30 seconds',
+                'Dependency graph of analyzed module imports',
+                'Detected cycles and oversized files surfaced for review',
+                'A first-pass architectural audit in about 30 seconds',
               ].map((item) => (
                 <li key={item} className="flex items-start gap-2.5">
                   <CheckCircle2 className="h-4 w-4 mt-0.5 text-emerald-500 shrink-0" />
@@ -68,9 +66,10 @@ export function FeatureSections() {
             <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border pb-3 mb-4">
               <div className="flex items-center gap-2 text-foreground font-semibold">
                 <Layers className="h-4 w-4 text-foreground" />
-                <span>DAG Import Hierarchy</span>
+                <span>Import Graph Preview</span>
               </div>
-              <div className="flex items-center gap-2 text-[11px]">
+              <div className="flex flex-wrap items-center justify-end gap-2 text-[11px]">
+                <Badge variant="neutral" appearance="outline" size="xs">Sample graph</Badge>
                 <span className="rounded-full bg-muted text-foreground px-2 py-0.5 border border-border">
                   0 Cycles
                 </span>
@@ -101,9 +100,9 @@ export function FeatureSections() {
             <div className="rounded-xl border border-border bg-muted/40 px-3.5 py-2.5 flex items-center justify-between text-[11px] text-muted-foreground font-sans">
               <span className="flex items-center gap-1.5 text-foreground font-medium">
                 <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
-                Strict unidirectional boundary enforced
+                Example import relationships
               </span>
-              <span className="text-foreground font-bold font-mono">PASS 100%</span>
+              <span className="text-muted-foreground font-semibold font-mono">ILLUSTRATIVE</span>
             </div>
           </div>
         </div>
@@ -119,9 +118,7 @@ export function FeatureSections() {
                 <Activity className="h-4 w-4 text-foreground" />
                 <span>Repository Health Report</span>
               </div>
-              <span className="rounded-full bg-muted text-foreground px-2.5 py-0.5 border border-border font-bold text-[11px] tabular-nums">
-                OVERALL 82 / 100
-              </span>
+              <Badge variant="neutral" appearance="soft" size="xs">Example · 82 / 100</Badge>
             </div>
 
             <div className="space-y-2.5 mb-5 font-sans">
@@ -145,21 +142,21 @@ export function FeatureSections() {
           <div className="space-y-6 order-1 lg:order-2">
             <div className="inline-flex items-center gap-2 rounded-full border border-border bg-muted/40 px-3 py-1 text-xs font-semibold text-foreground">
               <Activity className="h-3.5 w-3.5" />
-              <span>Production Health</span>
+              <span>Health Signals</span>
             </div>
             <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight text-balance text-foreground font-display">
               Repository Health &amp; Metrics
             </h2>
             <p className="text-base text-muted-foreground leading-relaxed text-balance">
-              Every repository receives a 0–100 audit score across 7 dimensions — architecture,
-              technical debt, security, documentation, and maintainability. The score updates on every run,
-              and a shields badge in your README always reflects the latest audit.
+              Each report includes an overall score and six dimension scores: architecture, tech debt,
+              performance, documentation, security, and design system. The scores update when an
+              analysis completes, and the README badge reflects the latest completed audit.
             </p>
             <ul className="space-y-3 text-sm text-muted-foreground">
               {[
-                'Dynamic README badge that updates on every push',
-                'Commit Pulse with Conventional Commits semantics',
-                'Security & secret audits in seconds, not sprints',
+                'Dynamic README badge for the latest completed audit',
+                'Commit Pulse summarizes Conventional Commit activity',
+                'Static checks for common secret patterns and environment docs',
               ].map((item) => (
                 <li key={item} className="flex items-start gap-2.5">
                   <CheckCircle2 className="h-4 w-4 mt-0.5 text-emerald-500 shrink-0" />
@@ -199,24 +196,28 @@ export function FeatureSections() {
                 Secret &amp; Env Shield
               </h3>
               <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
-                Deterministic regex scanners audit your codebase for accidental private keys,
-                database credentials, and unvalidated environment variables — comparing staging
-                vs production definitions without ever storing secret values.
+                Static pattern checks flag common committed-secret formats, while environment
+                checks compare referenced variable names with your `.env.example`. Findings store
+                file locations, not the matched secret value.
               </p>
             </div>
 
             <div className="mt-6 rounded-xl border border-border bg-muted/30 p-4 space-y-2 font-mono text-xs">
-              <div className="flex items-center justify-between text-[11px]">
-                <span className="text-foreground">JWT Secret Key Scanning</span>
-                <span className="text-foreground font-bold">0 Leaks</span>
+              <div className="flex items-center justify-between gap-2 border-b border-border pb-2 text-[11px]">
+                <span className="text-foreground">Example static-check output</span>
+                <Badge variant="neutral" appearance="outline" size="xs">Illustrative</Badge>
               </div>
-              <div className="flex items-center justify-between text-[11px]">
-                <span className="text-foreground">Staging / Prod Env Parity</span>
-                <span className="text-foreground font-bold">100%</span>
+              <div className="flex items-center justify-between gap-3 text-[11px]">
+                <span className="text-foreground">Common secret patterns</span>
+                <span className="text-muted-foreground font-bold">Rule-based</span>
               </div>
-              <div className="flex items-center justify-between text-[11px]">
-                <span className="text-foreground">Files Over 350 LOC Warning</span>
-                <span className="text-muted-foreground font-bold">1 Flagged</span>
+              <div className="flex items-center justify-between gap-3 text-[11px]">
+                <span className="text-foreground">Environment documentation</span>
+                <span className="text-muted-foreground font-bold">.env.example</span>
+              </div>
+              <div className="flex items-center justify-between gap-3 text-[11px]">
+                <span className="text-foreground">Large source files</span>
+                <span className="text-muted-foreground font-bold">Review flag</span>
               </div>
             </div>
           </article>
@@ -232,23 +233,27 @@ export function FeatureSections() {
                 Interactive API Explorer
               </h3>
               <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
-                Import Swagger or OpenAPI schemas and execute test HTTP requests through a secure
-                Node.js CORS bypass proxy — no external tools, no context switching.
+                Import an OpenAPI schema, inspect endpoints, and try HTTP requests through a
+                server-side proxy without leaving the workbench.
               </p>
             </div>
 
             <div className="mt-6 rounded-xl border border-border bg-muted/30 p-4 space-y-2 font-mono text-xs">
-              <div className="flex items-center justify-between text-[11px]">
-                <span className="text-foreground font-semibold">GET /api/badge/[slug]</span>
-                <span className="text-muted-foreground font-mono text-[10px]">200 OK · 14ms</span>
+              <div className="flex items-center justify-between gap-2 border-b border-border pb-2 text-[11px]">
+                <span className="text-foreground">Example request log</span>
+                <Badge variant="neutral" appearance="outline" size="xs">Illustrative</Badge>
               </div>
-              <div className="flex items-center justify-between text-[11px]">
-                <span className="text-foreground font-semibold">POST /api/trpc/project.analyze</span>
-                <span className="text-muted-foreground font-mono text-[10px]">200 OK · 42ms</span>
+              <div className="flex items-center justify-between gap-3 text-[11px]">
+                <span className="min-w-0 truncate text-foreground font-semibold">GET /api/badge/[slug]</span>
+                <span className="shrink-0 text-muted-foreground font-mono text-[10px]">Response preview</span>
+              </div>
+              <div className="flex items-center justify-between gap-3 text-[11px]">
+                <span className="min-w-0 truncate text-foreground font-semibold">POST /api/trpc/project.analyze</span>
+                <span className="shrink-0 text-muted-foreground font-mono text-[10px]">Response preview</span>
               </div>
               <div className="flex items-center justify-between text-[11px] text-muted-foreground pt-1 border-t border-border">
-                <span>Immutable snapshot</span>
-                <span className="text-foreground font-semibold">v1.2</span>
+                <span>Schema import</span>
+                <span className="text-foreground font-semibold">OpenAPI</span>
               </div>
             </div>
           </article>
@@ -264,13 +269,17 @@ export function FeatureSections() {
                 Living Docs
               </h3>
               <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
-                Documentation derived directly from the AST itself. Versioned
-                snapshots stay immutable while automatic 90-day staleness alerts keep documentation
-                synchronized with shipping code.
+                Create project-specific Markdown for architecture notes, APIs, runbooks, guides, and
+                decisions. Version history preserves prior edits, while review dates and staleness
+                checks help teams keep documentation current.
               </p>
             </div>
 
             <div className="mt-6 rounded-xl border border-border bg-muted/30 p-4 space-y-2 font-mono text-xs">
+              <div className="flex items-center justify-between gap-2 border-b border-border pb-2 text-[11px]">
+                <span className="text-foreground">Example project activity</span>
+                <Badge variant="neutral" appearance="outline" size="xs">Illustrative</Badge>
+              </div>
               {commits.map(({ hash, message }) => (
                 <div key={hash} className="flex items-center gap-2 text-foreground text-[11px]">
                   <GitCommit className="h-3.5 w-3.5 text-foreground shrink-0" />

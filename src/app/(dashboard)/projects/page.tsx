@@ -4,7 +4,7 @@ import { ArrowUpRight, FolderGit2, Plus, ShieldCheck } from 'lucide-react'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { getServerCaller } from '@/server/caller'
-import { Button } from '@/components/ui/button'
+import { Button as CreateButton, ButtonLabel } from '@/components/ui/createui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   Table,
@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/table'
 import { ScoreBadge } from '@/components/dashboard/score-badge'
 import { TechStackGroup } from '@/components/dashboard/tech-stack-badge'
+import { StatusBadge } from '@/components/dashboard/status-badge'
 import { SummaryBar } from '@/components/dashboard/summary-bar'
 
 export default async function ProjectsPage() {
@@ -49,6 +50,22 @@ export default async function ProjectsPage() {
     }
   }
 
+  const projectRows = projects.map((project) => {
+    const scores = project.latestScores as { overall?: number } | null
+    const health = project.healthData as { score?: number } | null
+    const stack = project.detectedStack as {
+      framework?: string
+      languages?: string[]
+      databases?: string[]
+    } | null
+
+    return {
+      project,
+      effectiveScore: scores?.overall ?? health?.score,
+      stackItems: [stack?.framework, ...(stack?.languages ?? []).slice(0, 2), ...(stack?.databases ?? []).slice(0, 1)].filter(Boolean),
+    }
+  })
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
@@ -58,12 +75,12 @@ export default async function ProjectsPage() {
             Manage and audit your connected repositories.
           </p>
         </div>
-        <Button asChild size="sm" className="gap-1.5">
+        <CreateButton asChild variant="primary" size="sm" shape="pill">
           <Link href="/projects/new">
-            <Plus className="h-4 w-4" />
-            Add project
+            <Plus aria-hidden="true" />
+            <ButtonLabel>Add project</ButtonLabel>
           </Link>
-        </Button>
+        </CreateButton>
       </div>
 
       {projects.length > 0 && <SummaryBar counts={counts} />}
@@ -80,48 +97,33 @@ export default async function ProjectsPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="flex justify-center pb-8">
-            <Button asChild size="sm">
+            <CreateButton asChild variant="primary" size="sm" shape="pill">
               <Link href="/projects/new">
-                <Plus className="mr-1.5 h-4 w-4" />
-                Add your first project
+                <Plus aria-hidden="true" />
+                <ButtonLabel>Add your first project</ButtonLabel>
               </Link>
-            </Button>
+            </CreateButton>
           </CardContent>
         </Card>
       ) : (
         <Card className="border-border">
           <CardContent className="p-0">
-            <div className="overflow-x-auto">
-              <Table>
+            <div className="hidden overflow-x-auto lg:block">
+              <Table aria-label="Connected projects">
               <TableHeader>
                 <TableRow className="hover:bg-transparent">
                   <TableHead className="w-[280px]">Project</TableHead>
                   <TableHead>Score</TableHead>
                   <TableHead>Detected Stack</TableHead>
+                  <TableHead>Latest scan</TableHead>
                   <TableHead>Branch</TableHead>
                   <TableHead>Analyses</TableHead>
                   <TableHead className="text-right">Action</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {projects.map((project) => {
-                  const scores = project.latestScores as { overall?: number } | null
-                  const health = project.healthData as { score?: number } | null
-                  const effectiveScore = scores?.overall ?? health?.score
-                  const stack = project.detectedStack as {
-                    framework?: string
-                    languages?: string[]
-                    databases?: string[]
-                  } | null
-
-                  const stackItems = [
-                    stack?.framework,
-                    ...(stack?.languages ?? []).slice(0, 2),
-                    ...(stack?.databases ?? []).slice(0, 1),
-                  ].filter(Boolean)
-
-                  return (
-                    <TableRow key={project.id} className="transition-colors hover:bg-muted/50 cursor-pointer">
+                {projectRows.map(({ project, effectiveScore, stackItems }) => (
+                    <TableRow key={project.id} className="transition-colors hover:bg-muted/50">
                       <TableCell className="font-medium">
                         <Link
                           href={`/projects/${project.slug}`}
@@ -153,6 +155,10 @@ export default async function ProjectsPage() {
                         )}
                       </TableCell>
 
+                      <TableCell>
+                        <StatusBadge status={project.analyses?.[0]?.status ?? 'no-analysis'} />
+                      </TableCell>
+
                       <TableCell className="font-mono text-xs text-muted-foreground">
                         {project.defaultBranch}
                       </TableCell>
@@ -162,20 +168,68 @@ export default async function ProjectsPage() {
                       </TableCell>
 
                       <TableCell className="text-right">
-                        <Button asChild variant="ghost" size="sm" className="h-8 gap-1 text-xs hover:bg-muted hover:border-border border border-transparent cursor-pointer">
+                        <CreateButton asChild variant="neutral-light" appearance="ghost" size="sm" shape="pill">
                           <Link href={`/projects/${project.slug}`}>
-                            View
-                            <ArrowUpRight className="h-3.5 w-3.5" />
+                            <ButtonLabel>View</ButtonLabel>
+                            <ArrowUpRight aria-hidden="true" />
                           </Link>
-                        </Button>
+                        </CreateButton>
                       </TableCell>
                     </TableRow>
-                  )
-                })}
+                ))}
               </TableBody>
-            </Table>
-          </div>
-        </CardContent>
+              </Table>
+            </div>
+            <div className="divide-y divide-border lg:hidden">
+              {projectRows.map(({ project, effectiveScore, stackItems }) => (
+                <article key={project.id} className="space-y-4 p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-1.5">
+                        <Link href={`/projects/${project.slug}`} className="truncate text-sm font-semibold text-foreground hover:text-primary">
+                          {project.name}
+                        </Link>
+                        {project.repoPrivate && <ShieldCheck className="size-3.5 shrink-0 text-muted-foreground" aria-label="Private repository" />}
+                      </div>
+                      <p className="mt-0.5 truncate font-mono text-[11px] text-muted-foreground">{project.repoFullName}</p>
+                    </div>
+                    <ScoreBadge score={effectiveScore} showOutOf size="sm" />
+                  </div>
+
+                  <div className="flex min-w-0 flex-wrap items-center gap-2">
+                    <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Stack</span>
+                    {stackItems.length > 0 ? (
+                      <TechStackGroup items={stackItems} />
+                    ) : (
+                      <span className="text-xs text-muted-foreground">Not detected</span>
+                    )}
+                  </div>
+
+                  <dl className="grid grid-cols-2 gap-3 border-t border-border/70 pt-3 text-xs">
+                    <div className="min-w-0">
+                      <dt className="mb-1 text-muted-foreground">Latest scan</dt>
+                      <dd><StatusBadge status={project.analyses?.[0]?.status ?? 'no-analysis'} /></dd>
+                    </div>
+                    <div className="min-w-0">
+                      <dt className="text-muted-foreground">Default branch</dt>
+                      <dd className="mt-1 truncate font-mono text-foreground">{project.defaultBranch}</dd>
+                    </div>
+                    <div className="text-right">
+                      <dt className="text-muted-foreground">Analyses</dt>
+                      <dd className="mt-1 font-mono text-foreground">{project._count.analyses}</dd>
+                    </div>
+                  </dl>
+
+                  <CreateButton asChild variant="neutral-light" appearance="outline" size="sm" shape="pill" className="w-full">
+                    <Link href={`/projects/${project.slug}`}>
+                      <ButtonLabel>Open project</ButtonLabel>
+                      <ArrowUpRight aria-hidden="true" />
+                    </Link>
+                  </CreateButton>
+                </article>
+              ))}
+            </div>
+          </CardContent>
         </Card>
       )}
     </div>

@@ -38,58 +38,63 @@ export const authOptions: NextAuthOptions = {
       },
       async authorize(credentials) {
         const username = credentials?.username?.trim() ?? ''
-        const password = credentials?.password?.trim() ?? ''
+        const password = credentials?.password ?? ''
 
-        if (!username || !password) {
+        if (!username || !password || username.length > 128 || password.length > 256) {
           return null
         }
 
-        // Protect against brute-force attacks via sliding window rate limiting (5 attempts / 5 mins)
-        const rateLimitKey = `auth:admin:login:${username.toLowerCase()}`
+        const validUsername = env.ADMIN_USERNAME.trim()
+        const validPassword = env.ADMIN_PASSWORD
+
+        // Credential sign-in is deliberately unavailable until both secrets and an
+        // explicit admin identity are configured. Never fall back to a known account.
+        if (!validUsername || !validPassword) return null
+
+        // Protect against brute-force attacks via sliding-window rate limiting.
+        const loginFingerprint = createHash('sha256').update(username.toLowerCase()).digest('hex')
+        const rateLimitKey = `auth:admin:login:${loginFingerprint}`
         const { allowed } = await checkRateLimit(rateLimitKey, 5, 300)
         if (!allowed) {
-          console.warn(`[Auth:Admin] Rate limit exceeded for login attempts on user: ${username}`)
+          console.warn('[Auth:Admin] Rate limit exceeded for an admin credential login')
           throw new Error('Too many login attempts. Please try again in a few minutes.')
         }
 
-        const validUsername = env.ADMIN_USERNAME || 'adeel'
-        const validPassword = env.ADMIN_PASSWORD || 'adeel1212'
-
-        const isUserMatch = timingSafeCompare(username, validUsername)
-        const isPassMatch = timingSafeCompare(password, validPassword)
-
-        if (isUserMatch && isPassMatch) {
-          let user = await prisma.user.findFirst({
-            where: {
-              OR: [
-                { githubUsername: 'mdadeel' },
-                { githubUsername: 'adeel' },
-                { email: 'mdadeel125@gmail.com' },
-                { email: 'adeel@admin.local' },
-              ],
-            },
-          })
-
-          if (!user) {
-            user = await prisma.user.create({
-              data: {
-                email: 'adeel@admin.local',
-                name: 'Adeel (Admin)',
-                githubUsername: 'adeel',
-                githubId: 99999999,
-              },
-            })
-          }
-
-          return {
-            id: user.id,
-            name: user.name ?? 'Adeel (Admin)',
-            email: user.email,
-            image: user.avatarUrl,
-          }
+        if (!timingSafeCompare(username, validUsername) || !timingSafeCompare(password, validPassword)) {
+          return null
         }
 
-        return null
+        const adminEmails = env.ADMIN_EMAILS
+          .split(/[,;\s]+/)
+          .map((value) => value.trim())
+          .filter(Boolean)
+        const adminUsernames = env.ADMIN_GITHUB_USERNAMES
+          .split(/[,;\s]+/)
+          .map((value) => value.trim())
+          .filter(Boolean)
+        const allowlistedIdentity: Record<string, unknown>[] = []
+        if (adminEmails.length) {
+          allowlistedIdentity.push({ email: { in: adminEmails, mode: 'insensitive' } })
+        }
+        if (adminUsernames.length) {
+          allowlistedIdentity.push({ githubUsername: { in: adminUsernames, mode: 'insensitive' } })
+        }
+        if (!allowlistedIdentity.length) return null
+
+        // A credential login may only unlock a real, active user explicitly listed
+        // in the admin allowlist. It never creates a synthetic superadmin account.
+        const user = await prisma.user.findFirst({
+          where: { status: 'active', OR: allowlistedIdentity as any },
+          select: { id: true, name: true, email: true, avatarUrl: true },
+        })
+        if (!user) return null
+
+        return {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          image: user.avatarUrl,
+        }
       },
     }),
   ],
@@ -136,6 +141,10 @@ export const authOptions: NextAuthOptions = {
             OR: [{ githubId }, { email }],
           },
         })
+
+        if (dbUser && dbUser.status !== 'active') {
+          return false
+        }
 
         if (dbUser) {
           dbUser = await prisma.user.update({

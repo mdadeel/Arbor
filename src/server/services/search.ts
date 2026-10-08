@@ -22,6 +22,7 @@ export interface SearchResults {
   documents: SearchResultItem[]
   actions: SearchResultItem[]
   totalMatches: number
+  partialResults: boolean
 }
 
 export const STATIC_ACTIONS: SearchResultItem[] = [
@@ -74,18 +75,33 @@ export async function globalSearch(userId: string, rawQuery: string): Promise<Se
       documents: [],
       actions: STATIC_ACTIONS,
       totalMatches: STATIC_ACTIONS.length,
+      partialResults: false,
     }
   }
 
-  // 1. Search Projects
+  const memberships = await prisma.workspaceMember.findMany({
+    where: { userId },
+    select: { workspaceId: true },
+  })
+  const workspaceIds = memberships.map((membership) => membership.workspaceId)
+  const accessibleProjects = [
+    { userId, workspaceId: null },
+    ...(workspaceIds.length ? [{ workspaceId: { in: workspaceIds } }] : []),
+  ]
+
+  // 1. Search projects the user owns or can currently access through a workspace.
   const matchingProjects = await prisma.project.findMany({
     where: {
-      userId,
       status: 'active',
-      OR: [
-        { name: { contains: query, mode: 'insensitive' } },
-        { repoFullName: { contains: query, mode: 'insensitive' } },
-        { description: { contains: query, mode: 'insensitive' } },
+      AND: [
+        { OR: accessibleProjects },
+        {
+          OR: [
+            { name: { contains: query, mode: 'insensitive' } },
+            { repoFullName: { contains: query, mode: 'insensitive' } },
+            { description: { contains: query, mode: 'insensitive' } },
+          ],
+        },
       ],
     },
     take: 6,
@@ -122,9 +138,11 @@ export async function globalSearch(userId: string, rawQuery: string): Promise<Se
     }
   })
 
-  // 2. Search Findings from Latest Analysis of user's projects
+  // 2. Search Findings from the latest analysis of accessible projects.
   const activeProjects = await prisma.project.findMany({
-    where: { userId, status: 'active' },
+    where: { status: 'active', OR: accessibleProjects },
+    orderBy: { updatedAt: 'desc' },
+    take: 51,
     select: {
       id: true,
       name: true,
@@ -138,8 +156,10 @@ export async function globalSearch(userId: string, rawQuery: string): Promise<Se
     },
   })
 
+  const partialResults = activeProjects.length > 50
+  const projectsForFindings = activeProjects.slice(0, 50)
   const findingResults: SearchResultItem[] = []
-  for (const proj of activeProjects) {
+  for (const proj of projectsForFindings) {
     const latestAnalysis = proj.analyses[0]
     if (!latestAnalysis?.findings || !Array.isArray(latestAnalysis.findings)) continue
 
@@ -173,7 +193,7 @@ export async function globalSearch(userId: string, rawQuery: string): Promise<Se
 
   // 3. Search API Endpoints
   const apiSpecs = await prisma.apiSpec.findMany({
-    where: { project: { userId, status: 'active' } },
+    where: { project: { status: 'active', OR: accessibleProjects } },
     select: {
       id: true,
       parsedEndpoints: true,
@@ -218,7 +238,7 @@ export async function globalSearch(userId: string, rawQuery: string): Promise<Se
   // 4. Search Documentation
   const documents = await prisma.document.findMany({
     where: {
-      project: { userId, status: 'active' },
+      project: { status: 'active', OR: accessibleProjects },
       OR: [
         { title: { contains: query, mode: 'insensitive' } },
         { content: { contains: query, mode: 'insensitive' } },
@@ -265,5 +285,6 @@ export async function globalSearch(userId: string, rawQuery: string): Promise<Se
     documents: documentResults,
     actions: actionResults,
     totalMatches,
+    partialResults,
   }
 }

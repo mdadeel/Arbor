@@ -23,7 +23,7 @@ export default async function DashboardLayout({
   let effectiveUser = session.user
 
   try {
-    const cookieStore = cookies()
+    const cookieStore = await cookies()
     const token = cookieStore.get(IMPERSONATION_COOKIE_NAME)?.value
     if (token) {
       const payload = verifyImpersonationToken(token)

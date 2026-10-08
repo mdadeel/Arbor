@@ -45,7 +45,7 @@ export const workspaceRouter = router({
     }),
 
   accept: protectedProcedure
-    .input(z.object({ token: z.string() }))
+    .input(z.object({ token: z.string().min(32).max(128) }))
     .mutation(async ({ ctx, input }) => {
       return acceptInvitation(ctx.session.user.id, input.token)
     }),

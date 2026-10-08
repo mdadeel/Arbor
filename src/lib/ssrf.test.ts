@@ -36,6 +36,8 @@ describe('SSRF Protection Utility', () => {
       expect(isPrivateOrRestrictedIp('fe80::1')).toBe(true)
       expect(isPrivateOrRestrictedIp('::ffff:127.0.0.1')).toBe(true)
       expect(isPrivateOrRestrictedIp('::ffff:169.254.169.254')).toBe(true)
+      expect(isPrivateOrRestrictedIp('::ffff:7f00:1')).toBe(true)
+      expect(isPrivateOrRestrictedIp('64:ff9b::a9fe:a9fe')).toBe(true)
     })
   })
 
@@ -48,6 +50,8 @@ describe('SSRF Protection Utility', () => {
 
     it('rejects localhost and cloud metadata domains', async () => {
       await expect(validateSafeUrl('http://localhost:3000/api')).rejects.toThrow('SSRF protection')
+      await expect(validateSafeUrl('http://localhost.:3000/api')).rejects.toThrow('SSRF protection')
+      await expect(validateSafeUrl('http://[::ffff:7f00:1]/')).rejects.toThrow('private or restricted')
       await expect(validateSafeUrl('http://169.254.169.254/latest/meta-data')).rejects.toThrow('SSRF protection')
       await expect(validateSafeUrl('http://metadata.google.internal')).rejects.toThrow('SSRF protection')
       await expect(validateSafeUrl('http://127.0.0.1:6379')).rejects.toThrow('SSRF protection')

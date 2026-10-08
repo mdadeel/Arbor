@@ -43,8 +43,11 @@ function buildTree(
   return children.get('')!
 }
 
-export function analyzeStructure(dir: string): ProjectStructure {
-  const files = listFiles(dir)
+export function analyzeStructure(
+  dir: string,
+  files: string[] = listFiles(dir),
+  precomputedLines?: Map<string, number>
+): ProjectStructure {
   const sourceFiles = files.filter(isSourceFile)
   const configFiles = files.filter(isConfigFile)
 
@@ -55,15 +58,22 @@ export function analyzeStructure(dir: string): ProjectStructure {
   const linesByFile = new Map<string, number>()
 
   for (const f of sourceFiles) {
-    const text = readText(f)
-    if (text == null) continue
-    let lines = 0
-    for (const line of text.split('\n')) {
-      if (line.trim().length > 0) lines++
+    const rel = path.relative(dir, f)
+    let lines = precomputedLines?.get(rel)
+    if (lines == null) {
+      // If a precomputed map was supplied, missing entries were deliberately
+      // skipped (oversized, binary, or outside scan limits); do not read twice.
+      if (precomputedLines) continue
+      const text = readText(f)
+      if (text == null) continue
+      lines = 0
+      for (const line of text.split('\n')) {
+        if (line.trim().length > 0) lines++
+      }
     }
+
     loc += lines
     lineCounts.push(lines)
-    const rel = path.relative(dir, f)
     linesByFile.set(rel, lines)
     const d = path.dirname(rel)
     if (d !== '.') dirCounts.set(d, (dirCounts.get(d) ?? 0) + 1)
@@ -100,7 +110,7 @@ export function analyzeStructure(dir: string): ProjectStructure {
   ].filter((p) => fs.existsSync(path.join(dir, p)))
 
   const avgFileLines =
-    sourceFiles.length === 0 ? 0 : Math.round(loc / sourceFiles.length)
+    lineCounts.length === 0 ? 0 : Math.round(loc / lineCounts.length)
 
   return {
     fileCount: files.length,

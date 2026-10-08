@@ -1,82 +1,97 @@
 import dns from 'node:dns/promises'
 import net from 'node:net'
 
-/**
- * Checks whether an IPv4 address falls into a private, loopback, link-local, or reserved range.
- */
+export interface SafeAddress {
+  address: string
+  family: 4 | 6
+}
+
+export interface ResolvedSafeUrl {
+  url: URL
+  hostname: string
+  addresses: SafeAddress[]
+}
+
 function isPrivateIPv4(ip: string): boolean {
-  const parts = ip.split('.').map((p) => parseInt(p, 10))
-  if (parts.length !== 4 || parts.some((p) => isNaN(p) || p < 0 || p > 255)) {
-    return true // Invalid IPv4 treated as restricted
-  }
+  if (!net.isIPv4(ip)) return true
+  const [b0, b1, b2] = ip.split('.').map(Number)
 
-  const [b0, b1, b2, b3] = parts
-
-  // 0.0.0.0/8 (Broadcast/Current network)
-  if (b0 === 0) return true
-  // 10.0.0.0/8 (Private network)
-  if (b0 === 10) return true
-  // 127.0.0.0/8 (Loopback)
-  if (b0 === 127) return true
-  // 169.254.0.0/16 (Link-local / Cloud Metadata)
+  // Non-routable, private, loopback, link-local, documentation, benchmark,
+  // multicast, and reserved blocks.
+  if (b0 === 0 || b0 === 10 || b0 === 127 || b0 >= 224) return true
+  if (b0 === 100 && b1 >= 64 && b1 <= 127) return true // CGNAT 100.64/10
   if (b0 === 169 && b1 === 254) return true
-  // 172.16.0.0/12 (Private network: 172.16.0.0 - 172.31.255.255)
   if (b0 === 172 && b1 >= 16 && b1 <= 31) return true
-  // 192.168.0.0/16 (Private network)
   if (b0 === 192 && b1 === 168) return true
-  // 100.64.0.0/10 (Carrier-grade NAT)
-  if (b0 === 100 && b1 >= 64 && b1 <= 127) return true
-  // 192.0.0.0/24, 192.0.2.0/24 (TEST-NET-1)
   if (b0 === 192 && b1 === 0 && (b2 === 0 || b2 === 2)) return true
-  // 198.51.100.0/24 (TEST-NET-2)
+  if (b0 === 192 && b1 === 88 && b2 === 99) return true
+  if (b0 === 198 && (b1 === 18 || b1 === 19)) return true
   if (b0 === 198 && b1 === 51 && b2 === 100) return true
-  // 203.0.113.0/24 (TEST-NET-3)
   if (b0 === 203 && b1 === 0 && b2 === 113) return true
-  // 224.0.0.0/4 (Multicast) & 240.0.0.0/4 (Reserved)
-  if (b0 >= 224) return true
-
   return false
 }
 
-/**
- * Checks whether an IPv6 address falls into a loopback, unique local, link-local, or IPv4-mapped private range.
- */
+function ipv6Words(address: string): number[] | null {
+  let value = address.toLowerCase().split('%')[0]
+  const embeddedIpv4 = value.match(/(?:^|:)(\d{1,3}(?:\.\d{1,3}){3})$/)
+  if (embeddedIpv4) {
+    if (!net.isIPv4(embeddedIpv4[1])) return null
+    const octets = embeddedIpv4[1].split('.').map(Number)
+    const wordA = ((octets[0] << 8) | octets[1]).toString(16)
+    const wordB = ((octets[2] << 8) | octets[3]).toString(16)
+    value = value.slice(0, value.length - embeddedIpv4[1].length) + `${wordA}:${wordB}`
+  }
+
+  const halves = value.split('::')
+  if (halves.length > 2) return null
+  const parseHalf = (half: string) => half ? half.split(':').map((word) => {
+    if (!/^[\da-f]{1,4}$/i.test(word)) return Number.NaN
+    return parseInt(word, 16)
+  }) : []
+  const left = parseHalf(halves[0])
+  const right = parseHalf(halves[1] ?? '')
+  if ([...left, ...right].some((word) => !Number.isInteger(word))) return null
+
+  const missing = 8 - left.length - right.length
+  if ((halves.length === 1 && missing !== 0) || (halves.length === 2 && missing < 1)) return null
+  return [...left, ...Array(missing).fill(0), ...right]
+}
+
 function isPrivateIPv6(ip: string): boolean {
-  const normalized = ip.toLowerCase().trim()
+  if (!net.isIPv6(ip)) return true
+  const words = ipv6Words(ip)
+  if (!words || words.length !== 8) return true
 
-  // Loopback / Unspecified
-  if (normalized === '::1' || normalized === '::') return true
+  if (words.every((word) => word === 0)) return true // unspecified
+  if (words.slice(0, 7).every((word) => word === 0) && words[7] === 1) return true // loopback
 
-  // IPv4-mapped IPv6 (::ffff:127.0.0.1)
-  if (normalized.startsWith('::ffff:')) {
-    const ipv4Part = normalized.slice(7)
-    if (net.isIPv4(ipv4Part)) {
-      return isPrivateIPv4(ipv4Part)
-    }
+  const isIpv4Mapped = words.slice(0, 5).every((word) => word === 0) && words[5] === 0xffff
+  if (isIpv4Mapped) {
+    const mapped = `${words[6] >> 8}.${words[6] & 0xff}.${words[7] >> 8}.${words[7] & 0xff}`
+    return isPrivateIPv4(mapped)
   }
 
-  // Unique local addresses (fc00::/7)
-  if (normalized.startsWith('fc') || normalized.startsWith('fd')) return true
+  // Block deprecated IPv4-compatible IPv6 forms rather than treating an
+  // embedded private IPv4 address as globally routable.
+  if (words.slice(0, 6).every((word) => word === 0)) return true
 
-  // Link-local addresses (fe80::/10)
-  if (
-    normalized.startsWith('fe8') ||
-    normalized.startsWith('fe9') ||
-    normalized.startsWith('fea') ||
-    normalized.startsWith('feb')
-  ) {
-    return true
-  }
+  const first = words[0]
+  const second = words[1]
+  if ((first & 0xfe00) === 0xfc00) return true // unique-local fc00::/7
+  if ((first & 0xffc0) === 0xfe80) return true // fe80::/10
+  if ((first & 0xff00) === 0xff00) return true // multicast
 
-  // Multicast (ff00::/8)
-  if (normalized.startsWith('ff')) return true
-
+  // Only global-unicast 2000::/3 is accepted. Known special-use ranges inside
+  // it are rejected as well (documentation, benchmarking, 6to4, and IETF).
+  if (first < 0x2000 || first > 0x3fff) return true
+  if (first === 0x2001 && second <= 0x01ff) return true // IETF assignments / Teredo
+  if (first === 0x2001 && second === 0x0db8) return true // documentation
+  if (first === 0x2002) return true // 6to4 embeds IPv4
+  if (first === 0x3fff && second < 0x1000) return true // documentation 3fff::/20
   return false
 }
 
-/**
- * Evaluates whether an IP address is private, loopback, or cloud metadata.
- */
+/** Returns true for malformed, private, loopback, link-local, or reserved IPs. */
 export function isPrivateOrRestrictedIp(ip: string): boolean {
   if (net.isIPv4(ip)) return isPrivateIPv4(ip)
   if (net.isIPv6(ip)) return isPrivateIPv6(ip)
@@ -88,66 +103,70 @@ const BLOCKED_HOSTNAMES = new Set([
   'metadata.google.internal',
   'metadata.internal',
   'instance-data',
+  'metadata.azure.internal',
   '169.254.169.254',
   '0.0.0.0',
   '127.0.0.1',
-  '[::1]',
+  '::1',
 ])
 
-/**
- * Validates a target URL against SSRF vectors.
- * Ensures http/https protocol, non-internal hostname, and verifies resolved DNS addresses.
- */
-export async function validateSafeUrl(rawUrl: string): Promise<URL> {
-  let parsed: URL
+/** Resolve and validate every address before a caller opens a socket. */
+export async function resolveSafeUrl(rawUrl: string): Promise<ResolvedSafeUrl> {
+  let url: URL
   try {
-    parsed = new URL(rawUrl)
+    url = new URL(rawUrl)
   } catch {
-    throw new Error('Invalid URL format')
+    throw new Error('Invalid URL format.')
   }
 
-  if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
-    throw new Error(`Forbidden protocol '${parsed.protocol}'. Only http and https are permitted.`)
+  if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+    throw new Error(`Forbidden protocol '${url.protocol}'. Only HTTP and HTTPS are permitted.`)
+  }
+  if (url.username || url.password) {
+    throw new Error('Credentials in proxy URLs are not permitted; send authorization as a request header instead.')
   }
 
-  const hostname = parsed.hostname.toLowerCase().trim()
-
-  if (BLOCKED_HOSTNAMES.has(hostname)) {
-    throw new Error(`Access to host '${hostname}' is barred for security reasons (SSRF protection).`)
+  const hostname = url.hostname
+    .toLowerCase()
+    .replace(/^\[|\]$/g, '')
+    .replace(/\.$/, '')
+  if (!hostname || BLOCKED_HOSTNAMES.has(hostname)) {
+    throw new Error(`Access to host '${hostname}' is barred by SSRF protection.`)
   }
-
   if (hostname.endsWith('.localhost') || hostname.endsWith('.local') || hostname.endsWith('.internal')) {
-    throw new Error(`Access to local/internal domains is barred (SSRF protection).`)
+    throw new Error('Access to local and internal hostnames is barred by SSRF protection.')
   }
 
-  // If hostname is directly an IP literal
-  if (net.isIP(hostname)) {
+  let addresses: SafeAddress[]
+  const literalFamily = net.isIP(hostname)
+  if (literalFamily) {
     if (isPrivateOrRestrictedIp(hostname)) {
-      throw new Error(`Target IP '${hostname}' is a private or restricted network address (SSRF protection).`)
+      throw new Error(`Target IP '${hostname}' is private or restricted.`)
     }
-    return parsed
-  }
-
-  // Resolve hostname through DNS to verify destination IP addresses
-  try {
-    const addresses = await dns.lookup(hostname, { all: true })
-    if (!addresses || addresses.length === 0) {
-      throw new Error(`Could not resolve hostname '${hostname}'.`)
+    addresses = [{ address: hostname, family: literalFamily as 4 | 6 }]
+  } else {
+    let resolved: Array<{ address: string; family: number }>
+    try {
+      resolved = await dns.lookup(hostname, { all: true, verbatim: true })
+    } catch (error) {
+      throw new Error(`Could not safely resolve '${hostname}': ${error instanceof Error ? error.message : 'DNS lookup failed'}`)
     }
-
-    for (const record of addresses) {
+    if (!resolved.length || resolved.length > 32) {
+      throw new Error(`Host '${hostname}' returned an invalid number of DNS addresses.`)
+    }
+    for (const record of resolved) {
       if (isPrivateOrRestrictedIp(record.address)) {
-        throw new Error(
-          `Target host '${hostname}' resolved to private or restricted IP '${record.address}' (SSRF protection).`
-        )
+        throw new Error(`Host '${hostname}' resolves to a private or restricted address.`)
       }
     }
-  } catch (err: any) {
-    if (err.message && err.message.includes('SSRF protection')) {
-      throw err
-    }
-    throw new Error(`Failed to verify host safety: ${err.message || 'DNS resolution failed'}`)
+    addresses = resolved.map((record) => ({ address: record.address, family: record.family as 4 | 6 }))
   }
 
-  return parsed
+  return { url, hostname, addresses }
+}
+
+/** Compatibility helper for callers that only need validation, not pinned addresses. */
+export async function validateSafeUrl(rawUrl: string): Promise<URL> {
+  const resolved = await resolveSafeUrl(rawUrl)
+  return resolved.url
 }

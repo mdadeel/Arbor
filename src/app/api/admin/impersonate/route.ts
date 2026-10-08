@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { checkIsAdmin } from '@/server/services/admin'
+import { checkUserPermission, PLATFORM_PERMISSIONS } from '@/server/services/admin'
 import { logAuditEvent } from '@/server/services/audit'
 import {
   createImpersonationToken,
@@ -20,11 +20,15 @@ export async function POST(req: Request) {
 
     const caller = await prisma.user.findUnique({
       where: { id: session.user.id },
-      select: { id: true, email: true, githubUsername: true, role: true },
+      select: { id: true, email: true, githubUsername: true, role: true, status: true, permissions: true },
     })
 
-    if (!checkIsAdmin(caller ?? undefined)) {
-      return NextResponse.json({ error: 'Forbidden: Admin access required' }, { status: 403 })
+    if (
+      !caller ||
+      caller.status !== 'active' ||
+      !checkUserPermission(caller, PLATFORM_PERMISSIONS.USERS_IMPERSONATE)
+    ) {
+      return NextResponse.json({ error: 'Forbidden: User impersonation permission required' }, { status: 403 })
     }
 
     const body = await req.json().catch(() => ({}))
@@ -35,11 +39,11 @@ export async function POST(req: Request) {
 
     const targetUser = await prisma.user.findUnique({
       where: { id: targetUserId },
-      select: { id: true, name: true, email: true, role: true },
+      select: { id: true, name: true, email: true, role: true, status: true },
     })
 
-    if (!targetUser) {
-      return NextResponse.json({ error: 'Target user not found' }, { status: 404 })
+    if (!targetUser || targetUser.status !== 'active') {
+      return NextResponse.json({ error: 'Active target user not found' }, { status: 404 })
     }
 
     const token = createImpersonationToken({

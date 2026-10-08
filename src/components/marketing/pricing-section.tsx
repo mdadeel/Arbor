@@ -3,7 +3,8 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { ArrowRight, Check, CheckCircle2, Sparkles } from 'lucide-react'
-import { Button } from '@/components/ui/button'
+import { Button, ButtonLabel } from '@/components/ui/createui/button'
+import { Input } from '@/components/ui/createui/input'
 
 export function PricingSection() {
   const [waitlistEmail, setWaitlistEmail] = useState('')
@@ -11,192 +12,186 @@ export function PricingSection() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
-  const handleJoinWaitlist = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!waitlistEmail || !waitlistEmail.includes('@') || isSubmitting) return
+  const handleJoinWaitlist = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    const email = waitlistEmail.trim()
+    if (!email || isSubmitting) return
+
     setIsSubmitting(true)
     setErrorMessage(null)
 
     try {
-      const res = await fetch('/api/waitlist', {
+      const response = await fetch('/api/waitlist', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: waitlistEmail, source: 'pricing_pro' }),
+        body: JSON.stringify({ email, source: 'pricing_pro' }),
       })
 
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}))
-        throw new Error(data.error || 'Failed to join waitlist')
+      if (!response.ok) {
+        const data: unknown = await response.json().catch(() => null)
+        const message =
+          data && typeof data === 'object' && 'error' in data && typeof data.error === 'string'
+            ? data.error
+            : 'Could not join the waitlist. Please try again.'
+        throw new Error(message)
       }
 
       setJoinedWaitlist(true)
-    } catch (err: any) {
-      setErrorMessage(err.message || 'Something went wrong. Please try again.')
+    } catch (error: unknown) {
+      setErrorMessage(error instanceof Error ? error.message : 'Something went wrong. Please try again.')
     } finally {
       setIsSubmitting(false)
     }
   }
 
   return (
-    <section id="pricing" className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 scroll-mt-24">
-      <div className="text-center space-y-4 mb-12">
-        <div className="inline-flex items-center gap-2 rounded-full border border-border bg-muted/40 px-3 py-1 text-xs font-semibold text-foreground">
-          <Sparkles className="h-3.5 w-3.5" />
-          <span>Transparent Pricing</span>
+    <section id="pricing" className="mx-auto max-w-7xl scroll-mt-24 px-4 sm:px-6 lg:px-8">
+      <div className="mx-auto mb-10 max-w-2xl space-y-4 text-center sm:mb-12">
+        <div className="inline-flex items-center gap-2 rounded-full border border-border bg-muted/40 px-3 py-1 text-xs font-medium text-foreground">
+          <Sparkles className="size-3.5 text-primary" aria-hidden="true" />
+          Straightforward plans
         </div>
-        <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground font-display">
-          Start Free. Scale as Your Team Grows.
+        <h2 className="font-display text-3xl font-semibold tracking-tight text-foreground text-balance sm:text-4xl">
+          Start free. Add team workflows when you need them.
         </h2>
-        <p className="text-base text-muted-foreground max-w-2xl mx-auto leading-relaxed">
-          Arbor is free forever for individual developers and open-source projects. Pro subscriptions launch soon for expanding teams and automated pipelines.
+        <p className="text-sm leading-relaxed text-muted-foreground sm:text-base">
+          Use Arbor for individual repositories at no cost. Team features are in development; join the list if you want an update when they are ready.
         </p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 max-w-4xl mx-auto items-stretch">
-        {/* Tier 1: Community Free */}
-        <div className="rounded-2xl border border-border bg-card p-8 flex flex-col justify-between shadow-sm relative">
-          <div className="absolute -top-3.5 left-6 rounded-full bg-neutral-900 text-neutral-100 dark:bg-neutral-100 dark:text-neutral-950 border border-border px-3 py-1 text-[11px] font-bold shadow-md">
-            FREE FOREVER
+      <div className="mx-auto grid max-w-4xl gap-5 lg:grid-cols-2 lg:items-stretch">
+        <article className="relative flex flex-col justify-between rounded-2xl border border-border bg-card p-6 shadow-sm sm:p-8">
+          <div className="absolute -top-3 left-6 rounded-full border border-border bg-background px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-foreground">
+            Free forever
           </div>
-
           <div className="space-y-6">
             <div className="space-y-2">
-              <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Community Free
-              </span>
+              <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Community</span>
               <div className="flex items-baseline gap-2">
-                <span className="text-4xl font-black text-foreground font-display">$0</span>
+                <span className="font-display text-4xl font-semibold text-foreground">$0</span>
                 <span className="text-sm text-muted-foreground">/ forever</span>
               </div>
-              <p className="text-xs text-muted-foreground">
-                Ideal for solo builders, open source maintainers, and indie hackers.
-              </p>
+              <p className="text-sm leading-relaxed text-muted-foreground">For solo developers, maintainers, and small projects.</p>
             </div>
 
-            <div className="border-t border-border pt-6 space-y-3">
-              <div className="text-xs font-semibold text-foreground uppercase tracking-wider">
-                What&apos;s included:
-              </div>
-              <ul className="space-y-2.5 text-sm text-muted-foreground">
-                <li className="flex items-center gap-2.5">
-                  <Check className="h-4 w-4 text-[#65DCD5] shrink-0" />
+            <div className="space-y-3 border-t border-border pt-5">
+              <p className="text-xs font-semibold uppercase tracking-wider text-foreground">Included</p>
+              <ul className="space-y-3 text-sm text-muted-foreground">
+                <li className="flex items-start gap-2.5">
+                  <Check className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden="true" />
                   <span>Up to 3 active GitHub repositories</span>
                 </li>
-                <li className="flex items-center gap-2.5">
-                  <Check className="h-4 w-4 text-[#65DCD5] shrink-0" />
-                  <span>Full AST architectural audits in ~30 seconds</span>
+                <li className="flex items-start gap-2.5">
+                  <Check className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden="true" />
+                  <span>Architecture and health audits in about 30 seconds</span>
                 </li>
-                <li className="flex items-center gap-2.5">
-                  <Check className="h-4 w-4 text-[#65DCD5] shrink-0" />
-                  <span>Interactive React Flow dependency graph</span>
+                <li className="flex items-start gap-2.5">
+                  <Check className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden="true" />
+                  <span>Interactive dependency graph and repository report</span>
                 </li>
-                <li className="flex items-center gap-2.5">
-                  <Check className="h-4 w-4 text-[#65DCD5] shrink-0" />
-                  <span>Dynamic SVG README shields badges</span>
-                </li>
-                <li className="flex items-center gap-2.5">
-                  <Check className="h-4 w-4 text-[#65DCD5] shrink-0" />
-                  <span>Tech debt, unused imports &amp; secret scanner</span>
+                <li className="flex items-start gap-2.5">
+                  <Check className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden="true" />
+                  <span>Technical debt, import, and secret checks</span>
                 </li>
               </ul>
             </div>
           </div>
 
-          <div className="pt-8">
-            <Button asChild variant="outline" className="w-full h-11 gap-2 shadow-xs">
+          <div className="pt-7">
+            <Button asChild variant="neutral-light" appearance="outline" size="lg" shape="pill" className="w-full">
               <Link href="/login">
-                <span>Start Free with GitHub</span>
-                <ArrowRight className="h-4 w-4" />
+                <ButtonLabel>Start free with GitHub</ButtonLabel>
+                <ArrowRight aria-hidden="true" />
               </Link>
             </Button>
           </div>
-        </div>
+        </article>
 
-        {/* Tier 2: Pro (Premium Launching Soon) */}
-        <div className="rounded-2xl border-2 border-foreground/30 bg-card p-8 flex flex-col justify-between shadow-xl relative">
-          <div className="absolute -top-3.5 right-6 rounded-full bg-neutral-900 text-neutral-100 dark:bg-neutral-100 dark:text-neutral-950 border border-border px-3 py-1 text-[11px] font-bold shadow-md">
-            COMING SOON
+        <article className="relative flex flex-col justify-between rounded-2xl border border-primary/40 bg-primary/[0.04] p-6 shadow-sm sm:p-8">
+          <div className="absolute -top-3 right-6 rounded-full border border-primary/30 bg-background px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-primary">
+            In development
           </div>
-
           <div className="space-y-6">
             <div className="space-y-2">
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-semibold uppercase tracking-wider text-foreground">
-                  Pro &amp; Teams
-                </span>
-                <span className="rounded bg-muted text-foreground text-[10px] font-mono font-bold px-1.5 py-0.5 border border-border">
-                  WAITLIST
-                </span>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-xs font-semibold uppercase tracking-wider text-foreground">Teams</span>
+                <span className="rounded-md border border-border bg-muted/50 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-muted-foreground">WAITLIST</span>
               </div>
               <div className="flex items-baseline gap-2">
-                <span className="text-4xl font-black text-foreground font-display">$15</span>
+                <span className="font-display text-4xl font-semibold text-foreground">$15</span>
                 <span className="text-sm text-muted-foreground">/ month</span>
               </div>
-              <p className="text-xs text-muted-foreground">
-                For growing engineering teams requiring automated audits, team workspaces, and CI/CD gates.
-              </p>
+              <p className="text-sm leading-relaxed text-muted-foreground">For teams planning shared workspaces and scheduled repository checks.</p>
             </div>
 
-            <div className="border-t border-border pt-6 space-y-3">
-              <div className="text-xs font-semibold text-foreground uppercase tracking-wider">
-                Everything in Free, plus:
-              </div>
-              <ul className="space-y-2.5 text-sm text-muted-foreground">
-                <li className="flex items-center gap-2.5">
-                  <Check className="h-4 w-4 text-foreground shrink-0" />
-                  <span className="text-foreground font-medium">Unlimited repositories &amp; analyses</span>
+            <div className="space-y-3 border-t border-border pt-5">
+              <p className="text-xs font-semibold uppercase tracking-wider text-foreground">Planned additions</p>
+              <ul className="space-y-3 text-sm text-muted-foreground">
+                <li className="flex items-start gap-2.5">
+                  <Check className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden="true" />
+                  <span>Shared team workspaces and role-based access</span>
                 </li>
-                <li className="flex items-center gap-2.5">
-                  <Check className="h-4 w-4 text-foreground shrink-0" />
-                  <span>Team Workspaces &amp; RBAC (Owner, Admin, Member)</span>
+                <li className="flex items-start gap-2.5">
+                  <Check className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden="true" />
+                  <span>Scheduled repository health sync</span>
                 </li>
-                <li className="flex items-center gap-2.5">
-                  <Check className="h-4 w-4 text-foreground shrink-0" />
-                  <span>Scheduled automated repository health sync</span>
-                </li>
-                <li className="flex items-center gap-2.5">
-                  <Check className="h-4 w-4 text-foreground shrink-0" />
-                  <span>GitHub Actions CI/CD audit blocker</span>
-                </li>
-                <li className="flex items-center gap-2.5">
-                  <Check className="h-4 w-4 text-foreground shrink-0" />
-                  <span>Priority analysis worker queue</span>
+                <li className="flex items-start gap-2.5">
+                  <Check className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden="true" />
+                  <span>CI checks and priority analysis queue</span>
                 </li>
               </ul>
             </div>
           </div>
 
-          <div className="pt-8 space-y-2">
+          <div className="pt-7">
             {joinedWaitlist ? (
-              <div className="rounded-lg border border-border bg-muted/30 p-3.5 text-center text-xs text-foreground font-medium flex items-center justify-center gap-2">
-                <CheckCircle2 className="h-4 w-4 text-foreground shrink-0" />
-                <span>You&apos;re on the early access waitlist! We&apos;ll notify you first when subscriptions launch.</span>
+              <div role="status" className="flex min-h-11 items-center justify-center gap-2 rounded-xl border border-primary/25 bg-primary/10 px-3 py-2 text-center text-sm font-medium text-foreground">
+                <CheckCircle2 className="size-4 shrink-0 text-primary" aria-hidden="true" />
+                <span>You&apos;re on the early-access list.</span>
               </div>
             ) : (
-              <form onSubmit={handleJoinWaitlist} className="flex flex-col sm:flex-row gap-2">
-                <input
-                  type="email"
-                  placeholder="Enter email for early access"
-                  value={waitlistEmail}
-                  onChange={(e) => setWaitlistEmail(e.target.value)}
-                  disabled={isSubmitting}
-                  className="flex h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-xs ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
-                  required
-                />
-                <Button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="h-11 px-5 text-xs shrink-0 shadow-sm disabled:opacity-50"
-                >
-                  {isSubmitting ? 'Saving...' : 'Notify Me'}
-                </Button>
+              <form onSubmit={handleJoinWaitlist} className="space-y-2" aria-busy={isSubmitting}>
+                <label htmlFor="teams-waitlist-email" className="sr-only">Email for team plan updates</label>
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  <Input
+                    id="teams-waitlist-email"
+                    size="md"
+                    type="email"
+                    name="email"
+                    autoComplete="email"
+                    inputMode="email"
+                    placeholder="you@company.com"
+                    value={waitlistEmail}
+                    onChange={(event) => {
+                      setWaitlistEmail(event.target.value)
+                      if (errorMessage) setErrorMessage(null)
+                    }}
+                    disabled={isSubmitting}
+                    invalid={Boolean(errorMessage)}
+                    aria-describedby={errorMessage ? 'teams-waitlist-error' : undefined}
+                    required
+                  />
+                  <Button
+                    type="submit"
+                    variant="primary"
+                    size="lg"
+                    shape="pill"
+                    loading={isSubmitting}
+                    disabled={!waitlistEmail.trim()}
+                    className="shrink-0"
+                  >
+                    <ButtonLabel>{isSubmitting ? 'Saving' : 'Notify me'}</ButtonLabel>
+                  </Button>
+                </div>
+                {errorMessage && (
+                  <p id="teams-waitlist-error" role="alert" className="text-sm font-medium text-destructive">
+                    {errorMessage}
+                  </p>
+                )}
               </form>
             )}
-            {errorMessage && (
-              <p className="text-xs text-destructive font-medium">{errorMessage}</p>
-            )}
           </div>
-        </div>
+        </article>
       </div>
     </section>
   )

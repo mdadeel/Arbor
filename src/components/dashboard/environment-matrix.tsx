@@ -112,7 +112,9 @@ export function EnvironmentMatrix({ slug }: { slug: string }) {
   const statusCounts = useMemo(() => {
     if (!data) return { set: 0, missing: 0, different: 0, unknown: 0 }
     const counts = { set: 0, missing: 0, different: 0, unknown: 0 }
-    for (const v of data.variables) counts[v.status]++
+    for (const v of data.variables) {
+      if (v.status in counts) counts[v.status as Status]++
+    }
     return counts
   }, [data])
 

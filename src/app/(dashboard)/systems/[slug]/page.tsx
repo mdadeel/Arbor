@@ -10,13 +10,14 @@ import { SystemReport } from '@/components/dashboard/system/system-report'
 export default async function SystemDetailPage({
   params,
 }: {
-  params: { slug: string }
+  params: Promise<{ slug: string }>
 }) {
+  const { slug } = await params
   const session = await getServerSession(authOptions)
   if (!session?.user) return notFound()
 
   const caller = await getServerCaller()
-  const group = await caller.system.bySlug({ slug: params.slug })
+  const group = await caller.system.bySlug({ slug })
   if (!group) return notFound()
 
   return (

@@ -277,7 +277,13 @@ export function calculateHealthScore(
 
 export async function syncProjectHealth(userId: string, projectId: string): Promise<ProjectHealth> {
   const project = await prisma.project.findFirst({
-    where: { id: projectId, userId },
+    where: {
+      id: projectId,
+      OR: [
+        { userId, workspaceId: null },
+        { workspace: { members: { some: { userId } } } },
+      ],
+    },
     include: {
       analyses: {
         where: { status: 'completed' },
@@ -495,7 +501,13 @@ export async function getProjectHealth(
   autoSync = true
 ): Promise<ProjectHealth> {
   const project = await prisma.project.findFirst({
-    where: { id: projectId, userId },
+    where: {
+      id: projectId,
+      OR: [
+        { userId, workspaceId: null },
+        { workspace: { members: { some: { userId } } } },
+      ],
+    },
     select: { healthData: true, lastHealthSyncAt: true },
   })
   if (!project) throw new TRPCError({ code: 'NOT_FOUND', message: 'Project not found' })
@@ -514,12 +526,25 @@ export async function getProjectHealth(
 }
 
 export async function getWorkspaceHealth(userId: string): Promise<WorkspaceHealth> {
-  const cacheKey = `health:workspace:${userId}`
+  const memberships = await prisma.workspaceMember.findMany({
+    where: { userId },
+    select: { workspaceId: true },
+  })
+  const workspaceIds = memberships.map((membership) => membership.workspaceId).sort()
+  // Membership-derived keys prevent a removed user from receiving an aggregate
+  // cached while they still belonged to that workspace.
+  const cacheKey = `health:workspace:${userId}:${workspaceIds.join(',')}`
   const cached = appCache.get<WorkspaceHealth>(cacheKey)
   if (cached) return cached
 
   const projects = await prisma.project.findMany({
-    where: { userId, status: 'active' },
+    where: {
+      status: 'active',
+      OR: [
+        { userId, workspaceId: null },
+        ...(workspaceIds.length ? [{ workspaceId: { in: workspaceIds } }] : []),
+      ],
+    },
     select: {
       id: true,
       name: true,

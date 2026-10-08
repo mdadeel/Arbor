@@ -7,11 +7,11 @@ const appUrl = process.env.APP_URL || 'https://arborgit.vercel.app'
 export const metadata: Metadata = {
   metadataBase: new URL(appUrl),
   title: {
-    default: 'Arbor — Understand Any Codebase in 30 Seconds',
+    default: 'Arbor — Map and Understand Your Codebase',
     template: '%s | Arbor',
   },
   description:
-    'Understand any codebase in 30 seconds. A deterministic AST parser delivers automated architectural audits, dependency graph visualization, tech debt reduction, and AI codebase documentation from any GitHub repo.',
+    'Turn a GitHub repository into an inspectable architecture map and health report. Arbor uses deterministic AST analysis to trace dependencies and surface actionable findings; temporary working copies are removed when processing finishes.',
   keywords: [
     'codebase intelligence',
     'github repository audit',
@@ -19,7 +19,6 @@ export const metadata: Metadata = {
     'automated architectural audit',
     'dependency graph visualization',
     'technical debt reduction',
-    'AI codebase documentation',
     'architecture visualizer',
     'tech debt detector',
     'dependency graph',
@@ -34,9 +33,9 @@ export const metadata: Metadata = {
     canonical: '/',
   },
   openGraph: {
-    title: 'Arbor — Understand Any Codebase in 30 Seconds',
+    title: 'Arbor — Map and Understand Your Codebase',
     description:
-      'Understand any codebase in 30 seconds with deterministic AST analysis and live repository health metrics.',
+      'Explore repository structure, dependency graphs, and health findings with deterministic AST analysis.',
     url: appUrl,
     siteName: 'Arbor',
     locale: 'en_US',
@@ -44,9 +43,9 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Arbor — Understand Any Codebase in 30 Seconds',
+    title: 'Arbor — Map and Understand Your Codebase',
     description:
-      'Understand any codebase in 30 seconds with deterministic AST analysis and live repository health metrics.',
+      'Explore repository structure, dependency graphs, and health findings with deterministic AST analysis.',
     creator: '@arborgit',
   },
   robots: {
@@ -87,22 +86,17 @@ const jsonLd = {
         'Automated architectural analysis and codebase intelligence for developers. AST-based dependency graphs, tech debt detection, and repository health scores.',
       featureList: [
         'Deterministic Babel AST Analysis',
-        'Sub-30s Repository Audit',
-        'Interactive Dependency DAG Visualizer',
+        'Repository scores across six analysis dimensions',
+        'Interactive Dependency Graph Visualizer',
         'Circular Dependency Detection',
         'Conventional Commits Velocity Pulse',
         'Dynamic SVG README Shields Badges',
-        'Zero Private Source Code Retained',
+        'Temporary working copy removed when processing finishes',
       ],
       offers: {
         '@type': 'Offer',
         price: '0',
         priceCurrency: 'USD',
-      },
-      aggregateRating: {
-        '@type': 'AggregateRating',
-        ratingValue: '4.8',
-        ratingCount: '127',
       },
       author: {
         '@type': 'Organization',

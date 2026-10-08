@@ -1,26 +1,27 @@
-# Arbor — Codebase Intelligence & Developer Portal
+# Arbor — Codebase Intelligence & Developer Workbench
 
-> Automated architectural audits, visual dependency graphs, and repository health scores directly from your GitHub repositories in under 30 seconds.
+> Turn a GitHub repository into an inspectable architecture map, dependency graph, and health report. Audit time varies with repository size and processing conditions.
 
 ## Overview
-Arbor is a developer platform for inspecting and understanding software codebases. It uses deterministic Abstract Syntax Tree (AST) analysis with Babel parsers rather than black-box AI models, guaranteeing 100% deterministic and repeatable audit reports with zero hallucinations.
+Arbor helps developers inspect software structure and repository health. Its audits use Babel AST parsing and explicit static checks rather than generative AI. The same source and rule set produce repeatable structural checks; results cover the checks Arbor implements and do not replace code review.
 
 ## Key Capabilities
-- **Deterministic AST Audits**: Evaluates codebases across 7 architectural health dimensions (Architecture, Tech Debt, Maintainability, Dependencies, Performance, Security, Doc Coverage) in under 30 seconds.
-- **Visual Dependency Graph**: Generates interactive Directed Acyclic Graph (DAG) visualizations of module boundaries and automatically flags circular dependency cycles.
-- **Commit Pulse & Recency**: Classifies Conventional Commits (feat, fix, refactor, perf, docs) to track contributor velocity and team impact.
-- **Secret & Env Shield**: Scans for leaked credentials, exposed API tokens, and missing environment variables across environments.
-- **Interactive API Explorer & Living Docs**: Built-in OpenAPI runner with CORS proxy and versioned Markdown documentation hub.
-- **Dynamic README Badges**: Generates live SVG shields badges (`/api/badge/[slug]`) indicating audit scores directly in GitHub README files.
+- **Architecture and health audits**: Summarizes repository structure, dependencies, technical debt, performance, security, documentation, and design-system signals.
+- **Dependency maps**: Visualizes analyzed module imports and surfaces detected circular dependencies.
+- **Evidence-backed findings**: Shows relevant file paths and line locations for supported checks.
+- **Secret and environment checks**: Flags patterns that may indicate committed credentials and identifies environment variables not documented in an example file.
+- **Interactive API explorer and documentation**: Includes an OpenAPI runner and versioned Markdown documentation hub.
+- **Dynamic README badges**: Generates SVG repository-score badges at `/api/badge/[slug]`.
 
-## Security & Privacy Commitment
-- **Zero Source Code Retained**: Arbor performs shallow Git clones into ephemeral in-memory/temp storage. Cloned files are permanently deleted immediately upon AST parse completion (~30s).
-- **No Model Training**: Source code is never retained or used to train any AI or machine learning models.
-- **Fine-Grained Permissions**: Supports standard GitHub OAuth (read-only repository access) and Personal Access Tokens (PAT) for enterprise SAML/SSO setups.
+## Security & Privacy
+- **Temporary working copy**: Arbor uses a shallow repository copy during analysis and removes it when processing finishes. Stored reports contain derived results such as scores, structure, dependency relationships, and findings—not complete source files.
+- **Source analysis**: The repository audit uses AST and rule-based checks; source files are not submitted to a generative AI service as part of that audit.
+- **GitHub permissions**: GitHub OAuth currently requests the `repo` scope. Review the permissions on GitHub's authorization screen before connecting. You can also analyze public repositories without granting private-repository access.
+- **Token security**: Stored OAuth tokens and personal access tokens are encrypted by the application.
 
 ## Pricing & Tiers
-- **Community (Free forever)**: Up to 3 connected repositories, full AST architectural audits, dependency visualizer, dynamic SVG README badges.
-- **Pro ($15/month — Waitlist)**: Unlimited repositories, automated periodic health sync, team workspaces with RBAC, GitHub Actions CI/CD PR audit blocker.
+- **Community (Free)**: Up to 3 connected repositories with audits, dependency maps, and README badges.
+- **Pro ($15/month — Waitlist)**: Planned expanded repository limits, scheduled health sync, team workspaces with RBAC, and GitHub Actions integrations.
 
 ## Canonical URLs
 - Website: https://arborgit.vercel.app

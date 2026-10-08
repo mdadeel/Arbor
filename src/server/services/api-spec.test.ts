@@ -1,4 +1,7 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
+
+vi.mock('@/lib/prisma', () => ({ prisma: {} }))
+
 import { parseOpenApiSpec } from './api-spec'
 
 const MINIMAL_SPEC = JSON.stringify({
@@ -65,6 +68,35 @@ paths:
     expect(result.endpoints).toHaveLength(1)
     expect(result.endpoints[0].method).toBe('GET')
     expect(result.endpoints[0].path).toBe('/items')
+  })
+
+  it('does not resolve external references while validating user-provided specs', async () => {
+    const spec = JSON.stringify({
+      openapi: '3.0.0',
+      info: { title: 'External Ref API', version: '1.0.0' },
+      paths: {
+        '/users': {
+          get: {
+            responses: {
+              '200': {
+                description: 'OK',
+                content: {
+                  'application/json': {
+                    schema: { $ref: 'https://example.invalid/secret-schema.json#/User' },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    })
+    const result = await parseOpenApiSpec(spec)
+    expect(result.endpoints).toHaveLength(1)
+  })
+
+  it('rejects specs larger than the configured input budget before parsing', async () => {
+    await expect(parseOpenApiSpec(' '.repeat(1_000_001))).rejects.toThrow('byte limit')
   })
 
   it('rejects invalid spec', async () => {

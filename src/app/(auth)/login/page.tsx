@@ -14,14 +14,12 @@ export const metadata = {
   description: 'Sign in to Arbor with GitHub to analyze repositories and generate automated architectural audits.',
 }
 
-export default async function LoginPage({
-  searchParams,
-}: {
-  searchParams?: { callbackUrl?: string; error?: string }
-}) {
+export const dynamic = 'force-dynamic'
+
+export default async function LoginPage() {
   const session = await getServerSession(authOptions)
   if (session?.user) {
-    redirect(searchParams?.callbackUrl || '/dashboard')
+    redirect('/dashboard')
   }
   return (
     <div className="relative min-h-screen flex flex-col justify-between bg-background text-foreground antialiased">
@@ -63,7 +61,7 @@ export default async function LoginPage({
 
             <div className="border-t border-border/60 pt-4 text-center">
               <p className="text-[11px] text-muted-foreground/80 leading-relaxed">
-                Single-developer workbench mode · Ephemeral analysis · Zero source code stored
+                Temporary working copy · Removed after analysis · Reports contain findings, not source files
               </p>
             </div>
           </div>

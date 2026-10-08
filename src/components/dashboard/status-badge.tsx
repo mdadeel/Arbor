@@ -4,6 +4,15 @@ import { cn } from '@/lib/utils'
 export type AnalysisStatus = 'queued' | 'cloning' | 'analyzing' | 'completed' | 'failed' | string
 export type FindingSeverity = 'critical' | 'warning' | 'info'
 
+const STATUS_LABELS: Record<string, string> = {
+  'no-analysis': 'Not analyzed',
+  queued: 'Queued',
+  cloning: 'Preparing repository',
+  analyzing: 'Analyzing',
+  completed: 'Completed',
+  failed: 'Failed',
+}
+
 interface StatusBadgeProps {
   status: string
   label?: string
@@ -57,7 +66,7 @@ export function StatusBadge({
           )}
         />
       )}
-      <span>{label ?? status}</span>
+      <span>{label ?? STATUS_LABELS[status] ?? status.replaceAll('_', ' ')}</span>
     </span>
   )
 }

@@ -23,6 +23,9 @@ vi.mock('@/lib/prisma', () => ({
     gitHubAccount: {
       findFirst: vi.fn(),
     },
+    workspaceMember: {
+      findMany: vi.fn(),
+    },
   },
 }))
 
@@ -138,6 +141,7 @@ describe('Workspace Health Aggregation', () => {
       },
     ]
 
+    vi.mocked(prisma.workspaceMember.findMany).mockResolvedValueOnce([{ workspaceId: 'workspace-1' }] as any)
     vi.mocked(prisma.project.findMany).mockResolvedValueOnce(mockProjects as any)
 
     const workspace = await getWorkspaceHealth('user-1')
@@ -149,6 +153,15 @@ describe('Workspace Health Aggregation', () => {
     expect(workspace.failingBuilds).toBe(1)
     expect(workspace.attentionList).toHaveLength(1)
     expect(workspace.attentionList[0].slug).toBe('beta-project')
+    expect(prisma.project.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: {
+        status: 'active',
+        OR: [
+          { userId: 'user-1', workspaceId: null },
+          { workspaceId: { in: ['workspace-1'] } },
+        ],
+      },
+    }))
   })
 })
 

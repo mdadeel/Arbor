@@ -13,8 +13,7 @@ vi.mock('ioredis', () => {
     default: vi.fn().mockImplementation(() => ({
       status: 'ready',
       connect: vi.fn(),
-      incr: vi.fn(),
-      expire: vi.fn(),
+      eval: vi.fn(),
     })),
   }
 })
@@ -24,34 +23,56 @@ describe('Redis & Rate Limiting', () => {
     vi.clearAllMocks()
   })
 
-  it('allows requests within rate limit and sets TTL on first hit', async () => {
+  it('allows requests within rate limit and atomically sets TTL on the first hit', async () => {
     const redis = getRedisClient()
-    vi.mocked(redis.incr).mockResolvedValueOnce(1)
-    vi.mocked(redis.expire).mockResolvedValueOnce(1 as any)
+    vi.mocked(redis.eval).mockResolvedValueOnce(1)
 
     const result = await checkRateLimit('test-key', 10, 3600)
     expect(result.allowed).toBe(true)
     expect(result.remaining).toBe(9)
-    expect(redis.incr).toHaveBeenCalledWith('test-key')
-    expect(redis.expire).toHaveBeenCalledWith('test-key', 3600)
+    expect(redis.eval).toHaveBeenCalledWith(expect.stringContaining("redis.call('EXPIRE'"), 1, 'test-key', 3600)
   })
 
   it('rejects requests when rate limit is exceeded', async () => {
     const redis = getRedisClient()
-    vi.mocked(redis.incr).mockResolvedValueOnce(11)
+    vi.mocked(redis.eval).mockResolvedValueOnce(11)
 
     const result = await checkRateLimit('test-key', 10, 3600)
     expect(result.allowed).toBe(false)
     expect(result.remaining).toBe(0)
-    expect(redis.expire).not.toHaveBeenCalled()
   })
 
-  it('fails open if Redis raises an error', async () => {
+  it('keeps local development usable if Redis raises an error', async () => {
+    vi.stubEnv('NODE_ENV', 'test')
     const redis = getRedisClient()
-    vi.mocked(redis.incr).mockRejectedValueOnce(new Error('Connection lost'))
+    vi.mocked(redis.eval).mockRejectedValueOnce(new Error('Connection lost'))
 
     const result = await checkRateLimit('test-key', 10, 3600)
     expect(result.allowed).toBe(true)
     expect(result.remaining).toBe(10)
+    vi.unstubAllEnvs()
+  })
+
+  it('fails closed in production if Redis raises an error', async () => {
+    vi.stubEnv('NODE_ENV', 'production')
+    const redis = getRedisClient()
+    vi.mocked(redis.eval).mockRejectedValueOnce(new Error('Connection lost'))
+
+    const result = await checkRateLimit('test-key', 10, 3600)
+    expect(result.allowed).toBe(false)
+    expect(result.remaining).toBe(0)
+    vi.unstubAllEnvs()
+  })
+
+  it('handles an unavailable Redis connection without counting a request', async () => {
+    const redis = getRedisClient()
+    Object.defineProperty(redis, 'status', { value: 'wait', configurable: true })
+    vi.mocked(redis.connect).mockRejectedValueOnce(new Error('Connection refused'))
+
+    const result = await checkRateLimit('test-key', 10, 3600)
+    expect(result.allowed).toBe(true)
+    expect(result.remaining).toBe(10)
+    expect(redis.eval).not.toHaveBeenCalled()
+    Object.defineProperty(redis, 'status', { value: 'ready', configurable: true })
   })
 })

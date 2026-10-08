@@ -1,5 +1,3 @@
-@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Manrope:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -27,7 +25,7 @@
     --border-strong: 135 6% 51%; /* #7d8980 */
     --input: 113 9% 81%;
     --ring: 146 48% 29%;
-    --radius: 0.25rem;
+    --radius: 0.5rem;
 
     /* Quiet Precision Tokens */
     --accent-raw: #266d45;
@@ -81,7 +79,7 @@
     --border-strong: 136 5% 42%; /* #657168 */
     --input: 135 12% 20%;
     --ring: 85 79% 67%;
-    --radius: 0.25rem;
+    --radius: 0.5rem;
 
     /* Quiet Precision Tokens */
     --accent-raw: #b7ed69;
@@ -119,7 +117,7 @@
 
   body {
     @apply bg-background text-foreground;
-    font-family: var(--font-sans), 'Manrope', 'Plus Jakarta Sans', sans-serif;
+    font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     -webkit-font-smoothing: antialiased;
   }
 

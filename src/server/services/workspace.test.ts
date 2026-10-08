@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { createHash } from 'node:crypto'
 import {
   canManageMembers,
   canEditProjects,
@@ -6,6 +7,8 @@ import {
   slugifyWorkspace,
   createWorkspace,
   inviteMember,
+  acceptInvitation,
+  getWorkspace,
   removeMember,
 } from './workspace'
 import { prisma } from '@/lib/prisma'
@@ -22,11 +25,12 @@ vi.mock('@/lib/prisma', () => ({
       findMany: vi.fn(),
       create: vi.fn(),
       delete: vi.fn(),
+      upsert: vi.fn(),
     },
     workspaceInvitation: {
       create: vi.fn(),
       findUnique: vi.fn(),
-      update: vi.fn(),
+      updateMany: vi.fn(),
     },
     user: {
       findUnique: vi.fn(),
@@ -98,6 +102,20 @@ describe('workspace service', () => {
     })
   })
 
+  it('does not return invitation secrets in general workspace details', async () => {
+    ;(prisma.workspace.findFirst as any).mockResolvedValue({
+      id: 'ws-1',
+      name: 'Workspace',
+      members: [{ userId: 'user-1', role: 'owner' }],
+      projects: [],
+    })
+
+    const workspace = await getWorkspace('user-1', 'ws-1')
+
+    expect(workspace).not.toHaveProperty('invitations')
+    expect((prisma.workspace.findFirst as any).mock.calls[0][0].include).not.toHaveProperty('invitations')
+  })
+
   it('allows owner or admin to invite members with expiration token', async () => {
     ;(prisma.workspaceMember.findUnique as any).mockResolvedValue({
       id: 'mem-caller',
@@ -111,8 +129,8 @@ describe('workspace service', () => {
       workspaceId: 'ws-1',
       email: 'newdev@example.com',
       role: 'member',
-      token: 'secure-token-123',
       status: 'pending',
+      expiresAt: new Date(Date.now() + 60_000),
     })
 
     const invitation = await inviteMember('user-admin', {
@@ -122,7 +140,53 @@ describe('workspace service', () => {
     })
 
     expect(invitation.email).toBe('newdev@example.com')
+    expect(invitation.token).toMatch(/^[A-Za-z0-9_-]{43}$/)
+    expect(invitation).not.toHaveProperty('tokenHash')
+    const createData = (prisma.workspaceInvitation.create as any).mock.calls[0][0].data
+    expect(createData.tokenHash).toMatch(/^[a-f0-9]{64}$/)
+    expect(createData.token).toBeUndefined()
     expect(prisma.workspaceInvitation.create).toHaveBeenCalled()
+  })
+
+  it('accepts a hashed, single-use invitation only for its email address', async () => {
+    const token = 'a'.repeat(43)
+    const tokenHash = createHash('sha256').update(token).digest('hex')
+    ;(prisma.workspaceInvitation.findUnique as any).mockResolvedValue({
+      id: 'inv-1',
+      workspaceId: 'ws-1',
+      email: 'member@example.com',
+      role: 'member',
+      status: 'pending',
+      expiresAt: new Date(Date.now() + 60_000),
+    })
+    ;(prisma.user.findUnique as any).mockResolvedValue({ email: 'MEMBER@example.com' })
+    ;(prisma.workspaceInvitation.updateMany as any).mockResolvedValue({ count: 1 })
+    ;(prisma.workspaceMember.upsert as any).mockResolvedValue({ id: 'mem-1', role: 'member' })
+
+    const result = await acceptInvitation('user-1', token)
+
+    expect(prisma.workspaceInvitation.findUnique).toHaveBeenCalledWith({ where: { tokenHash } })
+    expect(prisma.workspaceInvitation.updateMany).toHaveBeenCalledWith({
+      where: { id: 'inv-1', status: 'pending', expiresAt: { gt: expect.any(Date) } },
+      data: { status: 'accepted' },
+    })
+    expect(prisma.workspaceMember.upsert).toHaveBeenCalledWith(expect.objectContaining({ update: {} }))
+    expect(result).toMatchObject({ id: 'mem-1', role: 'member' })
+  })
+
+  it('rejects invitation acceptance from a different account email', async () => {
+    ;(prisma.workspaceInvitation.findUnique as any).mockResolvedValue({
+      id: 'inv-1',
+      workspaceId: 'ws-1',
+      email: 'invited@example.com',
+      role: 'admin',
+      status: 'pending',
+      expiresAt: new Date(Date.now() + 60_000),
+    })
+    ;(prisma.user.findUnique as any).mockResolvedValue({ email: 'other@example.com' })
+
+    await expect(acceptInvitation('user-1', 'b'.repeat(43))).rejects.toMatchObject({ code: 'FORBIDDEN' })
+    expect(prisma.$transaction).not.toHaveBeenCalled()
   })
 
   it('prevents viewer or regular member from inviting others', async () => {

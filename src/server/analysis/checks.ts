@@ -1,6 +1,6 @@
 import fs from 'node:fs'
 import path from 'node:path'
-import { listFiles, readText } from './walk'
+import { readText } from './walk'
 import type { Finding, ImportGraph, ProjectStructure } from './types'
 
 const SECRET_PATTERNS: [string, RegExp][] = [
@@ -29,7 +29,12 @@ export function scanSecrets(text: string, relFile: string): Finding[] {
         severity: 'critical',
         title: `Possible ${label} committed`,
         detail:
-          'A value matching this pattern was committed. High-priority risk even if it is a test value.',
+          'A value matching this pattern was found in source text. The scanner cannot tell whether it is live, revoked, or a test fixture.',
+        explanation: `The line matches Arbor’s ${label.toLowerCase()} signature. Exact token formats are stronger signals than generic variable-name patterns.`,
+        impact: 'If the value is active, repository access or another connected account may be exposed to anyone who can read the commit history.',
+        recommendation: 'Verify the value without copying it into tickets or logs. If real, revoke/rotate it, remove it from active code, and audit repository history and access.',
+        confidence: label === 'Hardcoded credential' || label === 'Generic secret assignment' ? 'medium' : 'high',
+        evidence: [`${relFile}:${line}`],
         file: relFile,
         line,
       })
@@ -46,10 +51,12 @@ export function envCheck(
   let hasExample = fs.existsSync(examplePath)
   let exampleKeys = new Set<string>()
   if (hasExample) {
-    const text = fs.readFileSync(examplePath, 'utf8')
-    for (const line of text.split('\n')) {
-      const m = line.match(/^\s*([A-Z0-9_]+)=/)
-      if (m) exampleKeys.add(m[1])
+    const text = readText(examplePath)
+    if (text != null) {
+      for (const line of text.split('\n')) {
+        const m = line.match(/^\s*([A-Z0-9_]+)=/)
+        if (m) exampleKeys.add(m[1])
+      }
     }
   }
   if (sourceEnvVars.size === 0) {
@@ -101,62 +108,65 @@ export function findCircularDeps(graph: ImportGraph): string[][] {
   return cycles.slice(0, 10)
 }
 
-export function detectUnusedDeps(repoDir: string): string[] {
-  const pkgPath = path.join(repoDir, 'package.json')
-  let deps: string[] = []
-  let blob = ''
+export function detectUnusedDeps(
+  repoDir: string,
+  importSpecifiers: string[],
+  readTextFile: (file: string) => string | null = readText
+): string[] {
+  let manifest: {
+    dependencies?: Record<string, unknown>
+    devDependencies?: Record<string, unknown>
+    optionalDependencies?: Record<string, unknown>
+    peerDependencies?: Record<string, unknown>
+    scripts?: Record<string, unknown>
+  }
   try {
-    const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'))
-    deps = [...Object.keys(pkg.dependencies ?? {}), ...Object.keys(pkg.devDependencies ?? {})]
-    blob = JSON.stringify(pkg.scripts ?? {})
+    const packageText = readTextFile(path.join(repoDir, 'package.json'))
+    if (!packageText) return []
+    manifest = JSON.parse(packageText)
   } catch {
     return []
   }
-  // whole-tree text coverage catches config-referenced deps (tailwind, autoprefixer) too
-  for (const f of listFiles(repoDir).slice(0, 2000)) {
-    const base = path.basename(f)
-    if (
-      base === 'package.json' ||
-      base === 'package-lock.json' ||
-      base === 'yarn.lock' ||
-      base === 'pnpm-lock.yaml' ||
-      base === 'bun.lockb'
-    ) {
-      continue
-    }
-    blob += readText(f) ?? ''
-  }
-  const TOOLING_PACKAGES = new Set([
-    'typescript',
-    'tsx',
-    'ts-node',
-    'prisma',
-    '@prisma/client',
-    'prettier',
-    'eslint',
-    'postcss',
-    'autoprefixer',
-    'tailwindcss',
-    'vitest',
-    'jest',
-    'rimraf',
-    'nodemon',
-    'dotenv',
-    'sharp',
-    'husky',
-    'lint-staged',
-    'cross-env',
-  ])
 
-  return deps.filter((d) => {
-    // @types/* are ambient devDeps, never imported
-    if (d.startsWith('@types/')) return false
-    // Common CLI, compiler, and build-time tooling used in scripts or configs
-    if (TOOLING_PACKAGES.has(d)) return false
-    if (d.startsWith('@')) return !blob.includes(d)
-    const escaped = d.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-    return !new RegExp(`\\b${escaped}\\b`).test(blob)
-  }).sort()
+  const dependencies = new Set([
+    ...Object.keys(manifest.dependencies ?? {}),
+    ...Object.keys(manifest.devDependencies ?? {}),
+    ...Object.keys(manifest.optionalDependencies ?? {}),
+    ...Object.keys(manifest.peerDependencies ?? {}),
+  ])
+  const usedPackages = new Set<string>()
+
+  for (const specifier of importSpecifiers) {
+    if (!specifier || specifier.startsWith('.') || specifier.startsWith('/') || specifier.startsWith('#')) continue
+    if (/^(?:node:|[A-Za-z][A-Za-z0-9+.-]*:)/.test(specifier)) continue
+    const parts = specifier.split('/')
+    const packageName = specifier.startsWith('@') ? parts.slice(0, 2).join('/') : parts[0]
+    if (dependencies.has(packageName)) usedPackages.add(packageName)
+  }
+
+  // CLI-only dependencies are often referenced in scripts rather than imported.
+  // Token equality avoids the old substring false positives (e.g. "react" in
+  // "react-dom") while recognizing the common compiler/test command aliases.
+  const scriptTokens = new Set(
+    JSON.stringify(manifest.scripts ?? {}).match(/@?[A-Za-z0-9_.@/-]+/g) ?? []
+  )
+  const executableAliases: Record<string, string[]> = {
+    typescript: ['tsc'],
+    '@playwright/test': ['playwright'],
+    'ts-node': ['ts-node'],
+    'tailwindcss': ['tailwindcss'],
+    'cross-env': ['cross-env'],
+    'lint-staged': ['lint-staged'],
+  }
+
+  return [...dependencies]
+    .filter((dependency) => {
+      if (dependency.startsWith('@types/')) return false
+      if (usedPackages.has(dependency) || scriptTokens.has(dependency)) return false
+      if ((executableAliases[dependency] ?? []).some((name) => scriptTokens.has(name))) return false
+      return true
+    })
+    .sort()
 }
 
 export function detectDeadExports(
@@ -181,6 +191,61 @@ export function detectDeadExports(
   return dead.slice(0, 20)
 }
 
+export function accessibilityFindings(text: string, relFile: string): Finding[] {
+  const findings: Finding[] = []
+  const lineAt = (index: number) => text.slice(0, index).split('\n').length
+
+  for (const match of text.matchAll(/<img\b[^>]*>/gi)) {
+    const element = match[0]
+    if (/\balt\s*=|aria-hidden\s*=\s*["']true["']|role\s*=\s*["'](?:presentation|none)["']/i.test(element)) continue
+    const line = lineAt(match.index ?? 0)
+    findings.push({
+      id: `a11y-img-alt-${line}`,
+      ruleId: 'a11y-img-alt',
+      category: 'accessibility',
+      severity: 'warning',
+      title: 'Image may be missing alternative text',
+      detail: `${relFile}:${line} contains an <img> element without an alt attribute.`,
+      file: relFile,
+      line,
+      evidence: [`${relFile}:${line}`],
+      confidence: 'high',
+    })
+    if (findings.length >= 10) break
+  }
+
+  if (findings.length < 10) {
+    for (const match of text.matchAll(/<button\b[^>]*>[\s\S]*?<\/button\s*>/gi)) {
+      const element = match[0]
+      const openingTag = element.slice(0, element.indexOf('>') + 1)
+      const inner = element.slice(openingTag.length, element.lastIndexOf('</button'))
+      const visibleText = inner
+        .replace(/<!--[\s\S]*?-->/g, ' ')
+        .replace(/<[^>]*>/g, ' ')
+        .replace(/\{[^{}]*\}/g, ' ')
+        .replace(/&(?:nbsp|#\d+|#x[\da-f]+|amp|lt|gt);/gi, ' ')
+        .trim()
+      if (visibleText || /\b(?:aria-label|aria-labelledby|title)\s*=/.test(element)) continue
+      const line = lineAt(match.index ?? 0)
+      findings.push({
+        id: `a11y-button-name-${line}`,
+        ruleId: 'a11y-button-name',
+        category: 'accessibility',
+        severity: 'warning',
+        title: 'Button may not have an accessible name',
+        detail: `${relFile}:${line} contains an icon-only or empty button without a detectable accessible-name attribute.`,
+        file: relFile,
+        line,
+        evidence: [`${relFile}:${line}`],
+        confidence: 'low',
+      })
+      if (findings.length >= 10) break
+    }
+  }
+
+  return findings
+}
+
 export function structureFindings(structure: ProjectStructure): Finding[] {
   const findings: Finding[] = []
   if (structure.fileCount === 0) return findings
@@ -199,9 +264,9 @@ export function structureFindings(structure: ProjectStructure): Finding[] {
     findings.push({
       id: `huge-file-${h.file}`,
       category: 'techDebt',
-      severity: h.lines > 600 ? 'critical' : 'warning',
-      title: 'Very large file',
-      detail: `${h.file} has ${h.lines} non-empty lines; consider splitting.`,
+      severity: 'warning',
+      title: 'Large source file',
+      detail: `${h.file} has ${h.lines} non-empty lines. This is a maintainability hint, not a runtime-performance or correctness defect.`,
       file: h.file,
       count: h.lines,
     })
@@ -242,7 +307,6 @@ export function perfFindings(metrics: {
   clientFiles: number
   imgTags: number
   nextImage: boolean
-  avgFileLines: number
 }): Finding[] {
   const findings: Finding[] = []
   const clientRatio = metrics.reactFiles ? metrics.clientFiles / metrics.reactFiles : 0
@@ -274,15 +338,6 @@ export function perfFindings(metrics: {
       title: 'Raw <img> tags used',
       detail: `${metrics.imgTags} raw <img> tags; consider using an optimized image component or loading="lazy".`,
       count: metrics.imgTags,
-    })
-  }
-  if (metrics.avgFileLines > 250) {
-    findings.push({
-      id: 'avg-lines-high',
-      category: 'performance',
-      severity: 'warning',
-      title: 'High average file size',
-      detail: `Average ${metrics.avgFileLines} lines can slow first paint and parsing.`,
     })
   }
   return findings

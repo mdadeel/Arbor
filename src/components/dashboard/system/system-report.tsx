@@ -27,6 +27,8 @@ import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { ScoreBadge } from '@/components/dashboard/score-badge'
+import { StatusBadge } from '@/components/dashboard/status-badge'
+import { AnalysisProgress } from '@/components/dashboard/analysis-progress'
 import { TechStackGroup } from '@/components/dashboard/tech-stack-badge'
 import { ContractMatrix } from './contract-matrix'
 import { FullstackGraph } from './fullstack-graph'
@@ -71,6 +73,7 @@ interface SystemReportProps {
       systemGraph?: unknown
       findings?: unknown
       durationMs?: number | null
+      errorMessage?: string | null
       createdAt: string | Date
     }>
   }
@@ -111,14 +114,25 @@ export function SystemReport({ group }: SystemReportProps) {
   }
 
   const latestAnalysis = group.analyses[0]
+  const isRunning = latestAnalysis?.status === 'queued' || latestAnalysis?.status === 'analyzing'
+  const latestCompletedAnalysis = group.analyses.find((analysis) => analysis.status === 'completed')
+  const reportAnalysis = isRunning || latestAnalysis?.status === 'failed'
+    ? latestCompletedAnalysis
+    : latestAnalysis
 
   const analyze = trpc.system.analyze.useMutation({
     onSuccess: () => router.refresh(),
     onError: (e) => window.alert(e.message),
   })
 
-  // Parsed artifacts
-  const contractMatrix = (latestAnalysis?.contractMatrix as {
+  useEffect(() => {
+    if (!isRunning) return
+    const interval = window.setInterval(() => router.refresh(), 3000)
+    return () => window.clearInterval(interval)
+  }, [isRunning, router])
+
+  // Parsed artifacts continue to show the last completed snapshot while a new run is active.
+  const contractMatrix = (reportAnalysis?.contractMatrix as {
     total: number
     connected: number
     broken: number
@@ -134,17 +148,17 @@ export function SystemReport({ group }: SystemReportProps) {
     items: [],
   }
 
-  const envDrift = (latestAnalysis?.envDrift as EnvParityResult | null) ?? {
+  const envDrift = (reportAnalysis?.envDrift as EnvParityResult | null) ?? {
     score: 100,
     issues: [],
   }
 
-  const systemGraph = (latestAnalysis?.systemGraph as SystemGraphResult | null) ?? {
+  const systemGraph = (reportAnalysis?.systemGraph as SystemGraphResult | null) ?? {
     nodes: [],
     edges: [],
   }
 
-  const findings = (latestAnalysis?.findings as Array<{
+  const findings = (reportAnalysis?.findings as Array<{
     id: string
     category: string
     severity: 'critical' | 'warning' | 'info'
@@ -167,27 +181,36 @@ export function SystemReport({ group }: SystemReportProps) {
             <span>Fullstack System Group</span>
           </Badge>
 
-          {latestAnalysis?.durationMs && (
+          <StatusBadge status={latestAnalysis?.status ?? 'no-analysis'} />
+          {reportAnalysis?.durationMs && (
             <span className="font-mono text-xs text-muted-foreground">
-              {Math.round(latestAnalysis.durationMs / 1000)}s analysis duration
+              {Math.round(reportAnalysis.durationMs / 1000)}s analysis duration
             </span>
           )}
         </div>
 
         <Button
           size="sm"
-          disabled={analyze.isPending}
+          disabled={isRunning || analyze.isPending}
           onClick={() => analyze.mutate({ slug: group.slug })}
           className="h-8 gap-1.5 text-xs font-medium"
         >
-          {analyze.isPending ? (
+          {isRunning || analyze.isPending ? (
             <Loader2 className="h-3.5 w-3.5 animate-spin" />
           ) : (
             <RefreshCw className="h-3.5 w-3.5" />
           )}
-          <span>Re-analyze System</span>
+          <span>{isRunning ? 'Analysis running…' : analyze.isPending ? 'Starting analysis…' : 'Re-analyze System'}</span>
         </Button>
       </div>
+
+      {isRunning && latestAnalysis && <AnalysisProgress status={latestAnalysis.status} />}
+      {latestAnalysis?.status === 'failed' && (
+        <div className="rounded-lg border border-red-500/40 bg-red-500/10 p-4 text-xs text-red-300">
+          <p className="font-semibold">System analysis failed</p>
+          <p className="mt-1">{latestAnalysis.errorMessage ?? 'The system analysis could not be completed.'}</p>
+        </div>
+      )}
 
       {/* System Scores Matrix */}
       <div className="grid grid-cols-2 gap-px overflow-hidden rounded-lg border border-border bg-border sm:grid-cols-4 lg:grid-cols-5">
@@ -199,7 +222,7 @@ export function SystemReport({ group }: SystemReportProps) {
           </div>
           <div className="mt-2 flex items-baseline gap-1 font-mono">
             <span className="text-3xl font-bold tracking-tight text-foreground">
-              {latestAnalysis?.overallScore ?? '—'}
+              {reportAnalysis?.overallScore ?? '—'}
             </span>
             <span className="text-xs text-muted-foreground font-mono">/100</span>
           </div>
@@ -212,7 +235,7 @@ export function SystemReport({ group }: SystemReportProps) {
           </div>
           <div className="mt-2 flex items-baseline gap-1 font-mono">
             <span className="text-2xl font-bold tracking-tight text-cyan-400">
-              {latestAnalysis?.frontendScore ?? '—'}
+              {reportAnalysis?.frontendScore ?? '—'}
             </span>
             <span className="text-xs text-muted-foreground font-mono">/100</span>
           </div>
@@ -225,7 +248,7 @@ export function SystemReport({ group }: SystemReportProps) {
           </div>
           <div className="mt-2 flex items-baseline gap-1 font-mono">
             <span className="text-2xl font-bold tracking-tight text-emerald-400">
-              {latestAnalysis?.backendScore ?? '—'}
+              {reportAnalysis?.backendScore ?? '—'}
             </span>
             <span className="text-xs text-muted-foreground font-mono">/100</span>
           </div>
@@ -238,7 +261,7 @@ export function SystemReport({ group }: SystemReportProps) {
           </div>
           <div className="mt-2 flex items-baseline gap-1 font-mono">
             <span className="text-2xl font-bold tracking-tight text-foreground">
-              {latestAnalysis?.contractScore ?? '—'}
+              {reportAnalysis?.contractScore ?? '—'}
             </span>
             <span className="text-xs text-muted-foreground font-mono">/100</span>
           </div>
@@ -251,7 +274,7 @@ export function SystemReport({ group }: SystemReportProps) {
           </div>
           <div className="mt-2 flex items-baseline gap-1 font-mono">
             <span className="text-2xl font-bold tracking-tight text-foreground">
-              {latestAnalysis?.envScore ?? '—'}
+              {reportAnalysis?.envScore ?? '—'}
             </span>
             <span className="text-xs text-muted-foreground font-mono">/100</span>
           </div>

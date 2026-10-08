@@ -1,7 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import { motion } from 'framer-motion'
+import { Activity, ArrowDownRight, GitBranch, GitFork, Layers3 } from 'lucide-react'
+import { Badge } from '@/components/ui/createui/badge'
 
 interface NodeItem {
   id: string
@@ -14,190 +15,143 @@ interface NodeItem {
 }
 
 const NODES: NodeItem[] = [
-  { id: 'n1', name: 'app.ts', layer: 'Entrypoint', deps: ['router.ts'], loc: 94, x: '8%', y: '28%' },
-  { id: 'n2', name: 'router.ts', layer: 'Router / Dispatch', deps: ['auth.ts', 'audit.ts'], loc: 182, x: '44%', y: '36%' },
-  { id: 'n3', name: 'auth.ts', layer: 'Security / Session', deps: ['db.ts'], loc: 120, x: '78%', y: '58%' },
-  { id: 'n4', name: 'db.ts', layer: 'Persistence / Prisma', deps: [], loc: 64, x: '16%', y: '74%' },
-  { id: 'n5', name: 'audit.ts', layer: 'AST Analysis Service', deps: ['db.ts'], loc: 310, x: '74%', y: '18%' },
+  { id: 'entry', name: 'app.ts', layer: 'Application entry', deps: ['router.ts', 'db.ts'], loc: 94, x: '10%', y: '34%' },
+  { id: 'router', name: 'router.ts', layer: 'Route dispatch', deps: ['auth.ts', 'audit.ts'], loc: 182, x: '43%', y: '43%' },
+  { id: 'auth', name: 'auth.ts', layer: 'Authentication', deps: ['db.ts'], loc: 120, x: '79%', y: '62%' },
+  { id: 'db', name: 'db.ts', layer: 'Persistence layer', deps: [], loc: 64, x: '19%', y: '77%' },
+  { id: 'audit', name: 'audit.ts', layer: 'AST analysis service', deps: ['db.ts'], loc: 310, x: '78%', y: '20%' },
+]
+
+const HEALTH_DIMENSIONS = [
+  { label: 'Architecture', score: 91 },
+  { label: 'Maintainability', score: 84 },
+  { label: 'Security', score: 84 },
+  { label: 'Performance', score: 79 },
+]
+
+const GRAPH_EDGES = [
+  { from: 'entry', to: 'router', x1: 11, y1: 34, x2: 43, y2: 43 },
+  { from: 'router', to: 'auth', x1: 43, y1: 43, x2: 79, y2: 62 },
+  { from: 'router', to: 'audit', x1: 43, y1: 43, x2: 78, y2: 20 },
+  { from: 'auth', to: 'db', x1: 79, y1: 62, x2: 19, y2: 77 },
+  { from: 'entry', to: 'db', x1: 11, y1: 34, x2: 19, y2: 77 },
 ]
 
 export function HeroPreviewCard() {
-  const [selectedNode, setSelectedNode] = useState<string>('n2')
-  const [hoveredNode, setHoveredNode] = useState<string | null>(null)
-  const activeFocus = hoveredNode || selectedNode
-  const activeNode = NODES.find((n) => n.id === activeFocus) || NODES[1]
-
-  const isEdgeActive = (nodeA: string, nodeB: string) => {
-    return activeFocus === nodeA || activeFocus === nodeB
-  }
+  const [selectedNode, setSelectedNode] = useState('router')
+  const activeNode = NODES.find((node) => node.id === selectedNode) ?? NODES[1]
 
   return (
-    <div className="relative mx-auto w-full max-w-5xl text-left font-mono">
-      {/* Product Frame with Sharp Border and Offset Accent Shadow */}
-      <div className="relative border border-foreground/20 dark:border-line-strong bg-card text-foreground shadow-offset-accent transition-all duration-200">
-        
-        {/* Frame Top Header Strip */}
-        <div className="flex items-center justify-between gap-4 border-b border-border dark:border-line-strong px-4 sm:px-6 py-3 text-[11px] font-medium uppercase tracking-wider bg-muted/20">
-          <div className="flex items-center gap-3">
-            <span className="font-semibold text-foreground">arbor / architecture.audit</span>
-            <span className="hidden sm:inline-block text-muted-foreground">·</span>
-            <span className="hidden sm:inline-block text-muted-foreground">main @ 2f27537</span>
+    <div className="relative mx-auto w-full max-w-6xl text-left">
+      <div className="overflow-hidden rounded-2xl border border-border/90 bg-card text-card-foreground shadow-[0_24px_80px_rgba(0,0,0,0.24)]">
+        <div className="flex min-w-0 flex-wrap items-center justify-between gap-3 border-b border-border bg-muted/30 px-4 py-3 sm:px-5">
+          <div className="flex min-w-0 items-center gap-3">
+            <div className="hidden items-center gap-1.5 sm:flex" aria-hidden="true">
+              <span className="size-2.5 rounded-full bg-red-400/80" />
+              <span className="size-2.5 rounded-full bg-amber-400/80" />
+              <span className="size-2.5 rounded-full bg-emerald-400/80" />
+            </div>
+            <span className="hidden h-5 w-px bg-border sm:block" aria-hidden="true" />
+            <div className="flex min-w-0 items-center gap-2">
+              <GitFork className="size-4 shrink-0 text-primary" aria-hidden="true" />
+              <span className="truncate text-sm font-semibold text-foreground">arbor / sample-api</span>
+            </div>
+            <Badge variant="neutral" appearance="outline" size="xs" className="hidden sm:inline-flex">
+              <GitBranch aria-hidden="true" />
+              main
+            </Badge>
           </div>
-          <div className="flex items-center gap-2">
-            <span className="bg-acid text-[#11170f] font-bold px-2 py-0.5 text-[10px] tracking-widest border border-[#11170f]/20">
-              SAMPLE AUDIT
-            </span>
-          </div>
+          <Badge variant="success" appearance="soft" size="xs" className="shrink-0">
+            Sample audit
+          </Badge>
         </div>
 
-        {/* Dashboard Body: Score + Graph Split */}
-        <div className="grid grid-cols-1 md:grid-cols-[200px_1fr] lg:grid-cols-[240px_1fr] divide-y md:divide-y-0 md:divide-x divide-border dark:divide-line-strong">
-          
-          {/* Left Column: Repository Health Score & Dimension Bars */}
-          <div className="p-5 sm:p-6 flex flex-col justify-between space-y-6 bg-card/60">
+        <div className="grid min-w-0 divide-y divide-border md:grid-cols-[220px_minmax(0,1fr)] md:divide-x md:divide-y-0 lg:grid-cols-[250px_minmax(0,1fr)]">
+          <aside className="flex min-w-0 flex-col justify-between gap-6 bg-card p-5 sm:p-6">
             <div>
-              <div className="text-[10px] uppercase font-semibold text-muted-foreground tracking-wider leading-tight">
-                Repository<br />Health Score
+              <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
+                <Activity className="size-4 text-primary" aria-hidden="true" />
+                Repository health
               </div>
-              <div className="text-5xl sm:text-6xl font-black font-mono tracking-tight text-foreground tabular-nums mt-3">
-                82<span className="text-base text-muted-foreground font-normal">/100</span>
+              <div className="mt-3 flex items-baseline gap-1.5 font-mono">
+                <span className="text-5xl font-semibold tracking-tight text-foreground tabular-nums">82</span>
+                <span className="text-sm text-muted-foreground">/100</span>
               </div>
-              <div className="inline-block mt-2 px-2 py-0.5 text-[10px] font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-                READY FOR SHIP
-              </div>
+              <Badge variant="success" appearance="soft" size="xs" className="mt-3">
+                Ready for review
+              </Badge>
             </div>
 
-            {/* Health Dimension Bars */}
-            <div className="space-y-3 pt-4 border-t border-border dark:border-line">
-              <div className="space-y-1">
-                <div className="flex justify-between text-[10px] text-muted-foreground">
-                  <span>Architecture</span>
-                  <span className="tabular-nums font-semibold text-foreground">91%</span>
+            <div className="space-y-4 border-t border-border pt-4" aria-label="Sample health dimensions">
+              {HEALTH_DIMENSIONS.map(({ label, score }) => (
+                <div key={label} className="space-y-1.5">
+                  <div className="flex items-center justify-between gap-3 text-[11px]">
+                    <span className="truncate text-muted-foreground">{label}</span>
+                    <span className="font-mono font-semibold text-foreground tabular-nums">{score}</span>
+                  </div>
+                  <div
+                    className="h-1.5 overflow-hidden rounded-full bg-muted"
+                    role="img"
+                    aria-label={`${label}: ${score} out of 100`}
+                  >
+                    <div className="h-full rounded-full bg-primary" style={{ width: `${score}%` }} />
+                  </div>
                 </div>
-                <div className="h-1.5 w-full bg-muted overflow-hidden">
-                  <div className="h-full bg-emerald-600 dark:bg-[#4c8f63]" style={{ width: '91%' }} />
-                </div>
-              </div>
-
-              <div className="space-y-1">
-                <div className="flex justify-between text-[10px] text-muted-foreground">
-                  <span>Tech Debt</span>
-                  <span className="tabular-nums font-semibold text-foreground">74%</span>
-                </div>
-                <div className="h-1.5 w-full bg-muted overflow-hidden">
-                  <div className="h-full bg-emerald-600 dark:bg-[#4c8f63]" style={{ width: '74%' }} />
-                </div>
-              </div>
-
-              <div className="space-y-1">
-                <div className="flex justify-between text-[10px] text-muted-foreground">
-                  <span>Security</span>
-                  <span className="tabular-nums font-semibold text-foreground">84%</span>
-                </div>
-                <div className="h-1.5 w-full bg-muted overflow-hidden">
-                  <div className="h-full bg-emerald-600 dark:bg-[#4c8f63]" style={{ width: '84%' }} />
-                </div>
-              </div>
-
-              <div className="space-y-1">
-                <div className="flex justify-between text-[10px] text-muted-foreground">
-                  <span>Performance</span>
-                  <span className="tabular-nums font-semibold text-foreground">79%</span>
-                </div>
-                <div className="h-1.5 w-full bg-muted overflow-hidden">
-                  <div className="h-full bg-emerald-600 dark:bg-[#4c8f63]" style={{ width: '79%' }} />
-                </div>
-              </div>
+              ))}
             </div>
-          </div>
+          </aside>
 
-          {/* Right Column: Inspectable Dependency Graph / Route Layer */}
-          <div className="relative min-h-[320px] sm:min-h-[360px] p-5 sm:p-6 overflow-hidden bg-card/30 flex flex-col justify-between"
-               style={{
-                 backgroundImage: 'radial-gradient(circle, currentColor 1px, transparent 1px)',
-                 backgroundSize: '16px 16px',
-                 color: 'var(--grid)',
-               }}>
-            
-            {/* Graph Header Label */}
-            <div className="relative z-10 flex items-center justify-between">
-              <span className="text-[10px] uppercase font-semibold text-muted-foreground tracking-wider">
-                Dependency Graph / Route Layer
-              </span>
-              <span className="text-[10px] text-muted-foreground hidden sm:inline-block">
-                Click nodes to inspect edges
-              </span>
+          <section className="flex min-w-0 flex-col p-4 sm:p-5" aria-label="Sample dependency graph">
+            <div className="flex flex-wrap items-center justify-between gap-2 px-1 pb-3">
+              <div>
+                <h2 className="text-sm font-semibold text-foreground">Dependency map</h2>
+                <p className="mt-0.5 text-[11px] text-muted-foreground">Select a module to inspect its imports</p>
+              </div>
+              <Badge variant="neutral" appearance="soft" size="xs">
+                <Layers3 aria-hidden="true" />
+                5 modules
+              </Badge>
             </div>
 
-            {/* Simulated Edge Lines */}
-            <div className="absolute inset-0 pointer-events-none text-foreground">
-              {/* e1: app.ts (n1) -> router.ts (n2) */}
-              <div
-                className={`absolute origin-left transition-all duration-200 ${
-                  isEdgeActive('n1', 'n2')
-                    ? 'h-[2px] bg-acid opacity-100 z-10'
-                    : 'h-[1px] bg-current opacity-30 dark:opacity-40'
-                }`}
-                style={{ width: '38%', left: '16%', top: '34%', transform: 'rotate(8deg)' }}
-              />
-              {/* e2: router.ts (n2) -> auth.ts (n3) */}
-              <div
-                className={`absolute origin-left transition-all duration-200 ${
-                  isEdgeActive('n2', 'n3')
-                    ? 'h-[2px] bg-acid opacity-100 z-10'
-                    : 'h-[1px] bg-current opacity-30 dark:opacity-40'
-                }`}
-                style={{ width: '36%', left: '50%', top: '42%', transform: 'rotate(24deg)' }}
-              />
-              {/* e3: router.ts (n2) -> audit.ts (n5) */}
-              <div
-                className={`absolute origin-left transition-all duration-200 ${
-                  isEdgeActive('n2', 'n5')
-                    ? 'h-[2px] bg-acid opacity-100 z-10'
-                    : 'h-[1px] bg-current opacity-30 dark:opacity-40'
-                }`}
-                style={{ width: '32%', left: '50%', top: '36%', transform: 'rotate(-26deg)' }}
-              />
-              {/* e4: auth.ts (n3) -> db.ts (n4) */}
-              <div
-                className={`absolute origin-left transition-all duration-200 ${
-                  isEdgeActive('n3', 'n4')
-                    ? 'h-[2px] bg-acid opacity-100 z-10'
-                    : 'h-[1px] bg-current opacity-30 dark:opacity-40'
-                }`}
-                style={{ width: '64%', left: '22%', top: '75%', transform: 'rotate(-16deg)' }}
-              />
-              {/* e5: app.ts (n1) -> db.ts (n4) */}
-              <div
-                className={`absolute origin-left transition-all duration-200 ${
-                  isEdgeActive('n1', 'n4')
-                    ? 'h-[2px] bg-acid opacity-100 z-10'
-                    : 'h-[1px] bg-current opacity-30 dark:opacity-40'
-                }`}
-                style={{ width: '42%', left: '12%', top: '36%', transform: 'rotate(72deg)' }}
-              />
-            </div>
+            <div
+              className="relative min-h-[300px] flex-1 overflow-hidden rounded-xl border border-border bg-muted/15 sm:min-h-[350px]"
+              style={{ backgroundImage: 'radial-gradient(circle, hsl(var(--foreground) / 0.12) 1px, transparent 1px)', backgroundSize: '18px 18px' }}
+            >
+              <svg className="absolute inset-0 h-full w-full" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+                {GRAPH_EDGES.map((edge) => {
+                  const active = edge.from === selectedNode || edge.to === selectedNode
+                  return (
+                    <line
+                      key={`${edge.from}-${edge.to}`}
+                      x1={edge.x1}
+                      y1={edge.y1}
+                      x2={edge.x2}
+                      y2={edge.y2}
+                      stroke="currentColor"
+                      strokeWidth={active ? 1.2 : 0.65}
+                      strokeDasharray={active ? undefined : '2 2'}
+                      className={active ? 'text-primary' : 'text-muted-foreground/40'}
+                    />
+                  )
+                })}
+              </svg>
 
-            {/* Interactive Graph Nodes */}
-            <div className="absolute inset-0">
               {NODES.map((node) => {
                 const isSelected = selectedNode === node.id
-                const isHovered = hoveredNode === node.id
                 return (
                   <button
                     key={node.id}
                     type="button"
+                    aria-pressed={isSelected}
+                    aria-label={`${node.name}, ${node.layer}, ${node.deps.length} imports`}
                     onClick={() => setSelectedNode(node.id)}
-                    onMouseEnter={() => setHoveredNode(node.id)}
-                    onMouseLeave={() => setHoveredNode(null)}
                     style={{ left: node.x, top: node.y }}
-                    className={`absolute z-20 px-2.5 py-1 text-[11px] font-semibold tracking-wide transition-all duration-150 cursor-pointer border ${
+                    className={[
+                      'absolute z-10 -translate-x-1/2 -translate-y-1/2 rounded-md border px-2 py-1.5 text-[10px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-card sm:px-2.5 sm:text-[11px]',
                       isSelected
-                        ? 'bg-acid text-[#11170f] border-foreground shadow-[3px_3px_0_currentColor] scale-105'
-                        : isHovered
-                        ? 'bg-muted/90 text-foreground border-foreground shadow-[2px_2px_0_currentColor] scale-105'
-                        : 'bg-card text-foreground border-border dark:border-line-strong hover:border-foreground shadow-[2px_2px_0_rgba(0,0,0,0.2)]'
-                    }`}
+                        ? 'border-primary bg-primary text-primary-foreground shadow-md'
+                        : 'border-border bg-card text-foreground shadow-sm hover:border-primary/50 hover:bg-muted',
+                    ].join(' ')}
                   >
                     {node.name}
                   </button>
@@ -205,62 +159,37 @@ export function HeroPreviewCard() {
               })}
             </div>
 
-            {/* Node Inspection Detail Strip */}
-            <div className="relative z-10 mt-auto pt-4 border-t border-border dark:border-line bg-card/90 backdrop-blur-xs p-3 flex flex-wrap items-center justify-between gap-3 text-[11px]">
-              <div className="flex items-center gap-3">
-                <span className="font-bold text-foreground">{activeNode.name}</span>
-                <span className="text-muted-foreground">{activeNode.layer}</span>
-                <span className="text-muted-foreground">· {activeNode.loc} LOC</span>
+            <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border bg-muted/30 px-3 py-2.5 text-[11px]" aria-live="polite">
+              <div className="flex min-w-0 items-center gap-2">
+                <span className="font-mono font-semibold text-foreground">{activeNode.name}</span>
+                <span className="truncate text-muted-foreground">{activeNode.layer}</span>
               </div>
-              <div className="flex items-center gap-2 text-muted-foreground text-[10px]">
-                <span>Imports:</span>
-                <span className="text-foreground font-semibold">
-                  {activeNode.deps.length > 0 ? activeNode.deps.join(', ') : 'None (Leaf Node)'}
-                </span>
+              <div className="flex shrink-0 items-center gap-1.5 text-muted-foreground">
+                <ArrowDownRight className="size-3.5" aria-hidden="true" />
+                <span>{activeNode.deps.length ? activeNode.deps.join(', ') : 'No imports'}</span>
               </div>
             </div>
-          </div>
+          </section>
         </div>
 
-        {/* Frame Foot Metrics (The 4 Quantified Invariants) */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 border-t border-border dark:border-line-strong divide-x divide-border dark:divide-line-strong bg-muted/10">
-          <div className="p-3 sm:p-4">
-            <b className="block text-base sm:text-lg font-bold font-mono tracking-tight text-foreground tabular-nums">
-              &lt; 30s
-            </b>
-            <span className="text-[10px] text-muted-foreground uppercase tracking-wider">
-              AUDIT TIME
-            </span>
+        <dl className="grid grid-cols-2 divide-x divide-y divide-border border-t border-border bg-muted/20 sm:grid-cols-4 sm:divide-y-0">
+          <div className="flex flex-col-reverse px-4 py-3 sm:px-5">
+            <dt className="text-[10px] uppercase tracking-wider text-muted-foreground">Typical audit time</dt>
+            <dd className="font-mono text-lg font-semibold text-foreground">~30s</dd>
           </div>
-
-          <div className="p-3 sm:p-4">
-            <b className="block text-base sm:text-lg font-bold font-mono tracking-tight text-foreground tabular-nums">
-              100%
-            </b>
-            <span className="text-[10px] text-muted-foreground uppercase tracking-wider">
-              DETERMINISTIC AST
-            </span>
+          <div className="flex flex-col-reverse px-4 py-3 sm:px-5">
+            <dt className="text-[10px] uppercase tracking-wider text-muted-foreground">Code analysis</dt>
+            <dd className="font-mono text-lg font-semibold text-foreground">AST</dd>
           </div>
-
-          <div className="p-3 sm:p-4">
-            <b className="block text-base sm:text-lg font-bold font-mono tracking-tight text-foreground tabular-nums">
-              7
-            </b>
-            <span className="text-[10px] text-muted-foreground uppercase tracking-wider">
-              HEALTH DIMENSIONS
-            </span>
+          <div className="flex flex-col-reverse px-4 py-3 sm:px-5">
+            <dt className="text-[10px] uppercase tracking-wider text-muted-foreground">Score dimensions</dt>
+            <dd className="font-mono text-lg font-semibold text-foreground">6</dd>
           </div>
-
-          <div className="p-3 sm:p-4">
-            <b className="block text-base sm:text-lg font-bold font-mono tracking-tight text-foreground tabular-nums">
-              0 bytes
-            </b>
-            <span className="text-[10px] text-muted-foreground uppercase tracking-wider">
-              SOURCE RETAINED
-            </span>
+          <div className="flex flex-col-reverse px-4 py-3 sm:px-5">
+            <dt className="text-[10px] uppercase tracking-wider text-muted-foreground">Working copy</dt>
+            <dd className="font-mono text-lg font-semibold text-foreground">Removed</dd>
           </div>
-        </div>
-
+        </dl>
       </div>
     </div>
   )

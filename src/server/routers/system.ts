@@ -7,8 +7,9 @@ import {
   getGroupBySlug,
   createGroup,
   deleteGroup,
-  runSystemAnalysis,
+  enqueueSystemAnalysis,
 } from '@/server/services/system-group'
+import { consumeAnalysisQuota } from '@/server/services/quotas'
 import { logAuditEvent } from '@/server/services/audit'
 
 const memberInputSchema = z.object({
@@ -21,7 +22,7 @@ const createGroupSchema = z.object({
   name: z.string().min(1).max(80),
   description: z.string().max(500).optional(),
   workspaceId: z.string().optional(),
-  members: z.array(memberInputSchema).min(2, 'At least 2 member projects are required (e.g. Frontend and Server)'),
+  members: z.array(memberInputSchema).min(2, 'At least 2 member projects are required (e.g. Frontend and Server)').max(25),
 })
 
 export const systemRouter = router({
@@ -79,14 +80,16 @@ export const systemRouter = router({
         throw new TRPCError({ code: 'NOT_FOUND', message: 'System group not found' })
       }
 
-      const analysis = await runSystemAnalysis(group.id)
+      // System scans consume the shared analysis budget and run asynchronously.
+      await consumeAnalysisQuota(ctx.session.user.id)
+      const analysis = await enqueueSystemAnalysis(group.id)
 
       logAuditEvent({
         userId: ctx.session.user.id,
         action: 'system_group.analyzed',
         entityType: 'system_group',
         entityId: group.id,
-        metadata: { slug: group.slug, score: analysis.overallScore },
+        metadata: { slug: group.slug, analysisId: analysis.id },
       }).catch(() => {})
 
       return analysis
