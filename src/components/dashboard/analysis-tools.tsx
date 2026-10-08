@@ -26,6 +26,7 @@ import {
 } from 'recharts'
 import { trpc } from '@/lib/trpc'
 import { Button } from '@/components/ui/createui/button'
+import { StatusBadge } from '@/components/dashboard/status-badge'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
 
@@ -265,19 +266,12 @@ export function PullRequestChecksView({ slug }: { slug: string }) {
         <CardContent className="p-0">
           <ul className="divide-y divide-border/60">
             {rows.map((item) => {
-              const statusClass = item.status === 'completed'
-                ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300'
-                : item.status === 'failed'
-                  ? 'border-red-500/30 bg-red-500/10 text-red-300'
-                  : item.status === 'closed'
-                    ? 'border-border text-muted-foreground'
-                    : 'border-primary/30 bg-primary/10 text-primary'
               return (
                 <li key={item.id} className="flex flex-col gap-3 p-4 sm:flex-row sm:items-start sm:justify-between">
                   <div className="min-w-0 flex-1 space-y-1.5">
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="text-xs font-semibold text-foreground">#{item.number} {item.title}</span>
-                      <span className={cn('rounded-full border px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wide', statusClass)}>{item.status}</span>
+                      <StatusBadge status={item.status} />
                     </div>
                     <p className="break-all font-mono text-[10px] text-muted-foreground">{item.baseBranch} ← {item.headBranch} · {item.headSha.slice(0, 12)}</p>
                     <p className="text-[10px] text-muted-foreground">Received {new Date(item.createdAt).toLocaleString()}{item.completedAt ? ` · completed ${new Date(item.completedAt).toLocaleString()}` : ''}</p>

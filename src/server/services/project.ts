@@ -111,7 +111,14 @@ export async function listProjects(userId: string, workspaceId?: string) {
     result = await prisma.project.findMany({
       where: { workspaceId, status: 'active' },
       orderBy: { updatedAt: 'desc' },
-      include: { _count: { select: { analyses: true } } },
+      include: {
+        _count: { select: { analyses: true } },
+        analyses: {
+          take: 1,
+          orderBy: { createdAt: 'desc' },
+          select: { status: true, createdAt: true },
+        },
+      },
     })
   } else {
     const projects = await prisma.project.findMany({
@@ -123,7 +130,14 @@ export async function listProjects(userId: string, workspaceId?: string) {
         ],
       },
       orderBy: { updatedAt: 'desc' },
-      include: { _count: { select: { analyses: true } } },
+      include: {
+        _count: { select: { analyses: true } },
+        analyses: {
+          take: 1,
+          orderBy: { createdAt: 'desc' },
+          select: { status: true, createdAt: true },
+        },
+      },
     })
 
     result = Array.from(new Map(projects.map((project) => [project.id, project])).values())
@@ -148,7 +162,22 @@ export async function getProjectBySlug(userId: string, slug: string) {
   if (!access) return null
 
   const cached = appCache.get<any>(cacheKey)
-  if (cached) return cached
+  if (cached) {
+    // Project details are cached, but analysis state changes in the worker process.
+    // Re-read the small latest-status row so a queued/running scan and its final
+    // report cannot remain hidden behind the detail cache.
+    const latestStatus = await prisma.analysis.findFirst({
+      where: { projectId: access.id },
+      orderBy: { createdAt: 'desc' },
+      select: { id: true, status: true },
+    })
+    const cachedLatest = cached.analyses?.[0]
+    if ((cachedLatest?.id ?? null) === (latestStatus?.id ?? null) &&
+        (cachedLatest?.status ?? null) === (latestStatus?.status ?? null)) {
+      return cached
+    }
+    appCache.delete(cacheKey)
+  }
 
   const project = await prisma.project.findFirst({
     where: {

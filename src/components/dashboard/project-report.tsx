@@ -67,6 +67,7 @@ import { CommitTimeline } from '@/components/dashboard/commits/commit-timeline'
 import { ScoreRow, AuditScores } from '@/components/dashboard/score-row'
 import { ScoreBadge } from '@/components/dashboard/score-badge'
 import { StatusBadge } from '@/components/dashboard/status-badge'
+import { AnalysisProgress, isAnalysisRunning } from '@/components/dashboard/analysis-progress'
 import { TechStackGroup } from '@/components/dashboard/tech-stack-badge'
 import { FindingItem, FindingData } from '@/components/dashboard/finding-item'
 import { PolicyControls } from '@/components/dashboard/policy-controls'
@@ -132,8 +133,6 @@ type ProjectRow = {
   latestCompletedAnalysis: AnalysisRow | null
 }
 
-const RUNNING_STATUSES = ['queued', 'cloning', 'analyzing']
-
 const VALID_TABS = [
   'overview',
   'architecture',
@@ -183,19 +182,20 @@ export function ProjectReport({ slug, project }: { slug: string; project: Projec
   }
 
   const latest = project.analyses[0]
-  const isRunning = latest ? RUNNING_STATUSES.includes(latest.status) : false
+  const isRunning = isAnalysisRunning(latest?.status)
 
   const analyze = trpc.project.analyze.useMutation({
     onSuccess: () => router.refresh(),
     onError: (e) => window.alert(e.message),
   })
 
-  // Poll while analysis is actively in flight
+  // Keep the server-rendered latest status fresh while analysis runs. A repeating
+  // interval is required: status can remain queued/analyzing for several polls.
   useEffect(() => {
     if (!isRunning) return
-    const interval = window.setTimeout(() => router.refresh(), 2500)
-    return () => window.clearTimeout(interval)
-  }, [isRunning, router, latest?.status])
+    const interval = window.setInterval(() => router.refresh(), 3000)
+    return () => window.clearInterval(interval)
+  }, [isRunning, router])
 
   const completed = project.latestCompletedAnalysis
 
@@ -379,10 +379,12 @@ export function ProjectReport({ slug, project }: { slug: string; project: Projec
             ) : (
               <Play className="h-3.5 w-3.5" />
             )}
-            <span>{latest ? 'Re-analyze' : 'Run First Analysis'}</span>
+            <span>{isRunning ? 'Analysis running…' : analyze.isPending ? 'Starting analysis…' : latest ? 'Re-analyze' : 'Run First Analysis'}</span>
           </Button>
         </div>
       </div>
+
+      {isRunning && latest && <AnalysisProgress status={latest.status} />}
 
       {latest?.status === 'failed' && (
         <div className="rounded-lg border border-red-500/40 bg-red-500/10 p-4 text-xs text-red-400">
@@ -406,7 +408,7 @@ export function ProjectReport({ slug, project }: { slug: string; project: Projec
                 className="gap-1.5"
               >
                 <Play className="h-3.5 w-3.5" />
-                <span>Start Analysis</span>
+                <span>{analyze.isPending ? 'Starting analysis…' : 'Start Analysis'}</span>
               </Button>
             </div>
           </CardContent>
@@ -1130,7 +1132,7 @@ export function ProjectReport({ slug, project }: { slug: string; project: Projec
                             {new Date(a.createdAt).toLocaleString()}
                           </td>
                           <td className="py-2.5 px-4">
-                            <StatusBadge status={a.status} showSpinner={false} />
+                            <StatusBadge status={a.status} />
                           </td>
                           <td className="py-2.5 px-4">
                             <ScoreBadge score={a.overallScore} size="sm" />

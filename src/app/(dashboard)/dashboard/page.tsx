@@ -189,6 +189,7 @@ export default async function DashboardPage() {
                     <TableHead className="w-[300px]">Repository</TableHead>
                     <TableHead>Health Score</TableHead>
                     <TableHead>Detected Stack</TableHead>
+                    <TableHead>Latest scan</TableHead>
                     <TableHead>Branch</TableHead>
                     <TableHead className="text-right">Action</TableHead>
                   </TableRow>
@@ -225,6 +226,10 @@ export default async function DashboardPage() {
                           ) : (
                             <span className="text-xs text-muted-foreground">—</span>
                           )}
+                        </TableCell>
+
+                        <TableCell>
+                          <StatusBadge status={project.analyses?.[0]?.status ?? 'no-analysis'} />
                         </TableCell>
 
                         <TableCell className="font-mono text-xs text-muted-foreground">
@@ -269,7 +274,12 @@ export default async function DashboardPage() {
                       )}
                     </div>
 
-                    <div className="flex items-center justify-between gap-3 border-t border-border/70 pt-3 text-xs">
+                    <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border/70 pt-3 text-xs">
+                      <span className="text-muted-foreground">Latest scan</span>
+                      <StatusBadge status={project.analyses?.[0]?.status ?? 'no-analysis'} />
+                    </div>
+
+                    <div className="flex items-center justify-between gap-3 text-xs">
                       <span className="text-muted-foreground">Default branch</span>
                       <code className="max-w-[60%] truncate text-right font-mono text-foreground">{project.defaultBranch}</code>
                     </div>
@@ -369,7 +379,7 @@ export default async function DashboardPage() {
                           </div>
                         </div>
                         <div className="flex items-center gap-2 shrink-0">
-                          <StatusBadge status={analysis.status} showSpinner={false} />
+                          <StatusBadge status={analysis.status} />
                           {analysis.overallScore != null && (
                             <ScoreBadge score={analysis.overallScore} size="sm" />
                           )}

@@ -14,14 +14,12 @@ export const metadata = {
   description: 'Sign in to Arbor with GitHub to analyze repositories and generate automated architectural audits.',
 }
 
-export default async function LoginPage({
-  searchParams,
-}: {
-  searchParams?: { callbackUrl?: string; error?: string }
-}) {
+export const dynamic = 'force-dynamic'
+
+export default async function LoginPage() {
   const session = await getServerSession(authOptions)
   if (session?.user) {
-    redirect(searchParams?.callbackUrl || '/dashboard')
+    redirect('/dashboard')
   }
   return (
     <div className="relative min-h-screen flex flex-col justify-between bg-background text-foreground antialiased">

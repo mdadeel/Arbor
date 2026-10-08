@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/table'
 import { ScoreBadge } from '@/components/dashboard/score-badge'
 import { TechStackGroup } from '@/components/dashboard/tech-stack-badge'
+import { StatusBadge } from '@/components/dashboard/status-badge'
 import { SummaryBar } from '@/components/dashboard/summary-bar'
 
 export default async function ProjectsPage() {
@@ -114,6 +115,7 @@ export default async function ProjectsPage() {
                   <TableHead className="w-[280px]">Project</TableHead>
                   <TableHead>Score</TableHead>
                   <TableHead>Detected Stack</TableHead>
+                  <TableHead>Latest scan</TableHead>
                   <TableHead>Branch</TableHead>
                   <TableHead>Analyses</TableHead>
                   <TableHead className="text-right">Action</TableHead>
@@ -151,6 +153,10 @@ export default async function ProjectsPage() {
                         ) : (
                           <span className="text-xs text-muted-foreground">—</span>
                         )}
+                      </TableCell>
+
+                      <TableCell>
+                        <StatusBadge status={project.analyses?.[0]?.status ?? 'no-analysis'} />
                       </TableCell>
 
                       <TableCell className="font-mono text-xs text-muted-foreground">
@@ -200,6 +206,10 @@ export default async function ProjectsPage() {
                   </div>
 
                   <dl className="grid grid-cols-2 gap-3 border-t border-border/70 pt-3 text-xs">
+                    <div className="min-w-0">
+                      <dt className="mb-1 text-muted-foreground">Latest scan</dt>
+                      <dd><StatusBadge status={project.analyses?.[0]?.status ?? 'no-analysis'} /></dd>
+                    </div>
                     <div className="min-w-0">
                       <dt className="text-muted-foreground">Default branch</dt>
                       <dd className="mt-1 truncate font-mono text-foreground">{project.defaultBranch}</dd>

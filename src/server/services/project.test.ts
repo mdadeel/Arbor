@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 vi.mock('@/lib/prisma', () => ({
   prisma: {
     project: { findMany: vi.fn(), findFirst: vi.fn(), create: vi.fn() },
+    analysis: { findFirst: vi.fn(), findMany: vi.fn() },
     workspaceMember: { findUnique: vi.fn(), findFirst: vi.fn(), findMany: vi.fn() },
   },
 }))
@@ -59,6 +60,13 @@ describe('project workspace assignment authorization', () => {
         status: 'active',
         OR: [{ userId: 'former-member', workspaceId: null }],
       },
+      include: expect.objectContaining({
+        analyses: {
+          take: 1,
+          orderBy: { createdAt: 'desc' },
+          select: { status: true, createdAt: true },
+        },
+      }),
     }))
   })
 
@@ -70,6 +78,36 @@ describe('project workspace assignment authorization', () => {
 
     await expect(listProjects('former-member')).resolves.toEqual([personalProject])
     expect(prisma.project.findMany).not.toHaveBeenCalled()
+  })
+
+  it('bypasses cached project detail when an analysis status changes', async () => {
+    const cached = {
+      id: 'project-1',
+      analyses: [{ id: 'analysis-1', status: 'queued' }],
+      latestCompletedAnalysis: null,
+    }
+    const freshProject = {
+      id: 'project-1', slug: 'demo', name: 'Demo', repoFullName: 'owner/repo',
+      defaultBranch: 'main', repoPrivate: false, repoUrl: 'https://github.com/owner/repo',
+      description: null, latestScores: null, detectedStack: null, lastAnalyzedAt: null,
+    }
+    const freshAnalysis = {
+      id: 'analysis-1', status: 'analyzing', branch: 'main', commitSha: null,
+      overallScore: null, durationMs: null, errorMessage: null, createdAt: new Date(),
+    }
+    appCache.set('project:user-1:demo', cached, 10_000)
+    vi.mocked(prisma.project.findFirst)
+      .mockResolvedValueOnce({ id: 'project-1' } as any)
+      .mockResolvedValueOnce(freshProject as any)
+    vi.mocked(prisma.analysis.findFirst)
+      .mockResolvedValueOnce({ id: 'analysis-1', status: 'analyzing' } as any)
+      .mockResolvedValueOnce(null as any)
+    vi.mocked(prisma.analysis.findMany).mockResolvedValueOnce([freshAnalysis] as any)
+
+    const project = await getProjectBySlug('user-1', 'demo')
+
+    expect(project?.analyses[0]?.status).toBe('analyzing')
+    expect(prisma.project.findFirst).toHaveBeenCalledTimes(2)
   })
 
   it('rechecks current membership before returning a cached project detail', async () => {
