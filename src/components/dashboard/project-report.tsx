@@ -725,8 +725,8 @@ export function ProjectReport({ slug, project }: { slug: string; project: Projec
                     </Button>
                   </CardHeader>
                   <CardContent className="p-0 divide-y divide-border/60">
-                    {[...criticalFindings, ...warningFindings].slice(0, 3).map((f) => (
-                      <div key={f.id} className="p-3.5 flex items-start justify-between gap-3 hover:bg-muted/30 transition-colors">
+                    {[...criticalFindings, ...warningFindings].slice(0, 3).map((f, idx) => (
+                      <div key={`${f.id}-${f.file ?? ''}-${f.line ?? ''}-${idx}`} className="p-3.5 flex items-start justify-between gap-3 hover:bg-muted/30 transition-colors">
                         <div className="flex items-start gap-2.5 min-w-0">
                           <span
                             className={cn(
@@ -993,9 +993,9 @@ export function ProjectReport({ slug, project }: { slug: string; project: Projec
                         Critical ({criticalFindings.length})
                       </h3>
                       <div className="divide-y divide-border/60 rounded-md border border-border/80 bg-card">
-                        {criticalFindings.map((f) => (
+                        {criticalFindings.map((f, idx) => (
                           <FindingItem
-                            key={f.id}
+                            key={`${f.id}-${f.file ?? ''}-${f.line ?? ''}-${idx}`}
                             finding={f}
                             repoUrl={project.repoUrl}
                             commitSha={completed?.commitSha}
@@ -1014,9 +1014,9 @@ export function ProjectReport({ slug, project }: { slug: string; project: Projec
                         Warnings ({warningFindings.length})
                       </h3>
                       <div className="divide-y divide-border/60 rounded-md border border-border/80 bg-card">
-                        {warningFindings.map((f) => (
+                        {warningFindings.map((f, idx) => (
                           <FindingItem
-                            key={f.id}
+                            key={`${f.id}-${f.file ?? ''}-${f.line ?? ''}-${idx}`}
                             finding={f}
                             repoUrl={project.repoUrl}
                             commitSha={completed?.commitSha}
@@ -1035,9 +1035,9 @@ export function ProjectReport({ slug, project }: { slug: string; project: Projec
                         Info ({infoFindings.length})
                       </h3>
                       <div className="divide-y divide-border/60 rounded-md border border-border/80 bg-card">
-                        {infoFindings.map((f) => (
+                        {infoFindings.map((f, idx) => (
                           <FindingItem
-                            key={f.id}
+                            key={`${f.id}-${f.file ?? ''}-${f.line ?? ''}-${idx}`}
                             finding={f}
                             repoUrl={project.repoUrl}
                             commitSha={completed?.commitSha}

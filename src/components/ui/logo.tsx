@@ -25,9 +25,14 @@ export function Logo({
   const { box, text } = SIZE_MAP[size] || SIZE_MAP.md
 
   return (
-    <div className={cn('inline-flex items-center gap-2.5 select-none', className)} {...props}>
+    <div
+      suppressHydrationWarning
+      className={cn('inline-flex items-center gap-2.5 select-none', className)}
+      {...props}
+    >
       {/* Visual Glyph Mark: AST Syntax Tree & "A" Monogram */}
       <div
+        suppressHydrationWarning
         className={cn(
           'relative shrink-0 flex items-center justify-center border border-border dark:border-line-strong bg-card shadow-xs transition-transform duration-150 hover:scale-[1.02]',
           box

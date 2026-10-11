@@ -52,11 +52,8 @@ function SystemModuleNode({
 }
 
 const defaultNodeTypes = { systemModule: SystemModuleNode }
-const defaultEdgeTypes = {}
 
 export function FullstackGraph({ graph }: { graph: SystemGraphResult }) {
-  const nodeTypes = useMemo(() => defaultNodeTypes, [])
-  const edgeTypes = useMemo(() => defaultEdgeTypes, [])
 
   const { nodes, edges } = useMemo(() => {
     if (!graph || !graph.nodes) return { nodes: [], edges: [] }
@@ -159,8 +156,7 @@ export function FullstackGraph({ graph }: { graph: SystemGraphResult }) {
         <ReactFlow
           nodes={nodes}
           edges={edges}
-          nodeTypes={nodeTypes}
-          edgeTypes={edgeTypes}
+          nodeTypes={defaultNodeTypes}
           fitView
           fitViewOptions={{ padding: 0.2 }}
           minZoom={0.5}

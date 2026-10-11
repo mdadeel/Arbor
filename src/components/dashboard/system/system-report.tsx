@@ -446,9 +446,9 @@ export function SystemReport({ group }: SystemReportProps) {
             </div>
           ) : (
             <div className="space-y-2">
-              {findings.map((f) => (
+              {findings.map((f, idx) => (
                 <div
-                  key={f.id}
+                  key={`${f.id}-${idx}`}
                   className="flex items-start gap-3 rounded-lg border border-border/80 bg-card/60 p-3.5 text-xs"
                 >
                   {f.severity === 'critical' ? (
