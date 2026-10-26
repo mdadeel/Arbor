@@ -1,7 +1,14 @@
+import type { Metadata } from 'next'
 import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Logo } from '@/components/ui/logo'
+
+// Overrides the root robots object entirely, so only one robots tag is emitted.
+export const metadata: Metadata = {
+  title: 'Page not found',
+  robots: { index: false, follow: false },
+}
 
 export default function NotFound() {
   return (

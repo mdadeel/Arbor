@@ -7,23 +7,28 @@ Arbor helps developers inspect software structure and repository health. Its aud
 
 ## Key Capabilities
 - **Architecture and health audits**: Summarizes repository structure, dependencies, technical debt, performance, security, documentation, and design-system signals.
-- **Dependency maps**: Visualizes analyzed module imports and surfaces detected circular dependencies.
+- **Dependency maps**: Visualizes import relationships between analyzed TypeScript and JavaScript modules and surfaces detected circular dependencies.
+- **Language coverage**: Import-graph analysis covers TypeScript and JavaScript. Stack detection also recognizes Python and Go, and Python requirements files are read for dependency data.
 - **Evidence-backed findings**: Shows relevant file paths and line locations for supported checks.
 - **Secret and environment checks**: Flags patterns that may indicate committed credentials and identifies environment variables not documented in an example file.
 - **Interactive API explorer and documentation**: Includes an OpenAPI runner and versioned Markdown documentation hub.
-- **Dynamic README badges**: Generates SVG repository-score badges at `/api/badge/[slug]`.
+- **README badges**: Generates SVG repository-score badges for public repositories at `/api/badge/{project-id}`. Copy the badge Markdown from the project report.
 
 ## Security & Privacy
-- **Temporary working copy**: Arbor uses a shallow repository copy during analysis and removes it when processing finishes. Stored reports contain derived results such as scores, structure, dependency relationships, and findings—not complete source files.
-- **Source analysis**: The repository audit uses AST and rule-based checks; source files are not submitted to a generative AI service as part of that audit.
-- **GitHub permissions**: GitHub OAuth currently requests the `repo` scope. Review the permissions on GitHub's authorization screen before connecting. You can also analyze public repositories without granting private-repository access.
-- **Token security**: Stored OAuth tokens and personal access tokens are encrypted by the application.
+- **Temporary working copy**: Arbor uses a shallow repository copy during analysis and removes it when processing finishes. Stored reports contain derived results such as scores, structure, dependency relationships, and findings, not complete source files.
+- **Core audit does not use AI**: The repository audit uses AST and rule-based checks. Source files are not sent to a generative AI service as part of that audit.
+- **Optional AI features**: Off unless a user adds their own OpenAI or Anthropic API key. Finding explanations send finding details to the chosen provider. Patch suggestions send the contents of one selected source file, up to 64 KB, to that provider.
+- **GitHub permissions**: GitHub OAuth requests the `read:user`, `user:email`, and `repo` scopes. Review the permissions on GitHub's authorization screen before connecting. You can also analyze public repositories without granting private-repository access.
+- **Token security**: Stored OAuth tokens, personal access tokens, and provider keys are encrypted at rest with AES-256-GCM.
+- **Policies**: Privacy Policy at https://arborgit.vercel.app/privacy and Terms of Service at https://arborgit.vercel.app/terms.
 
 ## Pricing & Tiers
-- **Community (Free)**: Up to 3 connected repositories with audits, dependency maps, and README badges.
-- **Pro ($15/month — Waitlist)**: Planned expanded repository limits, scheduled health sync, team workspaces with RBAC, and GitHub Actions integrations.
+- **Community (Free)**: Up to 10 audits per hour per account across all connected repositories, with dependency maps and README badges for public repositories.
+- **Teams ($15/month — in development, waitlist)**: Planned shared workspaces with role-based access, scheduled health sync, and CI checks. No launch date or purchase commitment is offered yet.
 
 ## Canonical URLs
 - Website: https://arborgit.vercel.app
 - Sign In: https://arborgit.vercel.app/login
-- Dynamic SVG Badges: https://arborgit.vercel.app/api/badge/[slug]
+- Privacy Policy: https://arborgit.vercel.app/privacy
+- Terms of Service: https://arborgit.vercel.app/terms
+- README Badges: https://arborgit.vercel.app/api/badge/{project-id}

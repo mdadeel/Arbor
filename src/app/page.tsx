@@ -1,3 +1,4 @@
+import type { Metadata } from 'next'
 import { getServerSession } from 'next-auth'
 import Link from 'next/link'
 import { authOptions } from '@/lib/auth'
@@ -21,7 +22,13 @@ import {
 
 export const revalidate = 3600
 
-const technologies = ['TypeScript', 'JavaScript', 'Python', 'Go', 'React', 'Next.js', 'GitHub Actions', 'GitLab']
+// Canonical is set per page: the root layout deliberately does not set one,
+// because Next.js would otherwise inherit it onto every route.
+export const metadata: Metadata = {
+  alternates: { canonical: '/' },
+}
+
+const technologies = ['TypeScript', 'JavaScript', 'React', 'Next.js', 'Python', 'Go']
 
 const workflow = [
   {
@@ -49,7 +56,7 @@ function TechnologyStrip() {
     <section className="border-y border-border bg-card/40" aria-label="Supported languages and tooling">
       <div className="mx-auto flex max-w-7xl flex-col gap-4 px-4 py-6 sm:px-6 md:flex-row md:items-center md:justify-between lg:px-8">
         <p className="shrink-0 text-xs font-medium text-muted-foreground">
-          Works with the code and tooling you already use
+          Languages and frameworks Arbor recognizes
         </p>
         <ul className="flex flex-wrap items-center gap-2" aria-label="Supported technologies">
           {technologies.map((technology) => (
@@ -140,7 +147,7 @@ export default async function HomePage() {
                 </li>
                 <li className="inline-flex items-center gap-1.5">
                   <Timer className="size-3.5 text-primary" aria-hidden="true" />
-                  About 30 seconds per audit
+                  Audit time scales with repository size
                 </li>
                 <li className="inline-flex items-center gap-1.5">
                   <GitBranch className="size-3.5 text-primary" aria-hidden="true" />

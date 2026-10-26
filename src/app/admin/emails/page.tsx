@@ -3,7 +3,7 @@ import { AdminView } from '@/components/dashboard/admin/admin-view'
 export const dynamic = 'force-dynamic'
 
 export const metadata = {
-  title: 'Emails & Platform Broadcasts — Arbor Admin',
+  title: 'Emails & Platform Broadcasts',
   robots: {
     index: false,
     follow: false,

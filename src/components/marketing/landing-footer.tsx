@@ -49,6 +49,12 @@ export function LandingFooter() {
                   Product overview <ArrowUpRight className="size-3.5" aria-hidden="true" />
                 </a>
               </li>
+              <li>
+                <Link href="/terms" className="transition-colors hover:text-foreground">Terms of Service</Link>
+              </li>
+              <li>
+                <Link href="/privacy" className="transition-colors hover:text-foreground">Privacy Policy</Link>
+              </li>
               <li className="flex items-center gap-2 pt-1 text-emerald-700 dark:text-emerald-300">
                 <ShieldCheck className="size-4 shrink-0" aria-hidden="true" />
                 <span>Choose repositories · source removed after analysis</span>

@@ -4,7 +4,7 @@ import { AdminWorkspacesView } from '@/components/dashboard/admin/admin-workspac
 export const dynamic = 'force-dynamic'
 
 export const metadata = {
-  title: 'Collaborative Workspaces — Arbor Admin',
+  title: 'Collaborative Workspaces',
   robots: {
     index: false,
     follow: false,

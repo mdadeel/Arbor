@@ -29,9 +29,6 @@ export const metadata: Metadata = {
   authors: [{ name: 'Arbor Team', url: appUrl }],
   creator: 'Arbor',
   publisher: 'Arbor',
-  alternates: {
-    canonical: '/',
-  },
   openGraph: {
     title: 'Arbor — Map and Understand Your Codebase',
     description:

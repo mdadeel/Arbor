@@ -51,7 +51,7 @@ export function FeatureSections() {
               {[
                 'Dependency graph of analyzed module imports',
                 'Detected cycles and oversized files surfaced for review',
-                'A first-pass architectural audit in about 30 seconds',
+                'A first-pass architectural audit on every analysis run',
               ].map((item) => (
                 <li key={item} className="flex items-start gap-2.5">
                   <CheckCircle2 className="h-4 w-4 mt-0.5 text-emerald-500 shrink-0" />
@@ -118,7 +118,7 @@ export function FeatureSections() {
                 <Activity className="h-4 w-4 text-foreground" />
                 <span>Repository Health Report</span>
               </div>
-              <Badge variant="neutral" appearance="soft" size="xs">Example · 82 / 100</Badge>
+              <Badge variant="neutral" appearance="soft" size="xs">Example · 83 / 100</Badge>
             </div>
 
             <div className="space-y-2.5 mb-5 font-sans">
@@ -244,7 +244,7 @@ export function FeatureSections() {
                 <Badge variant="neutral" appearance="outline" size="xs">Illustrative</Badge>
               </div>
               <div className="flex items-center justify-between gap-3 text-[11px]">
-                <span className="min-w-0 truncate text-foreground font-semibold">GET /api/badge/[slug]</span>
+                <span className="min-w-0 truncate text-foreground font-semibold">{'GET /api/badge/{project-id}'}</span>
                 <span className="shrink-0 text-muted-foreground font-mono text-[10px]">Response preview</span>
               </div>
               <div className="flex items-center justify-between gap-3 text-[11px]">

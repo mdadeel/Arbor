@@ -79,11 +79,11 @@ export function PricingSection() {
               <ul className="space-y-3 text-sm text-muted-foreground">
                 <li className="flex items-start gap-2.5">
                   <Check className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden="true" />
-                  <span>Up to 3 active GitHub repositories</span>
+                  <span>Up to 10 audits per hour across your repositories</span>
                 </li>
                 <li className="flex items-start gap-2.5">
                   <Check className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden="true" />
-                  <span>Architecture and health audits in about 30 seconds</span>
+                  <span>Architecture and health audits for every connected repository</span>
                 </li>
                 <li className="flex items-start gap-2.5">
                   <Check className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden="true" />

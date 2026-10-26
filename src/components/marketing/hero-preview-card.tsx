@@ -74,7 +74,7 @@ export function HeroPreviewCard() {
                 Repository health
               </div>
               <div className="mt-3 flex items-baseline gap-1.5 font-mono">
-                <span className="text-5xl font-semibold tracking-tight text-foreground tabular-nums">82</span>
+                <span className="text-5xl font-semibold tracking-tight text-foreground tabular-nums">83</span>
                 <span className="text-sm text-muted-foreground">/100</span>
               </div>
               <Badge variant="success" appearance="soft" size="xs" className="mt-3">
@@ -174,8 +174,8 @@ export function HeroPreviewCard() {
 
         <dl className="grid grid-cols-2 divide-x divide-y divide-border border-t border-border bg-muted/20 sm:grid-cols-4 sm:divide-y-0">
           <div className="flex flex-col-reverse px-4 py-3 sm:px-5">
-            <dt className="text-[10px] uppercase tracking-wider text-muted-foreground">Typical audit time</dt>
-            <dd className="font-mono text-lg font-semibold text-foreground">~30s</dd>
+            <dt className="text-[10px] uppercase tracking-wider text-muted-foreground">Audit time</dt>
+            <dd className="font-mono text-lg font-semibold text-foreground">Varies</dd>
           </div>
           <div className="flex flex-col-reverse px-4 py-3 sm:px-5">
             <dt className="text-[10px] uppercase tracking-wider text-muted-foreground">Code analysis</dt>

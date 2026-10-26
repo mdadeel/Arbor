@@ -10,8 +10,10 @@ import { ThemeToggle } from '@/components/dashboard/theme-toggle'
 import { ArrowLeft } from 'lucide-react'
 
 export const metadata = {
-  title: 'Sign In — Arbor',
+  // The root title template appends "| Arbor", so the page title omits the brand.
+  title: 'Sign In',
   description: 'Sign in to Arbor with GitHub to analyze repositories and generate automated architectural audits.',
+  alternates: { canonical: '/login' },
 }
 
 export const dynamic = 'force-dynamic'
@@ -67,9 +69,17 @@ export default async function LoginPage() {
           </div>
 
           {/* Footer Terms */}
-          <div className="text-center text-[11px] text-muted-foreground/60">
-            By continuing, you agree to Arbor&apos;s standard terms and privacy principles.
-          </div>
+          <p className="text-center text-[11px] leading-relaxed text-muted-foreground/80">
+            By continuing, you agree to our{' '}
+            <Link href="/terms" className="underline underline-offset-2 hover:text-foreground">
+              Terms of Service
+            </Link>{' '}
+            and{' '}
+            <Link href="/privacy" className="underline underline-offset-2 hover:text-foreground">
+              Privacy Policy
+            </Link>
+            .
+          </p>
         </div>
       </main>
 

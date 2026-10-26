@@ -2,19 +2,28 @@ import { describe, it, expect } from 'vitest'
 import sitemap from './sitemap'
 
 describe('sitemap.ts', () => {
-  it('generates indexable URLs with priority and changeFrequency', () => {
-    const urls = sitemap()
-    expect(urls.length).toBeGreaterThanOrEqual(2)
+  it('lists the homepage and legal pages, and excludes the sign-in page', () => {
+    const urls = sitemap().map((entry) => entry.url)
 
-    const home = urls.find((u) => !u.url.endsWith('/login'))
-    const login = urls.find((u) => u.url.endsWith('/login'))
+    expect(urls.some((url) => url.endsWith('/login'))).toBe(false)
+    expect(urls.some((url) => url.endsWith('/privacy'))).toBe(true)
+    expect(urls.some((url) => url.endsWith('/terms'))).toBe(true)
+  })
+
+  it('gives the homepage the highest priority', () => {
+    const entries = sitemap()
+    const home = entries.find((entry) => !entry.url.endsWith('/privacy') && !entry.url.endsWith('/terms'))
 
     expect(home).toBeDefined()
     expect(home?.priority).toBe(1.0)
-    expect(home?.changeFrequency).toBe('daily')
+  })
 
-    expect(login).toBeDefined()
-    expect(login?.priority).toBe(0.8)
-    expect(login?.changeFrequency).toBe('monthly')
+  it('uses a fixed lastModified for legal pages instead of the request time', () => {
+    const legal = sitemap().filter((entry) => /\/(privacy|terms)$/.test(entry.url))
+
+    expect(legal).toHaveLength(2)
+    for (const entry of legal) {
+      expect(entry.lastModified).toEqual(new Date('2026-10-26T00:00:00Z'))
+    }
   })
 })
