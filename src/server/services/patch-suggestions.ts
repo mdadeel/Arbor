@@ -120,7 +120,7 @@ export async function createPatchSuggestion(input: {
     select: { id: true, commitSha: true, findings: true },
   })
   if (!analysis || !Array.isArray(analysis.findings)) throw new TRPCError({ code: 'NOT_FOUND', message: 'Completed finding report not found.' })
-  const rawFinding = analysis.findings.find((item) => isFinding(item) && item.fingerprint === input.findingFingerprint)
+  const rawFinding = (analysis.findings as unknown[]).find((item) => isFinding(item) && item.fingerprint === input.findingFingerprint)
   if (!isFinding(rawFinding)) throw new TRPCError({ code: 'NOT_FOUND', message: 'Finding is not part of this analysis.' })
   if (rawFinding.policySuppressed) throw new TRPCError({ code: 'BAD_REQUEST', message: 'Suppressed findings do not receive patch proposals.' })
   if (!rawFinding.file || !analysis.commitSha) throw new TRPCError({ code: 'BAD_REQUEST', message: 'This finding has no source file at a pinned commit to review.' })

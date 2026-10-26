@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
+import Link from 'next/link'
 import { Button, ButtonLabel } from './button'
 import { Badge } from './badge'
 import { Input } from './input'
@@ -36,7 +37,7 @@ describe('Create UI components', () => {
     const childOnClick = vi.fn()
     render(
       <Button asChild disabled onClick={onClick}>
-        <a href="/projects" onClick={childOnClick}>Open project</a>
+        <Link href="/projects" onClick={childOnClick}>Open project</Link>
       </Button>
     )
 

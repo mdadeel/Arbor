@@ -33,9 +33,9 @@ describe('report share links', () => {
 
   it('stores only a token hash and returns the raw secret once', async () => {
     vi.mocked(prisma.analysis.findFirst).mockResolvedValue({ id: 'analysis-1' } as never)
-    vi.mocked(prisma.reportShareLink.create).mockImplementation(async (args: never) => ({
+    vi.mocked(prisma.reportShareLink.create).mockResolvedValue({
       id: 'share-1', createdAt: new Date('2026-10-08T00:00:00Z'), expiresAt: new Date('2026-10-15T00:00:00Z'),
-    } as never))
+    } as never)
 
     const result = await createReportShareLink({ userId: 'user-1', slug: 'demo', analysisId: 'analysis-1', expiresInDays: 7 })
     const stored = vi.mocked(prisma.reportShareLink.create).mock.calls[0][0].data
@@ -68,7 +68,7 @@ describe('report share links', () => {
     } as never)
 
     const report = await getSharedReport(token)
-    const where = vi.mocked(prisma.reportShareLink.findFirst).mock.calls[0][0].where
+    const where = vi.mocked(prisma.reportShareLink.findFirst).mock.calls[0]?.[0]?.where
     expect(where).toMatchObject({
       tokenHash: createHash('sha256').update(token).digest('hex'),
       revokedAt: null,

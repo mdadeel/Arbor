@@ -13,8 +13,9 @@ export async function recoverStaleAnalyses(): Promise<number> {
 
   // 1. Mark stale analyses as failed. Capture linked PR runs first so their
   // in-progress Check Runs can also be finalized instead of hanging forever.
+  const staleStatuses: ('cloning' | 'analyzing')[] = ['cloning', 'analyzing']
   const staleWhere = {
-    status: { in: ['cloning', 'analyzing'] as const },
+    status: { in: staleStatuses },
     OR: [
       { startedAt: { lt: staleBefore } },
       { startedAt: null },
