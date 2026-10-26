@@ -16,13 +16,14 @@ import { NotificationPreferences } from '@/components/dashboard/analysis-tools'
 export default async function SettingsPage({
   searchParams,
 }: {
-  searchParams?: { tab?: string }
+  searchParams?: Promise<{ tab?: string }>
 }) {
   const session = await getServerSession(authOptions)
   if (!session?.user) redirect('/login')
 
   const user = session.user
-  const defaultTab = searchParams?.tab || 'profile'
+  const { tab } = (await searchParams) ?? {}
+  const defaultTab = tab || 'profile'
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
