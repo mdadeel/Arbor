@@ -1,18 +1,41 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 
+const BADGE_SELECT = { name: true, latestScores: true, healthData: true } as const
+
+/**
+ * Resolves a badge identifier to a public, active project.
+ *
+ * - A project ID (globally unique) is preferred; the README snippet uses it.
+ * - A slug is only accepted when it matches exactly one public project. Slugs are
+ *   unique per user, not globally, so an ambiguous slug is treated as not found
+ *   rather than guessing which user's project is meant.
+ * - Private repositories are never exposed, because badge images are fetched
+ *   by GitHub's image proxy from the public internet.
+ */
+async function findPublicBadgeProject(identifier: string) {
+  const byId = await prisma.project.findFirst({
+    where: { id: identifier, status: 'active', repoPrivate: false },
+    select: BADGE_SELECT,
+  })
+  if (byId) return byId
+
+  const bySlug = await prisma.project.findMany({
+    where: { slug: identifier, status: 'active', repoPrivate: false },
+    select: BADGE_SELECT,
+    take: 2,
+  })
+  return bySlug.length === 1 ? bySlug[0] : null
+}
+
 export async function GET(
   _request: NextRequest,
-  { params }: { params: Promise<{ slug: string }> }
+  { params }: { params: Promise<{ identifier: string }> }
 ) {
-  const { slug } = await params
+  const { identifier } = await params
 
   try {
-    const project = await prisma.project.findFirst({
-      where: { slug, status: 'active' },
-      orderBy: { updatedAt: 'desc' },
-      select: { name: true, latestScores: true, healthData: true },
-    })
+    const project = await findPublicBadgeProject(identifier)
 
     if (!project) {
       return new NextResponse(generateSvgBadge('Arbor', 'not found', '#6b7280'), {

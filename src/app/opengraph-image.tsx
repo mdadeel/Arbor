@@ -169,7 +169,7 @@ export default async function Image() {
               Sample Score
             </span>
             <span style={{ fontSize: '26px', fontWeight: 800, color: '#34d399' }}>
-              88 / 100
+              83 / 100
             </span>
           </div>
         </div>

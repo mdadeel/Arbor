@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button'
 import { ArrowLeft, ShieldAlert } from 'lucide-react'
 
 export const metadata = {
-  title: 'Platform Administration — Arbor',
+  title: 'Platform Administration',
   robots: { index: false, follow: false },
 }
 

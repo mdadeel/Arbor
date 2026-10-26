@@ -227,7 +227,7 @@ export function ProjectReport({ slug, project }: { slug: string; project: Projec
 
   const handleCopyBadgeMarkdown = async () => {
     const origin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000'
-    const badgeMd = `[![Arbor Architecture](${origin}/api/badge/${project.slug})](${origin}/projects/${project.slug})`
+    const badgeMd = `[![Arbor Architecture](${origin}/api/badge/${project.id})](${origin}/projects/${project.slug})`
     await navigator.clipboard.writeText(badgeMd)
     setCopiedBadge(true)
     setTimeout(() => setCopiedBadge(false), 2000)
@@ -356,14 +356,16 @@ export function ProjectReport({ slug, project }: { slug: string; project: Projec
                   )}
                   <span className="font-medium">{copied ? 'Copied to Clipboard!' : 'Copy Markdown'}</span>
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={handleCopyBadgeMarkdown} className="gap-2.5 text-xs cursor-pointer py-1.5">
-                  {copiedBadge ? (
-                    <Check className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
-                  ) : (
-                    <Shield className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                  )}
-                  <span className="font-medium">{copiedBadge ? 'Badge Markdown Copied!' : 'Copy README Badge'}</span>
-                </DropdownMenuItem>
+                {!project.repoPrivate && (
+                  <DropdownMenuItem onClick={handleCopyBadgeMarkdown} className="gap-2.5 text-xs cursor-pointer py-1.5">
+                    {copiedBadge ? (
+                      <Check className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
+                    ) : (
+                      <Shield className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                    )}
+                    <span className="font-medium">{copiedBadge ? 'Badge Markdown Copied!' : 'Copy README Badge'}</span>
+                  </DropdownMenuItem>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           )}

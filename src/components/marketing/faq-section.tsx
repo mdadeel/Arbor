@@ -17,7 +17,7 @@ export function FaqSection() {
         </p>
       </div>
 
-      <div className="divide-y divide-border overflow-hidden rounded-2xl border border-border bg-card">
+      <div className="mx-auto max-w-3xl divide-y divide-border border-y border-border">
         {faqs.map((faq, index) => (
           <details key={faq.question} open={index === 0} className="group">
             <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-4 py-4 text-left marker:hidden transition-colors hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring sm:px-5 sm:py-5 [&::-webkit-details-marker]:hidden">

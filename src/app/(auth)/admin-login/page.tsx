@@ -6,7 +6,7 @@ import { Logo } from '@/components/ui/logo'
 import { ThemeToggle } from '@/components/dashboard/theme-toggle'
 
 export const metadata = {
-  title: 'Admin Sign In — Arbor',
+  title: 'Admin Sign In',
   description: 'Restricted admin portal sign-in for Arbor platform metrics and operations.',
   robots: { index: false },
 }

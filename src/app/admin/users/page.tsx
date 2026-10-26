@@ -4,7 +4,7 @@ import { AdminView } from '@/components/dashboard/admin/admin-view'
 export const dynamic = 'force-dynamic'
 
 export const metadata = {
-  title: 'User Directory & Access Controls — Arbor Admin',
+  title: 'User Directory & Access Controls',
   robots: {
     index: false,
     follow: false,

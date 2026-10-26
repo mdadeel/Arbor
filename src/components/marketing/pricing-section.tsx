@@ -59,11 +59,9 @@ export function PricingSection() {
         </p>
       </div>
 
-      <div className="mx-auto grid max-w-4xl gap-5 lg:grid-cols-2 lg:items-stretch">
-        <article className="relative flex flex-col justify-between rounded-2xl border border-border bg-card p-6 shadow-sm sm:p-8">
-          <div className="absolute -top-3 left-6 rounded-full border border-border bg-background px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-foreground">
-            Free forever
-          </div>
+      <div className="mx-auto grid max-w-5xl divide-y divide-border border-y border-border lg:grid-cols-2 lg:divide-x lg:divide-y-0">
+        <article className="relative flex flex-col justify-between gap-8 py-10 lg:pr-12">
+          <p className="font-mono text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">Free forever</p>
           <div className="space-y-6">
             <div className="space-y-2">
               <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Community</span>
@@ -79,11 +77,11 @@ export function PricingSection() {
               <ul className="space-y-3 text-sm text-muted-foreground">
                 <li className="flex items-start gap-2.5">
                   <Check className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden="true" />
-                  <span>Up to 3 active GitHub repositories</span>
+                  <span>Up to 10 audits per hour across your repositories</span>
                 </li>
                 <li className="flex items-start gap-2.5">
                   <Check className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden="true" />
-                  <span>Architecture and health audits in about 30 seconds</span>
+                  <span>Architecture and health audits for every connected repository</span>
                 </li>
                 <li className="flex items-start gap-2.5">
                   <Check className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden="true" />
@@ -107,10 +105,8 @@ export function PricingSection() {
           </div>
         </article>
 
-        <article className="relative flex flex-col justify-between rounded-2xl border border-primary/40 bg-primary/[0.04] p-6 shadow-sm sm:p-8">
-          <div className="absolute -top-3 right-6 rounded-full border border-primary/30 bg-background px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-primary">
-            In development
-          </div>
+        <article className="relative flex flex-col justify-between gap-8 py-10 lg:pl-12">
+          <p className="font-mono text-xs font-semibold uppercase tracking-[0.14em] text-primary">In development</p>
           <div className="space-y-6">
             <div className="space-y-2">
               <div className="flex flex-wrap items-center gap-2">

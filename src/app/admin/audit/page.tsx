@@ -4,7 +4,7 @@ import { AdminAuditView } from '@/components/dashboard/admin/admin-audit-view'
 export const dynamic = 'force-dynamic'
 
 export const metadata = {
-  title: 'Platform Audit Trail — Arbor Admin',
+  title: 'Platform Audit Trail',
   robots: {
     index: false,
     follow: false,
