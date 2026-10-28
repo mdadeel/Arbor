@@ -1,4 +1,5 @@
 import type { FindingData } from '@/components/dashboard/finding-item'
+import { buildRecommendedActions } from '@/lib/recommended-actions'
 
 export interface ExportableProject {
   id: string
@@ -84,6 +85,21 @@ export function generateMarkdownReport(
     `| Security | ${analysis.securityScore ?? 'N/A'}/100 | ${getGrade(analysis.securityScore)} | ${getStatus(analysis.securityScore)} |`,
     `| Design System | ${analysis.designSystemScore ?? 'N/A'}/100 | ${getGrade(analysis.designSystemScore)} | ${getStatus(analysis.designSystemScore)} |`,
     ``,
+    `---`,
+    ``,
+    `## Recommended Actions`,
+    ``,
+    ...(findings.length === 0
+      ? [`_No active findings require remediation._`, ``]
+      : [
+          `| # | Finding | Location | Blast Radius | Remediation | Effort |`,
+          `|---|---|---|---|---|---|`,
+          ...buildRecommendedActions(findings, { limit: 5 }).map(
+            (action) =>
+              `| ${action.rank} | **${action.title}** (${action.severity}) | \`${action.location}\` | ${action.blastRadiusLabel} | ${action.remediation} | **${action.effort}** |`
+          ),
+          ``,
+        ]),
     `---`,
     ``,
     `## Codebase Metrics`,

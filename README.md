@@ -52,6 +52,22 @@ Arbor's core analysis is deterministic: it shallow-clones a temporary working co
    npm run analyze:local -- .
    ```
 
+6. **Export an A4 consultant audit report PDF** from any valid read-only share token:
+
+   ```bash
+   # One-time Chromium install on a standard developer machine:
+   npx playwright install chromium
+
+   # Start the app (npm run dev, or npm run build && npm run start),
+   # create a read-only share link from a completed project analysis
+   # (optionally setting "Prepared for <client name>"), then run:
+   npm run report:pdf -- <share-token>
+   # Optional flags:
+   # npm run report:pdf -- <share-token> --out ./audit-report.pdf --base-url http://localhost:3000
+   ```
+
+   You can also open `http://localhost:3000/report/<share-token>` directly in a browser and print/save as A4 PDF. Expired or revoked share tokens return HTTP `404`.
+
 ## Tech Stack
 
 - **Framework:** Next.js 15 (App Router, `15.5.27`), React 18 (`18.2.0`), TypeScript `5.9.3` (`strict: true`)
@@ -99,6 +115,7 @@ Arbor's core analysis is deterministic: it shallow-clones a temporary working co
 
 - `NEXTAUTH_URL` — read by NextAuth.js at runtime for callback URL resolution.
 - `RESEND_API_KEY`, `EMAIL_FROM` — optional; read directly in `src/server/services/admin.ts` for admin email broadcasts.
+- `REPORT_BASE_URL`, `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH`, `PLAYWRIGHT_CHROMIUM_ARGS` — optional CLI overrides read by `scripts/export-report.ts` (`npm run report:pdf`).
 
 > **AI provider keys are not environment variables.** OpenAI and Anthropic keys are bring-your-own-key per user, encrypted in PostgreSQL via `ENCRYPTION_SECRET`.
 
@@ -109,6 +126,7 @@ src/
 ├── app/                  # Next.js 15 App Router pages & API route handlers
 │   ├── (auth)/           # GitHub login & admin login pages
 │   ├── (dashboard)/      # Authenticated workbench (/dashboard, /projects, /systems, /settings)
+│   ├── (print)/          # Print-dedicated A4 consultant audit route (/report/[token])
 │   ├── admin/            # Platform admin views (users, workspaces, audit, waitlist, system)
 │   ├── api/              # NextAuth, tRPC, GitHub webhooks, badges, share JSON, SBOM, cron worker
 │   └── share/[token]/    # Public read-only shared report page
@@ -121,6 +139,9 @@ src/
 ├── types/                # Module ambient type declarations
 ├── worker/               # Standalone BullMQ worker, startup stale-job recovery, schedule dispatcher
 └── middleware.ts         # Route protection & security headers
+scripts/
+├── analyze-dir.ts        # Standalone local directory AST/dependency analyzer (analyze:local)
+└── export-report.ts      # Playwright headless Chromium A4 PDF exporter (report:pdf)
 ```
 
 For phase-by-phase backend architecture notes and verification tracking, see [`docs/backend-review-feature-roadmap.md`](docs/backend-review-feature-roadmap.md) and [`docs/typecheck-baseline.md`](docs/typecheck-baseline.md).
@@ -142,21 +163,21 @@ npm run build
 - **Verified by local verification command:**
   - `npx prisma generate` & `npx prisma validate`: valid schema (`28` Prisma models, Prisma CLI `5.22.0`).
   - `npm run typecheck` (`tsc --noEmit` with TypeScript `5.9.3`, `strict: true`): `0` diagnostics.
-  - `npm run lint` (ESLint CLI across `268` files, `--max-warnings 0`): `0` errors, `0` warnings.
-  - `npm test -- --run` (Vitest + Testing Library): `53` test files, `271` tests passing.
-  - `npm run build`: Next.js `15.5.27` production build succeeds.
+  - `npm run lint` (ESLint CLI across `276` files, `--max-warnings 0`): `0` errors, `0` warnings.
+  - `npm test -- --run` (Vitest + Testing Library): `55` test files, `277` tests passing.
+  - `npm run build`: Next.js `15.5.27` production build succeeds (including `/report/[token]`).
+  - `npm run report:pdf -- <token>`: verified end-to-end against PostgreSQL + `next start` + headless Chromium, producing an 8-page A4 consultant audit PDF (`docs/examples/arbor-audit-mdadeel-arbor.pdf`) with cover metadata, deterministic top-5 recommended actions, severity-grouped `file:line` findings, dependency risk inventory, per-page commit SHA watermark, and HTTP `404` on expired/revoked tokens.
 - **GitHub Actions CI (`verify` and `build` jobs):** `unverified` — `.github/workflows/ci.yml` is authored with `postgres:16` and `redis:7` service containers, `npx prisma migrate deploy`, typecheck, lint, tests, and production build, and the CI badge above remains commented out until a maintainer with `workflows` GitHub permission pushes `.github/workflows/ci.yml` and confirms both jobs green.
 - **Unit-tested only (`unverified` against live external services):**
-  - Database-backed routes, `npx prisma migrate deploy` against live PostgreSQL 16, and BullMQ job execution against live Redis.
+  - BullMQ job execution against live Redis (`ReportShareLink` / `Analysis` / `Project` SQL migrations and read-only report rendering were verified against live PostgreSQL).
   - GitHub OAuth sign-in, webhook signature delivery lifecycle, and pull-request Check Runs against live GitHub repositories.
   - Optional BYOK OpenAI / Anthropic finding explanations and review-only patch suggestions against live provider APIs.
   - Resend email delivery (`RESEND_API_KEY`), live OSV advisory queries, and official CycloneDX schema validation (SBOM checks are currently structural only).
 - **Known gaps & unbuilt capabilities:**
-  - **Migration drift:** `prisma/schema.prisma` defines `28` models, whereas the `9` SQL migrations in `prisma/migrations/` create `23` tables (`AdminEmail`, `ProjectGroup`, `ProjectGroupMember`, `SystemAnalysis`, `WaitlistLead`, and `User` admin/plan fields are not yet in a SQL migration; use `npm run db:push` on fresh local databases).
+  - **Migration drift:** `prisma/schema.prisma` defines `28` models, whereas the `10` SQL migrations in `prisma/migrations/` create `23` tables (`AdminEmail`, `ProjectGroup`, `ProjectGroupMember`, `SystemAnalysis`, `WaitlistLead`, and `User` admin/plan fields are not yet in a SQL migration; use `npm run db:push` on fresh local databases).
   - **Serverless worker latency:** `vercel.json` triggers `/api/worker/process` once daily at `03:00 UTC` (`maxDuration = 300`); continuous background processing requires running `npm run worker` against shared PostgreSQL and Redis.
-  - **Browser E2E suite:** `@playwright/test` is listed in `devDependencies`, but no `playwright.config` or E2E spec suite exists yet (`unverified`).
+  - **Browser E2E suite:** `@playwright/test` powers `npm run report:pdf`, but no `playwright.config` or automated UI E2E spec suite exists yet (`unverified`).
   - **Billing:** Not built. The Teams plan is a waitlist only; no payment processor is integrated.
-  - **PDF export:** Not built. Reports export as Markdown (`.md`) and JSON (`.json`), and shareable links render HTML/JSON with hashed, expiring, revocable tokens.
   - **Application container image:** Not built. `docker-compose.yml` provisions PostgreSQL 16 and Redis 7 only; there is no `Dockerfile` for the Next.js app or BullMQ worker.
 
 ## Licence

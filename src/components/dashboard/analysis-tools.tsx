@@ -163,11 +163,14 @@ export function ShareReportControl({ slug, analysisId }: { slug: string; analysi
   const utils = trpc.useUtils()
   const links = trpc.share.list.useQuery({ slug })
   const [expiresInDays, setExpiresInDays] = useState(7)
-  const [newLink, setNewLink] = useState<string | null>(null)
+  const [clientName, setClientName] = useState('')
+  const [newToken, setNewToken] = useState<string | null>(null)
   const [message, setMessage] = useState<string | null>(null)
+  const newLink = newToken && typeof window !== 'undefined' ? `${window.location.origin}/share/${newToken}` : null
+  const printLink = newToken && typeof window !== 'undefined' ? `${window.location.origin}/report/${newToken}` : null
   const create = trpc.share.create.useMutation({
     onSuccess: async (result) => {
-      setNewLink(`${window.location.origin}/share/${result.token}`)
+      setNewToken(result.token)
       setMessage('Link created. The secret URL is shown only once; copy it now.')
       await utils.share.list.invalidate({ slug })
     },
@@ -176,7 +179,7 @@ export function ShareReportControl({ slug, analysisId }: { slug: string; analysi
   const revoke = trpc.share.revoke.useMutation({
     onSuccess: async () => {
       setMessage('Share link revoked.')
-      setNewLink(null)
+      setNewToken(null)
       await utils.share.list.invalidate({ slug })
     },
     onError: (error) => setMessage(error.message),
@@ -196,17 +199,43 @@ export function ShareReportControl({ slug, analysisId }: { slug: string; analysi
     <Card className="border-border">
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2 text-sm"><Link2 className="h-4 w-4 text-primary" />Read-only report links</CardTitle>
-        <CardDescription className="text-xs leading-relaxed">Create an expiring, revocable link to this completed snapshot. Anyone with the link can view its bounded report details; no repository access or account is needed.</CardDescription>
+        <CardDescription className="text-xs leading-relaxed">Create an expiring, revocable link to this completed snapshot. Anyone with the link can view its bounded report details or print the A4 consultant report; no repository access or account is needed.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4 border-t border-border/60 pt-4">
         <div className="flex flex-wrap items-end gap-2">
+          <label className="space-y-1 text-[11px] text-muted-foreground">
+            Prepared for (optional)
+            <input
+              type="text"
+              maxLength={120}
+              placeholder="Acme Corp Engineering"
+              value={clientName}
+              onChange={(event) => setClientName(event.target.value)}
+              className="ml-2 h-8 w-44 rounded-md border border-border bg-background px-2 text-xs text-foreground placeholder:text-muted-foreground/60"
+            />
+          </label>
           <label className="space-y-1 text-[11px] text-muted-foreground">
             Link lifetime
             <select value={expiresInDays} onChange={(event) => setExpiresInDays(Number(event.target.value))} className="ml-2 h-8 rounded-md border border-border bg-background px-2 text-xs text-foreground">
               {[1, 7, 14, 30].map((days) => <option key={days} value={days}>{days} day{days === 1 ? '' : 's'}</option>)}
             </select>
           </label>
-          <Button variant="primary" appearance="solid" size="sm" loading={create.isPending} onClick={() => { setNewLink(null); create.mutate({ slug, analysisId, expiresInDays }) }}>
+          <Button
+            variant="primary"
+            appearance="solid"
+            size="sm"
+            loading={create.isPending}
+            onClick={() => {
+              setNewToken(null)
+              const trimmed = clientName.trim()
+              create.mutate({
+                slug,
+                analysisId,
+                expiresInDays,
+                ...(trimmed ? { clientName: trimmed } : {}),
+              })
+            }}
+          >
             <Link2 className="size-3.5" /> Create share link
           </Button>
         </div>
@@ -216,6 +245,16 @@ export function ShareReportControl({ slug, analysisId }: { slug: string; analysi
             <div className="flex flex-col gap-2 sm:flex-row">
               <input id="new-share-link" readOnly value={newLink} onFocus={(event) => event.currentTarget.select()} className="h-9 min-w-0 flex-1 rounded-md border border-border bg-background px-2 font-mono text-[11px] text-foreground" />
               <Button variant="neutral-light" appearance="outline" size="sm" onClick={copyLink}><Download className="size-3.5" /> Copy link</Button>
+              {printLink && (
+                <a
+                  href={printLink}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex h-8 items-center justify-center rounded-md border border-border bg-background px-3 text-xs font-medium text-foreground transition-colors hover:bg-muted"
+                >
+                  Open print / PDF view
+                </a>
+              )}
             </div>
           </div>
         )}
@@ -224,13 +263,19 @@ export function ShareReportControl({ slug, analysisId }: { slug: string; analysi
           <ul className="divide-y divide-border/60 rounded-md border border-border/70">
             {links.data.map((link) => {
               const expired = new Date(link.expiresAt) <= new Date()
+              const revoked = Boolean(link.revokedAt)
               return (
                 <li key={link.id} className="flex flex-wrap items-center justify-between gap-2 px-3 py-2.5">
                   <div className="min-w-0 text-[11px]">
-                    <p className="font-mono text-foreground">Analysis {link.analysisId.slice(0, 10)}</p>
-                    <p className="text-muted-foreground">{expired ? 'Expired' : 'Expires'} {new Date(link.expiresAt).toLocaleString()}</p>
+                    <p className="font-mono text-foreground">
+                      Analysis {link.analysisId.slice(0, 10)}
+                      {link.clientName ? <span className="ml-2 font-sans text-muted-foreground">· Prepared for {link.clientName}</span> : null}
+                    </p>
+                    <p className="text-muted-foreground">
+                      {revoked ? `Revoked ${new Date(link.revokedAt as string | Date).toLocaleString()}` : `${expired ? 'Expired' : 'Expires'} ${new Date(link.expiresAt).toLocaleString()}`}
+                    </p>
                   </div>
-                  {expired ? <span className="text-[10px] text-muted-foreground">No longer accessible</span> : (
+                  {expired || revoked ? <span className="text-[10px] text-muted-foreground">No longer accessible</span> : (
                     <Button variant="danger" appearance="ghost" size="xs" loading={revoke.isPending && revoke.variables?.id === link.id} onClick={() => revoke.mutate({ slug, id: link.id })}>Revoke</Button>
                   )}
                 </li>

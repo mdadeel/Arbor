@@ -72,6 +72,11 @@ import { TechStackGroup } from '@/components/dashboard/tech-stack-badge'
 import { FindingItem, FindingData } from '@/components/dashboard/finding-item'
 import { PolicyControls } from '@/components/dashboard/policy-controls'
 import { PullRequestChecksView, ScheduleControls, ShareReportControl, SupplyChainView, TrendView } from '@/components/dashboard/analysis-tools'
+import { buildRecommendedActions } from '@/lib/recommended-actions'
+import {
+  PrintableProjectReport,
+  type PrintReportContext,
+} from '@/components/dashboard/printable-project-report'
 
 type StructureNode = {
   name: string
@@ -149,7 +154,26 @@ const VALID_TABS = [
   'history',
 ]
 
-export function ProjectReport({ slug, project }: { slug: string; project: ProjectRow }) {
+export type ProjectReportRow = ProjectRow
+
+export function ProjectReport({
+  slug,
+  project,
+  mode = 'interactive',
+  printContext,
+}: {
+  slug: string
+  project: ProjectRow
+  mode?: 'interactive' | 'print'
+  printContext?: PrintReportContext
+}) {
+  if (mode === 'print') {
+    return <PrintableProjectReport project={project} printContext={printContext} />
+  }
+  return <InteractiveProjectReport slug={slug} project={project} />
+}
+
+function InteractiveProjectReport({ slug, project }: { slug: string; project: ProjectRow }) {
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
@@ -260,7 +284,7 @@ export function ProjectReport({ slug, project }: { slug: string; project: Projec
     repoBytes?: number
   } | undefined
   const structure = completed?.structure ?? null
-  const findings = completed?.findings ?? []
+  const findings = useMemo(() => completed?.findings ?? [], [completed?.findings])
 
   const graphCycles = useMemo(
     () => (completed?.metrics?.circularDeps as string[][] | undefined) ?? [],
@@ -293,6 +317,14 @@ export function ProjectReport({ slug, project }: { slug: string; project: Projec
   const criticalFindings = findings.filter((f) => f.severity === 'critical')
   const warningFindings = findings.filter((f) => f.severity === 'warning')
   const infoFindings = findings.filter((f) => f.severity === 'info')
+  const recommendedActions = useMemo(
+    () =>
+      buildRecommendedActions(findings, {
+        dependencyGraph: completed?.dependencyGraph ?? null,
+        limit: 5,
+      }),
+    [findings, completed?.dependencyGraph]
+  )
 
   const stackItems = [
     stack?.framework,
@@ -704,59 +736,85 @@ export function ProjectReport({ slug, project }: { slug: string; project: Projec
                 </Card>
               </div>
 
-              {/* Priority Action Items */}
-              {findings.length > 0 && (
+              {/* Recommended Actions (Top 5 by Severity & Blast Radius) */}
+              {recommendedActions.length > 0 && (
                 <Card className="border-border">
-                  <CardHeader className="py-3 px-4 border-b border-border/80 flex flex-row items-center justify-between">
+                  <CardHeader className="py-3 px-4 border-b border-border/80 flex flex-row items-center justify-between gap-2">
                     <div>
                       <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                        Top Actionable Recommendations
+                        Recommended actions
                       </CardTitle>
                       <CardDescription className="text-xs mt-0.5">
-                        High-priority architectural findings requiring engineering attention
+                        Top {recommendedActions.length} findings ranked deterministically by severity and blast radius · Effort: S (&lt;2h), M (0.5–2d), L (3d+)
                       </CardDescription>
                     </div>
                     <Button
                       variant="outline"
                       size="sm"
                       onClick={() => handleTabChange('findings')}
-                      className="h-7 text-xs gap-1 cursor-pointer"
+                      className="h-7 text-xs gap-1 cursor-pointer shrink-0"
                     >
                       <span>View All ({findings.length})</span>
                       <ArrowUpRight className="h-3 w-3" />
                     </Button>
                   </CardHeader>
                   <CardContent className="p-0 divide-y divide-border/60">
-                    {[...criticalFindings, ...warningFindings].slice(0, 3).map((f, idx) => (
-                      <div key={`${f.id}-${f.file ?? ''}-${f.line ?? ''}-${idx}`} className="p-3.5 flex items-start justify-between gap-3 hover:bg-muted/30 transition-colors">
-                        <div className="flex items-start gap-2.5 min-w-0">
-                          <span
-                            className={cn(
-                              'mt-0.5 h-2 w-2 rounded-full shrink-0',
-                              f.severity === 'critical' ? 'bg-red-500' : 'bg-amber-400'
-                            )}
-                          />
-                          <div className="min-w-0 space-y-0.5">
-                            <div className="flex items-center gap-2">
-                              <span className="text-xs font-semibold text-foreground truncate">{f.title}</span>
-                              <span className="text-[10px] font-mono px-1.5 py-0.2 rounded border border-border/70 text-muted-foreground uppercase">
-                                {f.category}
+                    {recommendedActions.map((action) => (
+                      <div
+                        key={`${action.rank}-${action.findingId}-${action.location}`}
+                        className="p-3.5 flex items-start justify-between gap-3 hover:bg-muted/30 transition-colors"
+                      >
+                        <div className="flex items-start gap-3 min-w-0">
+                          <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded border border-border/80 bg-muted/40 font-mono text-[10px] font-bold text-foreground">
+                            {action.rank}
+                          </span>
+                          <div className="min-w-0 space-y-1">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span
+                                className={cn(
+                                  'h-2 w-2 rounded-full shrink-0',
+                                  action.severity === 'critical'
+                                    ? 'bg-red-500'
+                                    : action.severity === 'warning'
+                                      ? 'bg-amber-400'
+                                      : 'bg-sky-400'
+                                )}
+                              />
+                              <span className="text-xs font-semibold text-foreground">{action.title}</span>
+                              <span className="text-[10px] font-mono px-1.5 py-0.5 rounded border border-border/70 text-muted-foreground uppercase">
+                                {action.category}
+                              </span>
+                              <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-muted/60 text-muted-foreground">
+                                {action.blastRadiusLabel}
                               </span>
                             </div>
-                            <p className="text-xs text-muted-foreground line-clamp-1">{f.detail}</p>
-                            {f.file && (
-                              <p className="text-[11px] font-mono text-muted-foreground/80">{f.file}{f.line ? `:${f.line}` : ''}</p>
-                            )}
+                            <p className="text-xs text-foreground/85">{action.remediation}</p>
+                            <p className="text-[11px] font-mono text-muted-foreground/80">{action.location}</p>
                           </div>
                         </div>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleTabChange('findings')}
-                          className="h-7 text-[11px] shrink-0 text-muted-foreground hover:text-foreground cursor-pointer"
-                        >
-                          Inspect
-                        </Button>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <span
+                            title="Rough remediation effort estimate (S/M/L)"
+                            className={cn(
+                              'inline-flex h-6 min-w-6 items-center justify-center rounded border px-1.5 font-mono text-[11px] font-bold',
+                              action.effort === 'L'
+                                ? 'border-amber-500/40 bg-amber-500/10 text-amber-300'
+                                : action.effort === 'M'
+                                  ? 'border-sky-500/40 bg-sky-500/10 text-sky-300'
+                                  : 'border-emerald-500/40 bg-emerald-500/10 text-emerald-300'
+                            )}
+                          >
+                            {action.effort}
+                          </span>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleTabChange('findings')}
+                            className="h-7 text-[11px] text-muted-foreground hover:text-foreground cursor-pointer"
+                          >
+                            Inspect
+                          </Button>
+                        </div>
                       </div>
                     ))}
                   </CardContent>

@@ -12,6 +12,7 @@
     "lint": "eslint . --ext .js,.jsx,.mjs,.ts,.tsx --max-warnings 0",
     "worker": "tsx src/worker/index.ts",
     "analyze:local": "tsx scripts/analyze-dir.ts",
+    "report:pdf": "tsx scripts/export-report.ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",

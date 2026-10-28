@@ -16,6 +16,7 @@ export const shareRouter = router({
       slug: z.string().min(1).max(100),
       analysisId: z.string().min(1).max(200),
       expiresInDays: z.number().int().min(1).max(30).default(7),
+      clientName: z.string().trim().max(120).optional(),
     }))
     .mutation(({ ctx, input }) => createReportShareLink({ ...input, userId: ctx.session.user.id })),
 

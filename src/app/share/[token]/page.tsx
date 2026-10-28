@@ -42,20 +42,34 @@ export default async function SharedReportPage({ params }: { params: Promise<{ t
     <main className="mx-auto min-h-screen w-full max-w-5xl space-y-6 px-4 py-8 sm:px-6 lg:py-12">
       <header className="flex flex-wrap items-start justify-between gap-4 border-b border-border pb-5">
         <div className="space-y-2">
-          <Badge variant="outline" className="gap-1.5 text-[10px] uppercase tracking-wide">
-            <ShieldCheck className="h-3 w-3" /> Read-only shared report
-          </Badge>
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge variant="outline" className="gap-1.5 text-[10px] uppercase tracking-wide">
+              <ShieldCheck className="h-3 w-3" /> Read-only shared report
+            </Badge>
+            {shared.clientName && (
+              <Badge variant="secondary" className="text-[10px]">
+                Prepared for {shared.clientName}
+              </Badge>
+            )}
+          </div>
           <h1 className="font-display text-2xl font-bold tracking-tight sm:text-3xl">{analysis.projectName}</h1>
           <p className="text-xs text-muted-foreground">
             Scan from {new Date(analysis.createdAt).toLocaleString()} · branch <span className="font-mono">{analysis.branch}</span>
             {analysis.commitSha ? ` · ${analysis.commitSha.slice(0, 7)}` : ''}
           </p>
         </div>
-        <Button asChild variant="neutral-light" appearance="outline" size="sm">
-          <Link href={`/api/share/${token}`} target="_blank" rel="noreferrer">
-            Download report JSON <ExternalLink className="size-3.5" />
-          </Link>
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button asChild variant="neutral-light" appearance="outline" size="sm">
+            <Link href={`/report/${token}`}>
+              Print / PDF view
+            </Link>
+          </Button>
+          <Button asChild variant="neutral-light" appearance="outline" size="sm">
+            <Link href={`/api/share/${token}`} target="_blank" rel="noreferrer">
+              Download report JSON <ExternalLink className="size-3.5" />
+            </Link>
+          </Button>
+        </div>
       </header>
 
       <section aria-label="Score summary" className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
