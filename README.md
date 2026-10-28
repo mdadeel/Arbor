@@ -48,11 +48,14 @@ Arbor's core analysis is deterministic: it shallow-clones a temporary working co
 
    **Why the worker is required:** Repository scans are asynchronous jobs queued in PostgreSQL and BullMQ (`REDIS_URL`). Without `npm run worker` (or an authorized `GET /api/worker/process` request carrying `Authorization: Bearer $CRON_SECRET`), analyses remain in `queued` status and will not complete.
 
-   To run the static analyzer directly against any local directory without starting PostgreSQL, Redis, or GitHub OAuth:
+   To run the static analyzer directly against any local directory without starting PostgreSQL, Redis, or GitHub OAuth (and optionally emit a schema-validated SARIF 2.1.0 report for GitHub Code Scanning):
 
    ```bash
    npm run analyze:local -- .
+   npm run analyze:local -- . --sarif ./arbor-results.sarif
    ```
+
+   See [`docs/sarif-github-code-scanning.md`](docs/sarif-github-code-scanning.md) for the GitHub Actions workflow (`github/codeql-action/upload-sarif@v3`) and `gh api` upload commands that publish Arbor findings into GitHub's **Security -> Code scanning** tab.
 
 6. **Export an A4 consultant audit report PDF** from any valid read-only share token:
 
@@ -150,7 +153,7 @@ scripts/
 └── export-report.ts      # Playwright headless Chromium A4 PDF exporter (report:pdf)
 ```
 
-For phase-by-phase backend architecture notes, worker container deployment, and verification tracking, see [`docs/worker-deployment.md`](docs/worker-deployment.md), [`docs/backend-review-feature-roadmap.md`](docs/backend-review-feature-roadmap.md), and [`docs/typecheck-baseline.md`](docs/typecheck-baseline.md).
+For phase-by-phase backend architecture notes, SARIF Code Scanning upload, worker container deployment, and verification tracking, see [`docs/sarif-github-code-scanning.md`](docs/sarif-github-code-scanning.md), [`docs/worker-deployment.md`](docs/worker-deployment.md), [`docs/backend-review-feature-roadmap.md`](docs/backend-review-feature-roadmap.md), and [`docs/typecheck-baseline.md`](docs/typecheck-baseline.md).
 
 ## Worker Deployment (Docker, Fly.io, Railway & Cron Fallback)
 
@@ -175,9 +178,10 @@ npm run build
 - **Verified by local verification command:**
   - `npx prisma generate` & `npx prisma validate`: valid schema (`30` Prisma models, Prisma CLI `5.22.0`).
   - `npm run typecheck` (`tsc --noEmit` with TypeScript `5.9.3`, `strict: true`): `0` diagnostics.
-  - `npm run lint` (ESLint CLI across `284` files, `--max-warnings 0`): `0` errors, `0` warnings.
-  - `npm test -- --run` (Vitest + Testing Library): `59` test files, `290` tests passing.
-  - `npm run build`: Next.js `15.5.27` production build succeeds (including `/report/[token]` and `/api/webhooks/lemonsqueezy`).
+  - `npm run lint` (ESLint CLI across `289` files, `--max-warnings 0`): `0` errors, `0` warnings.
+  - `npm test -- --run` (Vitest + Testing Library): `61` test files, `296` tests passing.
+  - `npm run build`: Next.js `15.5.27` production build succeeds (including `/report/[token]`, `/api/webhooks/lemonsqueezy`, and `/api/projects/[slug]/analyses/[analysisId]/sarif`).
+  - `npm run analyze:local -- . --sarif <file>`: emits OASIS SARIF 2.1.0 validated at runtime against the official `sarif-schema-2.1.0.json` schema (`1.7s` cold analysis — `0%` regression against baseline).
   - `npm run report:pdf -- <token>`: verified end-to-end against PostgreSQL + `next start` + headless Chromium, producing an 8-page A4 consultant audit PDF (`docs/examples/arbor-audit-mdadeel-arbor.pdf`) with cover metadata, deterministic top-5 recommended actions, severity-grouped `file:line` findings, dependency risk inventory, per-page commit SHA watermark, and HTTP `404` on expired/revoked tokens.
 - **GitHub Actions CI (`verify` and `build` jobs):** `unverified` — `.github/workflows/ci.yml` is authored with `postgres:16` and `redis:7` service containers, `npx prisma migrate deploy`, typecheck, lint, tests, and production build, and the CI badge above remains commented out until a maintainer with `workflows` GitHub permission pushes `.github/workflows/ci.yml` and confirms both jobs green.
 - **Unit-tested only (`unverified` against live external services):**
