@@ -6,7 +6,7 @@
 Arbor helps developers inspect software structure and repository health. Its audits use Babel AST parsing and explicit static checks rather than generative AI. The same source and rule set produce repeatable structural checks; results cover the checks Arbor implements and do not replace code review.
 
 ## Key Capabilities
-- **Architecture and health audits**: Summarizes repository structure, dependencies, technical debt, performance, security, documentation, and design-system signals.
+- **Architecture, hotspot, and health audits**: Summarizes repository structure, dependencies, `git log` churn × per-file AST cyclomatic complexity hotspots, technical debt, performance, security, documentation, and design-system signals, with schema-validated OASIS SARIF 2.1.0 export for GitHub Code Scanning.
 - **Dependency maps**: Visualizes import relationships between analyzed TypeScript and JavaScript modules and surfaces detected circular dependencies.
 - **Language coverage**: Import-graph analysis covers TypeScript and JavaScript. Stack detection also recognizes Python and Go, and Python requirements files are read for dependency data.
 - **Evidence-backed findings**: Shows relevant file paths and line locations for supported checks.

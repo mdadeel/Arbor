@@ -21,6 +21,8 @@ export interface FileAnalysis {
   jsdocCount: number
   localTargets: string[]
   importedSymbols: string[]
+  cyclomaticComplexity: number
+  functionCount: number
   parseFailed: boolean
 }
 
@@ -105,6 +107,8 @@ export function parseFile(file: string, suppliedText?: string | null, repoRoot?:
     jsdocCount: 0,
     localTargets: [],
     importedSymbols: [],
+    cyclomaticComplexity: 0,
+    functionCount: 0,
     parseFailed: false,
   }
   if (text == null) return result
@@ -231,14 +235,59 @@ export function parseFile(file: string, suppliedText?: string | null, repoRoot?:
     JSXElement() {
       jsxElements++
     },
+    IfStatement() {
+      result.cyclomaticComplexity++
+    },
+    ConditionalExpression() {
+      result.cyclomaticComplexity++
+    },
+    SwitchCase(p) {
+      if (p.node.test !== null) result.cyclomaticComplexity++
+    },
+    ForStatement() {
+      result.cyclomaticComplexity++
+    },
+    ForInStatement() {
+      result.cyclomaticComplexity++
+    },
+    ForOfStatement() {
+      result.cyclomaticComplexity++
+    },
+    WhileStatement() {
+      result.cyclomaticComplexity++
+    },
+    DoWhileStatement() {
+      result.cyclomaticComplexity++
+    },
+    CatchClause() {
+      result.cyclomaticComplexity++
+    },
+    LogicalExpression() {
+      result.cyclomaticComplexity++
+    },
     FunctionDeclaration(p) {
+      result.functionCount++
       if (isComponentDefinition(p)) result.components++
+    },
+    FunctionExpression() {
+      result.functionCount++
+    },
+    ArrowFunctionExpression() {
+      result.functionCount++
+    },
+    ObjectMethod() {
+      result.functionCount++
+    },
+    ClassMethod() {
+      result.functionCount++
     },
     VariableDeclarator(p) {
       if (isComponentDefinition(p)) result.components++
     },
   })
 
+  // Base path through a parsed module contributes 1 to cyclomatic complexity.
+  result.cyclomaticComplexity += 1
   result.isReactFile = reactImport || jsxElements > 0
   return result
 }

@@ -3,10 +3,12 @@ import path from 'node:path'
 import { simpleGit } from 'simple-git'
 import { env } from '@/lib/env'
 import { normalizeGitHubRepoUrl } from '@/lib/github-repo'
+import { collectGitChurn, type GitChurnSnapshot } from '@/server/analysis/hotspots'
 
 export interface CloneResult {
   sha: string
   message: string
+  gitChurn: GitChurnSnapshot
 }
 
 export interface CloneRepoOptions {
@@ -99,18 +101,18 @@ export async function cloneRepo(opts: CloneRepoOptions): Promise<CloneResult> {
     if (opts.pullRequestNumber) {
       // GitHub exposes pull request heads through this fixed ref even when the PR
       // comes from a fork. The number and requested SHA were validated above.
-      await cloneGit.clone(repoUrl, opts.destination, ['--depth', '1', '--no-tags'])
+      await cloneGit.clone(repoUrl, opts.destination, ['--depth', '50', '--no-tags'])
       const repoGit = simpleGit(opts.destination, timeoutOptions).env(
         useCredential ? credentialEnv : { GIT_TERMINAL_PROMPT: '0' }
       )
-      await repoGit.fetch(['--depth=1', 'origin', `refs/pull/${opts.pullRequestNumber}/head`])
+      await repoGit.fetch(['--depth=50', 'origin', `refs/pull/${opts.pullRequestNumber}/head`])
       await repoGit.checkout(['--detach', 'FETCH_HEAD'])
 
       let actualSha = (await repoGit.revparse(['HEAD'])).trim()
       if (opts.requestedCommitSha && actualSha.toLowerCase() !== opts.requestedCommitSha.toLowerCase()) {
         // The ref may have advanced between webhook receipt and worker start. Try
         // the immutable event SHA; never silently analyze a different commit.
-        await repoGit.fetch(['--depth=1', 'origin', opts.requestedCommitSha])
+        await repoGit.fetch(['--depth=50', 'origin', opts.requestedCommitSha])
         await repoGit.checkout(['--detach', 'FETCH_HEAD'])
         actualSha = (await repoGit.revparse(['HEAD'])).trim()
       }
@@ -121,7 +123,7 @@ export async function cloneRepo(opts: CloneRepoOptions): Promise<CloneResult> {
     }
 
     await cloneGit.clone(repoUrl, opts.destination, [
-      '--depth', '1',
+      '--depth', '100',
       '--single-branch',
       '--no-tags',
       '--branch', opts.branch,
@@ -146,8 +148,9 @@ export async function cloneRepo(opts: CloneRepoOptions): Promise<CloneResult> {
     sha = await cloneAttempt(false)
   }
 
+  const gitChurn = await collectGitChurn(opts.destination)
   fs.rmSync(path.join(opts.destination, '.git'), { recursive: true, force: true })
-  return { sha: sha.slice(0, 40), message: 'cloned' }
+  return { sha: sha.slice(0, 40), message: 'cloned', gitChurn }
 }
 
 /** A per-analysis path prevents overlapping workers from deleting each other's clone. */

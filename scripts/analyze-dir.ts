@@ -3,6 +3,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { runAnalysis } from '../src/server/analysis'
+import { analyzeHotspots } from '../src/server/analysis/hotspots'
 import { buildSarifLog } from '../src/lib/sarif'
 import { assertValidSarifLog } from '../src/server/analysis/sarif-validator'
 
@@ -54,6 +55,8 @@ async function main() {
   const args = parseArgs(process.argv.slice(2))
   const started = Date.now()
   const report = runAnalysis(args.dir)
+  const hotspots = await analyzeHotspots(args.dir, report.metrics.fileComplexities ?? [])
+  report.metrics.hotspots = hotspots
   const secs = ((Date.now() - started) / 1000).toFixed(1)
 
   console.log(`analyzed ${args.dir} in ${secs}s`)
@@ -61,6 +64,13 @@ async function main() {
   console.log(`  stack: ${[report.techStack.framework, report.techStack.languages.join('/'), report.techStack.packageManager].filter(Boolean).join(' ')}`)
   console.log(`  scores: overall=${report.scores.overall} arch=${report.scores.architecture} debt=${report.scores.techDebt} perf=${report.scores.performance} docs=${report.scores.documentation} sec=${report.scores.security} ds=${report.scores.designSystem}`)
   console.log(`  import graph: ${report.importGraph.nodes.length} nodes, ${report.importGraph.edges.length} edges`)
+  if (hotspots.entries.length > 0) {
+    const topPreview = hotspots.entries
+      .slice(0, 3)
+      .map((h) => `${h.file} (score=${h.hotspotScore}, commits=${h.commits}, cc=${h.cyclomaticComplexity})`)
+      .join(', ')
+    console.log(`  hotspots (${hotspots.commitsAnalyzed} commits): ${topPreview}`)
+  }
   for (const f of report.findings) {
     console.log(`  [${f.severity}/${f.category}] ${f.title}${f.file ? ` @ ${f.file}` : ''}${f.detail ? ` — ${f.detail}` : ''}`)
   }
