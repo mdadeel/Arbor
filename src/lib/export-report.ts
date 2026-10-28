@@ -1,5 +1,6 @@
 import type { FindingData } from '@/components/dashboard/finding-item'
 import { parseHotspotReport } from '@/components/dashboard/hotspot-table'
+import { parseOwnershipReport } from '@/components/dashboard/ownership-map'
 import { buildRecommendedActions } from '@/lib/recommended-actions'
 
 export interface ExportableProject {
@@ -156,6 +157,38 @@ export function generateMarkdownReport(
     for (const h of hotspotReport.entries.slice(0, 10)) {
       md.push(
         `| ${h.rank} | \`${h.file}\` | **${h.hotspotScore}/100** | ${h.risk.toUpperCase()} | ${h.commits} commits (±${h.linesChanged} lines) | CC ${h.cyclomaticComplexity} · ${h.loc} LOC |`
+      )
+    }
+    md.push(``)
+  }
+
+  const ownershipReport = parseOwnershipReport(metrics.ownership)
+  if (ownershipReport && ownershipReport.directories.length > 0) {
+    md.push(
+      `---`,
+      ``,
+      `## Ownership Map & Directory Bus Factor`,
+      ``,
+      `- **Overall Repository Bus Factor:** ${ownershipReport.overallBusFactor > 0 ? ownershipReport.overallBusFactor : 'N/A'} (${ownershipReport.totalContributors} human contributors across ${ownershipReport.commitsAnalyzed} commits)`,
+      `- **Existing CODEOWNERS:** ${ownershipReport.existingCodeownersPath ? `\`${ownershipReport.existingCodeownersPath}\`` : 'None detected'}`,
+      ``,
+      `| Directory | Files | Bus Factor | Risk | Suggested Owners | Activity |`,
+      `|---|---|---|---|---|---|`
+    )
+    for (const dir of ownershipReport.directories) {
+      const ownersCell = dir.suggestedOwners.length > 0 ? `\`${dir.suggestedOwners.join(' ')}\`` : 'Inherits `*`'
+      md.push(
+        `| \`${dir.pattern}\` | ${dir.fileCount} | **${dir.busFactor > 0 ? dir.busFactor : '—'}** | ${dir.risk.toUpperCase()} | ${ownersCell} | ${dir.commits} commits (±${dir.linesChanged} lines) |`
+      )
+    }
+    if (ownershipReport.suggestedCodeowners) {
+      md.push(
+        ``,
+        `### Suggested \`.github/CODEOWNERS\``,
+        ``,
+        '```codeowners',
+        ownershipReport.suggestedCodeowners.trimEnd(),
+        '```'
       )
     }
     md.push(``)

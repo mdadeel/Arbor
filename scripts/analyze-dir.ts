@@ -3,7 +3,8 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { runAnalysis } from '../src/server/analysis'
-import { analyzeHotspots } from '../src/server/analysis/hotspots'
+import { collectGitChurn, computeHotspotReport } from '../src/server/analysis/hotspots'
+import { analyzeOwnership } from '../src/server/analysis/ownership'
 import { buildSarifLog } from '../src/lib/sarif'
 import { assertValidSarifLog } from '../src/server/analysis/sarif-validator'
 
@@ -55,8 +56,11 @@ async function main() {
   const args = parseArgs(process.argv.slice(2))
   const started = Date.now()
   const report = runAnalysis(args.dir)
-  const hotspots = await analyzeHotspots(args.dir, report.metrics.fileComplexities ?? [])
+  const gitChurn = await collectGitChurn(args.dir)
+  const hotspots = computeHotspotReport(report.metrics.fileComplexities ?? [], gitChurn)
+  const ownership = await analyzeOwnership(args.dir, report.structure, gitChurn)
   report.metrics.hotspots = hotspots
+  report.metrics.ownership = ownership
   const secs = ((Date.now() - started) / 1000).toFixed(1)
 
   console.log(`analyzed ${args.dir} in ${secs}s`)
@@ -70,6 +74,14 @@ async function main() {
       .map((h) => `${h.file} (score=${h.hotspotScore}, commits=${h.commits}, cc=${h.cyclomaticComplexity})`)
       .join(', ')
     console.log(`  hotspots (${hotspots.commitsAnalyzed} commits): ${topPreview}`)
+  }
+  if (ownership.directories.length > 0 && ownership.totalContributors > 0) {
+    const dirSummary = ownership.directories
+      .filter((d) => d.busFactor > 0)
+      .slice(0, 5)
+      .map((d) => `${d.pattern} bf=${d.busFactor} (${d.suggestedOwners.join(' ')})`)
+      .join(', ')
+    console.log(`  ownership (bus-factor=${ownership.overallBusFactor}, contributors=${ownership.totalContributors}): ${dirSummary}`)
   }
   for (const f of report.findings) {
     console.log(`  [${f.severity}/${f.category}] ${f.title}${f.file ? ` @ ${f.file}` : ''}${f.detail ? ` — ${f.detail}` : ''}`)

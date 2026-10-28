@@ -15,6 +15,7 @@ import { processSystemAnalysis } from '@/server/services/system-group'
 import { notifyAnalysisCompleted } from '@/server/services/notifications'
 import { analyzeDependencies } from '@/server/analysis/dependencies'
 import { analyzeHotspots } from '@/server/analysis/hotspots'
+import { analyzeOwnership } from '@/server/analysis/ownership'
 import { dependencyAdvisoryFindings, scoreWithDependencyRisk } from '@/server/analysis/supply-chain'
 import { applyPolicyPacks, POLICY_PACKS } from '@/server/analysis/policies'
 import { getEffectiveProjectPolicySettings } from '@/server/services/policy'
@@ -101,15 +102,17 @@ const worker = new BullWorker<{ analysisId: string }>(
         throw new AnalysisLimitError('Analysis timed out while the repository was being cloned.', 'ANALYSIS_TIMEOUT')
       }
       const report = runAnalysis(repoDir, analysisOptionsFromEnv(remainingMs))
-      const [supplyChain, policySettings, hotspots] = await Promise.all([
+      const [supplyChain, policySettings, hotspots, ownership] = await Promise.all([
         analyzeDependencies(repoDir),
         getEffectiveProjectPolicySettings(project.id, project.workspaceId),
         analyzeHotspots(repoDir, report.metrics.fileComplexities ?? [], gitChurn),
+        analyzeOwnership(repoDir, report.structure, gitChurn),
       ])
       const persistedMetrics = {
         ...report.metrics,
         fileComplexities: (report.metrics.fileComplexities ?? []).slice(0, 50),
         hotspots,
+        ownership,
       }
       const advisoryFindings = dependencyAdvisoryFindings(supplyChain.inventory, supplyChain.advisories)
       const findings = applyPolicyPacks([...report.findings, ...advisoryFindings], policySettings)

@@ -121,6 +121,51 @@ export interface HotspotReport {
   entries: HotspotEntry[]
 }
 
+export type BusFactorRisk = 'high' | 'medium' | 'low' | 'unknown'
+
+export interface DirectoryOwnerShare {
+  /** Valid GitHub CODEOWNERS identifier (`@username` or `email@domain`). */
+  codeowner: string
+  displayName: string
+  email: string
+  commits: number
+  linesChanged: number
+  /** Percentage share (0–100) of weighted ownership in this scope. */
+  sharePercent: number
+  lastCommitAt: string | null
+}
+
+export interface DirectoryOwnershipEntry {
+  /** Top-level directory name (e.g. `src`, `prisma`, or `(root)` for flat repos). */
+  directory: string
+  /** GitHub CODEOWNERS path pattern (e.g. `/src/` or `*`). */
+  pattern: string
+  fileCount: number
+  commits: number
+  linesChanged: number
+  contributorCount: number
+  /** Minimum contributors accounting for >= 50% of weighted ownership (0 if no commits). */
+  busFactor: number
+  risk: BusFactorRisk
+  owners: DirectoryOwnerShare[]
+  /** Suggested CODEOWNERS identifiers (1–3 primary/co-owners) for this directory. */
+  suggestedOwners: string[]
+}
+
+export interface OwnershipReport {
+  commitsAnalyzed: number
+  windowDays: number
+  totalContributors: number
+  overallBusFactor: number
+  overallRisk: BusFactorRisk
+  /** Existing CODEOWNERS path in repository if present (e.g. `.github/CODEOWNERS`), else null. */
+  existingCodeownersPath: string | null
+  defaultOwners: string[]
+  directories: DirectoryOwnershipEntry[]
+  /** Complete, copy-ready `.github/CODEOWNERS` file content derived from commit history. */
+  suggestedCodeowners: string
+}
+
 export interface AnalysisMetrics {
   files: number
   loc: number
@@ -144,6 +189,7 @@ export interface AnalysisMetrics {
   sourceEnvVars: string[]
   fileComplexities?: FileComplexityEntry[]
   hotspots?: HotspotReport
+  ownership?: OwnershipReport
 }
 
 export interface DesignSystemAudit {

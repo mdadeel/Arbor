@@ -178,10 +178,10 @@ npm run build
 - **Verified by local verification command:**
   - `npx prisma generate` & `npx prisma validate`: valid schema (`30` Prisma models, Prisma CLI `5.22.0`).
   - `npm run typecheck` (`tsc --noEmit` with TypeScript `5.9.3`, `strict: true`): `0` diagnostics.
-  - `npm run lint` (ESLint CLI across `293` files, `--max-warnings 0`): `0` errors, `0` warnings.
-  - `npm test -- --run` (Vitest + Testing Library): `63` test files, `301` tests passing.
+  - `npm run lint` (ESLint CLI across `297` files, `--max-warnings 0`): `0` errors, `0` warnings.
+  - `npm test -- --run` (Vitest + Testing Library): `65` test files, `307` tests passing.
   - `npm run build`: Next.js `15.5.27` production build succeeds (including `/report/[token]`, `/api/webhooks/lemonsqueezy`, and `/api/projects/[slug]/analyses/[analysisId]/sarif`).
-  - `npm run analyze:local -- . --sarif <file>`: computes per-file Babel AST cyclomatic complexity crossed with `simple-git` `git log` churn (`hotspots`) and emits OASIS SARIF 2.1.0 validated at runtime against `sarif-schema-2.1.0.json` (`1.7s` cold analysis across 3 runs — within the `<20%` budget over baseline).
+  - `npm run analyze:local -- . --sarif <file>`: computes per-file Babel AST cyclomatic complexity crossed with `simple-git` `git log` churn (`hotspots`), per-top-level-directory bus factors + copy-ready `.github/CODEOWNERS` ownership map (`ownership`), and OASIS SARIF 2.1.0 validated at runtime against `sarif-schema-2.1.0.json` (`1.6s` cold analysis across 3 runs — within the `<20%` budget over baseline).
   - `npm run report:pdf -- <token>`: verified end-to-end against PostgreSQL + `next start` + headless Chromium, producing an 8-page A4 consultant audit PDF (`docs/examples/arbor-audit-mdadeel-arbor.pdf`) with cover metadata, deterministic top-5 recommended actions, severity-grouped `file:line` findings, dependency risk inventory, per-page commit SHA watermark, and HTTP `404` on expired/revoked tokens.
 - **GitHub Actions CI (`verify` and `build` jobs):** `unverified` — `.github/workflows/ci.yml` is authored with `postgres:16` and `redis:7` service containers, `npx prisma migrate deploy`, typecheck, lint, tests, and production build, and the CI badge above remains commented out until a maintainer with `workflows` GitHub permission pushes `.github/workflows/ci.yml` and confirms both jobs green.
 - **Unit-tested only (`unverified` against live external services):**
