@@ -90,6 +90,37 @@ export interface AnalysisCoverage {
   maxParseFiles: number
 }
 
+export interface FileComplexityEntry {
+  file: string
+  loc: number
+  cyclomaticComplexity: number
+  functionCount: number
+}
+
+export type HotspotRisk = 'high' | 'medium' | 'low'
+
+export interface HotspotEntry {
+  rank: number
+  file: string
+  hotspotScore: number
+  risk: HotspotRisk
+  commits: number
+  linesChanged: number
+  distinctAuthors: number
+  lastModifiedAt: string | null
+  cyclomaticComplexity: number
+  functionCount: number
+  loc: number
+}
+
+export interface HotspotReport {
+  commitsAnalyzed: number
+  windowDays: number
+  filesWithChurn: number
+  highRiskCount: number
+  entries: HotspotEntry[]
+}
+
 export interface AnalysisMetrics {
   files: number
   loc: number
@@ -111,6 +142,8 @@ export interface AnalysisMetrics {
   jsdocCount: number
   commentRatio: number
   sourceEnvVars: string[]
+  fileComplexities?: FileComplexityEntry[]
+  hotspots?: HotspotReport
 }
 
 export interface DesignSystemAudit {

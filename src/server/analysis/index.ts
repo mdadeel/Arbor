@@ -25,7 +25,7 @@ import {
   perfFindings,
   docFindings,
 } from './checks'
-import type { AnalysisReport, Finding, ImportGraph } from './types'
+import type { AnalysisReport, FileComplexityEntry, Finding, ImportGraph } from './types'
 
 export { AnalysisLimitError } from './walk'
 
@@ -185,6 +185,7 @@ export function runAnalysis(
   const a11yFindings: Finding[] = []
   const sourceEnvSet = new Set<string>()
   const tokenTextCache = new Map<string, string | null>()
+  const fileComplexities: FileComplexityEntry[] = []
 
   let parsedFiles = 0
   let parseFailedFiles = 0
@@ -252,6 +253,14 @@ export function runAnalysis(
       continue
     }
     if (parsed.parseFailed) parseFailedFiles++
+    else {
+      fileComplexities.push({
+        file: relativePath,
+        loc: lineCounts.get(relativePath) ?? 0,
+        cyclomaticComplexity: parsed.cyclomaticComplexity,
+        functionCount: parsed.functionCount,
+      })
+    }
 
     components += parsed.components
     hooks += parsed.hooks
@@ -477,6 +486,9 @@ export function runAnalysis(
       jsdocCount,
       commentRatio: metrics.commentRatio,
       sourceEnvVars: [...sourceEnvSet].sort(),
+      fileComplexities: fileComplexities.sort(
+        (a, b) => b.cyclomaticComplexity - a.cyclomaticComplexity || b.loc - a.loc || a.file.localeCompare(b.file)
+      ),
       coverage,
     },
     importGraph: { nodes: [...graphNodes], edges } as ImportGraph,

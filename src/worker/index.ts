@@ -14,6 +14,7 @@ import { startPullRequestCheck, completePullRequestCheck, failPullRequestAnalysi
 import { processSystemAnalysis } from '@/server/services/system-group'
 import { notifyAnalysisCompleted } from '@/server/services/notifications'
 import { analyzeDependencies } from '@/server/analysis/dependencies'
+import { analyzeHotspots } from '@/server/analysis/hotspots'
 import { dependencyAdvisoryFindings, scoreWithDependencyRisk } from '@/server/analysis/supply-chain'
 import { applyPolicyPacks, POLICY_PACKS } from '@/server/analysis/policies'
 import { getEffectiveProjectPolicySettings } from '@/server/services/policy'
@@ -79,7 +80,7 @@ const worker = new BullWorker<{ analysisId: string }>(
       if (analysis.pullRequestAnalysis) await startPullRequestCheck(analysisId)
       await job.updateProgress(25)
 
-      const { sha } = await cloneRepo({
+      const { sha, gitChurn } = await cloneRepo({
         repoUrl: project.repoUrl,
         repoFullName: project.repoFullName,
         branch: analysis.branch,
@@ -100,10 +101,16 @@ const worker = new BullWorker<{ analysisId: string }>(
         throw new AnalysisLimitError('Analysis timed out while the repository was being cloned.', 'ANALYSIS_TIMEOUT')
       }
       const report = runAnalysis(repoDir, analysisOptionsFromEnv(remainingMs))
-      const [supplyChain, policySettings] = await Promise.all([
+      const [supplyChain, policySettings, hotspots] = await Promise.all([
         analyzeDependencies(repoDir),
         getEffectiveProjectPolicySettings(project.id, project.workspaceId),
+        analyzeHotspots(repoDir, report.metrics.fileComplexities ?? [], gitChurn),
       ])
+      const persistedMetrics = {
+        ...report.metrics,
+        fileComplexities: (report.metrics.fileComplexities ?? []).slice(0, 50),
+        hotspots,
+      }
       const advisoryFindings = dependencyAdvisoryFindings(supplyChain.inventory, supplyChain.advisories)
       const findings = applyPolicyPacks([...report.findings, ...advisoryFindings], policySettings)
       const scores = scoreWithDependencyRisk(report.scores, findings)
@@ -144,7 +151,7 @@ const worker = new BullWorker<{ analysisId: string }>(
             structure: json(report.structure),
             findings: json(findings),
             dependencyGraph: json(report.importGraph),
-            metrics: json(report.metrics),
+            metrics: json(persistedMetrics),
             designSystem: json(report.designSystem),
             dependencyInventory: json(supplyChain.inventory),
             dependencyAdvisories: json(supplyChain.advisories),

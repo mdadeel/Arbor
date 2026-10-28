@@ -1,4 +1,5 @@
 import type { FindingData } from '@/components/dashboard/finding-item'
+import { parseHotspotReport } from '@/components/dashboard/hotspot-table'
 import { buildRecommendedActions } from '@/lib/recommended-actions'
 
 export interface ExportableProject {
@@ -139,6 +140,24 @@ export function generateMarkdownReport(
     circularDeps.forEach((cycle, i) => {
       md.push(`${i + 1}. \`${cycle.join(' → ')}\``)
     })
+    md.push(``)
+  }
+
+  const hotspotReport = parseHotspotReport(metrics.hotspots)
+  if (hotspotReport && hotspotReport.entries.length > 0) {
+    md.push(
+      `---`,
+      ``,
+      `## Code Hotspots (Git Churn × AST Complexity)`,
+      ``,
+      `| Rank | File | Score | Risk | Churn | AST Complexity |`,
+      `|---|---|---|---|---|---|`
+    )
+    for (const h of hotspotReport.entries.slice(0, 10)) {
+      md.push(
+        `| ${h.rank} | \`${h.file}\` | **${h.hotspotScore}/100** | ${h.risk.toUpperCase()} | ${h.commits} commits (±${h.linesChanged} lines) | CC ${h.cyclomaticComplexity} · ${h.loc} LOC |`
+      )
+    }
     md.push(``)
   }
 
