@@ -239,6 +239,13 @@ function InteractiveProjectReport({ slug, project }: { slug: string; project: Pr
     downloadFile(filename, json, 'application/json')
   }
 
+  const handleExportSarif = () => {
+    if (!completed) return
+    window.location.assign(
+      `/api/projects/${encodeURIComponent(project.slug)}/analyses/${encodeURIComponent(completed.id)}/sarif`
+    )
+  }
+
   const handleCopyMarkdown = async () => {
     if (!completed) return
     const md = generateMarkdownReport(project, completed)
@@ -377,6 +384,13 @@ function InteractiveProjectReport({ slug, project }: { slug: string; project: Pr
                   <div className="flex flex-col">
                     <span className="font-medium">Raw Payload (.json)</span>
                     <span className="text-[10px] text-muted-foreground">Complete AST audit data</span>
+                  </div>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleExportSarif} className="gap-2.5 text-xs cursor-pointer py-2">
+                  <Shield className="h-4 w-4 text-primary shrink-0" />
+                  <div className="flex flex-col">
+                    <span className="font-medium">SARIF 2.1.0 (.sarif)</span>
+                    <span className="text-[10px] text-muted-foreground">GitHub Code Scanning / Security tab</span>
                   </div>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />

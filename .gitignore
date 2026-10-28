@@ -57,6 +57,7 @@ Thumbs.db
 !/docs/backend-review-feature-roadmap.md
 !/docs/typecheck-baseline.md
 !/docs/worker-deployment.md
+!/docs/sarif-github-code-scanning.md
 !/docs/examples/
 !/docs/examples/arbor-audit-mdadeel-arbor.pdf
 .ai 
