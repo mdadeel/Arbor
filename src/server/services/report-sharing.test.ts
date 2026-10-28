@@ -93,4 +93,78 @@ describe('report share links', () => {
       data: { revokedAt: expect.any(Date) },
     })
   })
+
+  it('persists trimmed clientName on share links and exposes policy and dependency summaries', async () => {
+    vi.mocked(prisma.analysis.findFirst).mockResolvedValue({ id: 'analysis-1' } as never)
+    vi.mocked(prisma.reportShareLink.create).mockResolvedValue({
+      id: 'share-2',
+      clientName: 'Acme Corp',
+      createdAt: new Date('2026-10-08T00:00:00Z'),
+      expiresAt: new Date('2026-10-15T00:00:00Z'),
+    } as never)
+
+    const created = await createReportShareLink({
+      userId: 'user-1',
+      slug: 'demo',
+      analysisId: 'analysis-1',
+      expiresInDays: 7,
+      clientName: '  Acme Corp  ',
+    })
+    expect(created.clientName).toBe('Acme Corp')
+    expect(vi.mocked(prisma.reportShareLink.create).mock.calls[0]?.[0]?.data).toMatchObject({
+      clientName: 'Acme Corp',
+    })
+
+    const token = 'b'.repeat(43)
+    vi.mocked(prisma.reportShareLink.findFirst).mockResolvedValue({
+      clientName: 'Acme Corp',
+      expiresAt: new Date('2026-10-15T00:00:00Z'),
+      analysis: {
+        id: 'analysis-1',
+        status: 'completed',
+        analysisVersion: 1,
+        branch: 'main',
+        commitSha: '1234567890abcdef1234567890abcdef12345678',
+        durationMs: 1450,
+        overallScore: 84,
+        architectureScore: 90,
+        techDebtScore: 76,
+        performanceScore: 88,
+        documentationScore: 80,
+        securityScore: 85,
+        designSystemScore: 79,
+        findings: [],
+        policySnapshot: {
+          schemaVersion: 1,
+          packs: [{ packKey: 'security', version: '1.0.0', enabled: true }],
+        },
+        dependencyInventory: {
+          version: 1,
+          directCount: 12,
+          transitiveCount: 95,
+          ecosystems: ['npm'],
+          lockfiles: ['package-lock.json'],
+          complete: true,
+          truncated: false,
+          packages: [{ name: 'next', version: '15.5.27', ecosystem: 'npm', direct: true, dependencyType: 'prod' }],
+        },
+        dependencyAdvisories: {
+          status: 'complete',
+          source: 'GitHub Advisory Database',
+          checkedAt: '2026-10-08T00:00:00Z',
+          queriedCount: 12,
+          advisoryCount: 0,
+          advisories: [],
+        },
+        createdAt: new Date('2026-10-08T00:00:00Z'),
+        project: { name: 'Demo', slug: 'demo', repoFullName: 'owner/repo', defaultBranch: 'main' },
+      },
+    } as never)
+
+    const shared = await getSharedReport(token)
+    expect(shared?.clientName).toBe('Acme Corp')
+    expect(shared?.analysis.policy.summary).toBe('security@1.0.0')
+    expect(shared?.analysis.dependencyRisk?.directCount).toBe(12)
+    expect(shared?.analysis.dependencyRisk?.directPackages[0]?.name).toBe('next')
+  })
 })

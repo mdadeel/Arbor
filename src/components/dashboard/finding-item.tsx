@@ -27,6 +27,8 @@ export interface FindingData {
   confidence?: 'high' | 'medium' | 'low'
   ruleId?: string
   fingerprint?: string
+  policyPack?: string
+  policyVersion?: string
   policySuppressed?: boolean
   evidence?: string[]
   file?: string

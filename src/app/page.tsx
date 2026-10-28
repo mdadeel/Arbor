@@ -84,7 +84,7 @@ export default async function HomePage() {
                 </li>
                 <li className="inline-flex items-center gap-1.5">
                   <Timer className="size-3.5 text-primary" aria-hidden="true" />
-                  Audit time scales with repository size
+                  Queued background scan — saves a report when processed
                 </li>
                 <li className="inline-flex items-center gap-1.5">
                   <GitBranch className="size-3.5 text-primary" aria-hidden="true" />
@@ -135,7 +135,7 @@ export default async function HomePage() {
                 Get the map before the next change.
               </h2>
               <p className="mt-5 max-w-md text-base leading-relaxed text-muted-foreground">
-                Connect a repository, run an audit, and inspect the architecture behind the score.
+                Connect a repository, queue an audit, and inspect the saved architecture report once processing completes.
               </p>
               <div className="mt-8">
                 <Button asChild variant="primary" size="lg" shape="pill">

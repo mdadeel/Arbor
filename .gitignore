@@ -9,7 +9,6 @@ build
 # environment
 .env
 .env*.local
-.env*.example
 
 # analysis artifacts
 /tmp/arbor-clones
@@ -56,6 +55,9 @@ Thumbs.db
 .stitch/designs
 /docs/*
 !/docs/backend-review-feature-roadmap.md
+!/docs/typecheck-baseline.md
+!/docs/examples/
+!/docs/examples/arbor-audit-mdadeel-arbor.pdf
 .ai 
 .claude
 .stitch

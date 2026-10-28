@@ -790,6 +790,7 @@ model ReportShareLink {
   analysisId  String
   projectId   String
   createdById String
+  clientName  String?
   expiresAt   DateTime
   revokedAt   DateTime?
   createdAt   DateTime  @default(now())

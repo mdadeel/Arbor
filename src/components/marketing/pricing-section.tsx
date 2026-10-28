@@ -114,10 +114,9 @@ export function PricingSection() {
                 <span className="rounded-md border border-border bg-muted/50 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-muted-foreground">WAITLIST</span>
               </div>
               <div className="flex items-baseline gap-2">
-                <span className="font-display text-4xl font-semibold text-foreground">$15</span>
-                <span className="text-sm text-muted-foreground">/ month</span>
+                <span className="font-display text-3xl font-semibold text-foreground sm:text-4xl">In development</span>
               </div>
-              <p className="text-sm leading-relaxed text-muted-foreground">For teams planning shared workspaces and scheduled repository checks.</p>
+              <p className="text-sm leading-relaxed text-muted-foreground">Join the waitlist for updates when team billing, shared workspaces, and scheduled checks launch.</p>
             </div>
 
             <div className="space-y-3 border-t border-border pt-5">
