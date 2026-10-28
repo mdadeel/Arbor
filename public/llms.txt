@@ -1,6 +1,6 @@
 # Arbor — Codebase Intelligence & Developer Workbench
 
-> Turn a GitHub repository into an inspectable architecture map, dependency graph, and health report. Audit time varies with repository size and processing conditions.
+> Turn a GitHub repository into an inspectable architecture map, dependency graph, and saved health report. Audits run asynchronously via a background worker or a scheduled daily 03:00 UTC serverless fallback.
 
 ## Overview
 Arbor helps developers inspect software structure and repository health. Its audits use Babel AST parsing and explicit static checks rather than generative AI. The same source and rule set produce repeatable structural checks; results cover the checks Arbor implements and do not replace code review.
@@ -24,7 +24,7 @@ Arbor helps developers inspect software structure and repository health. Its aud
 
 ## Pricing & Tiers
 - **Community (Free)**: Up to 10 audits per hour per account across all connected repositories, with dependency maps and README badges for public repositories.
-- **Teams ($15/month — in development, waitlist)**: Planned shared workspaces with role-based access, scheduled health sync, and CI checks. No launch date or purchase commitment is offered yet.
+- **Teams (in development, join the waitlist)**: Planned shared workspaces with role-based access, scheduled health sync, and CI checks. No billing integration, launch date, or pricing is live yet.
 
 ## Canonical URLs
 - Website: https://arborgit.vercel.app

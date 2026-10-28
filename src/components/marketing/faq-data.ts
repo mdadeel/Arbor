@@ -7,7 +7,12 @@ export const faqs: FaqItem[] = [
   {
     question: 'Does Arbor store or train on my private repository code?',
     answer:
-      'Arbor clones the repository into a temporary working copy for the duration of an audit and deletes that copy when processing finishes. Saved reports contain derived results, such as import graphs, scores, and finding locations, rather than complete source files. The core audit does not send source code to an AI model. AI features are optional and stay off unless you add your own OpenAI or Anthropic key. When you use them, finding details are sent to that provider, and patch suggestions also send one selected source file. Your data is handled under that provider’s terms. Audit time depends on repository size and processing conditions.',
+      'Arbor clones the repository into a temporary working copy for the duration of an audit and deletes that copy when processing finishes. Saved reports contain derived results, such as import graphs, scores, and finding locations, rather than complete source files. The core audit does not send source code to an AI model. AI features are optional and stay off unless you add your own OpenAI or Anthropic key. When you use them, finding details are sent to that provider, and patch suggestions also send one selected source file. Your data is handled under that provider’s terms.',
+  },
+  {
+    question: 'When does a queued audit finish?',
+    answer:
+      'Audits run asynchronously and produce a saved report rather than blocking your browser. Self-hosted or worker-backed deployments running the BullMQ worker process queued scans continuously; serverless-only deployments configured via vercel.json process queued scans during the scheduled daily 03:00 UTC batch (up to 300 seconds per run). Once picked up, runtime depends on repository size and clone speed.',
   },
   {
     question: 'How does the audit work, and does it use AI?',

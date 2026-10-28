@@ -17,6 +17,7 @@ interface ProductRow {
 
 const rows: ProductRow[] = [
   {
+    id: 'architecture',
     eyebrow: 'Architecture',
     title: 'See the import graph before you change it.',
     body: 'Arbor parses supported JavaScript and TypeScript files to map local imports, then draws the module graph so layers, dependencies, and cycles are visible at a glance.',
@@ -168,8 +169,8 @@ export function ProductRows() {
 
 const steps = [
   { number: '01', icon: Github, title: 'Connect a repository', body: 'Choose a GitHub repository and review the requested permissions before connecting. No workflow file or local setup is required.' },
-  { number: '02', icon: GitBranch, title: 'Map the code', body: 'Arbor parses source structure and import relationships to build an inspectable architecture map.' },
-  { number: '03', icon: ClipboardCheck, title: 'Review the evidence', body: 'Open health dimensions and findings with the file paths and checks behind each result.' },
+  { number: '02', icon: GitBranch, title: 'Queue the audit', body: 'Arbor queues an asynchronous scan that clones the repository, parses source structure and imports, and saves an inspectable report. Deployments with a dedicated worker process queued scans continuously; serverless-only deployments process queued jobs via a scheduled daily 03:00 UTC batch.' },
+  { number: '03', icon: ClipboardCheck, title: 'Review the evidence', body: 'Open the saved report to inspect health dimensions and findings with the file paths and checks behind each result.' },
 ]
 
 export function HowItWorks() {

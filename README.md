@@ -1,37 +1,168 @@
 # Arbor
 
-The developer portal that understands your codebase.
+<!-- [![CI](https://github.com/mdadeel/Arbor/actions/workflows/ci.yml/badge.svg)](https://github.com/mdadeel/Arbor/actions/workflows/ci.yml) -->
 
-Connect a GitHub repository to get an inspectable architecture map and health report. Arbor uses deterministic AST and static checks; processing time varies by repository size. No workflow file or local setup required.
+Connect a GitHub repository to generate an inspectable architecture map, six-dimension health score, and evidence-linked findings.
+
+Arbor's core analysis is deterministic: it shallow-clones a temporary working copy, parses supported source files with Babel AST and rule-based static checks, records derived metrics and findings, and removes the clone when processing finishes. Optional AI explanations and unified-diff patch suggestions are bring-your-own-key (BYOK) and review-only — Arbor never writes commits or opens pull requests on your behalf.
 
 ## Quick Start
 
-```bash
-docker compose up -d
-npm install
-npm run db:migrate
-npm run dev
-```
+1. **Start PostgreSQL 16 and Redis 7:**
+
+   ```bash
+   docker compose up -d
+   ```
+
+2. **Create `.env` from `.env.example`:**
+
+   ```bash
+   cp .env.example .env
+   ```
+
+   Set real random values for `NEXTAUTH_SECRET` and `ENCRYPTION_SECRET`, and configure `GITHUB_CLIENT_ID` and `GITHUB_CLIENT_SECRET` from a GitHub OAuth App (`http://localhost:3000/api/auth/callback/github`) if you want to sign in through the web UI.
+
+3. **Install dependencies and sync the database schema:**
+
+   ```bash
+   npm install
+   npm run db:push
+   ```
+
+   > `npm run db:push` creates all 28 models from `prisma/schema.prisma` for local development. (`npx prisma migrate deploy` applies the 9 committed SQL migrations covering 23 tables; see [Status](#status).)
+
+4. **Run the web app AND the background worker:**
+
+   ```bash
+   npm run dev:all
+   ```
+
+   Or in two separate terminals:
+
+   ```bash
+   npm run dev
+   npm run worker
+   ```
+
+   **Why the worker is required:** Repository scans are asynchronous jobs queued in PostgreSQL and BullMQ (`REDIS_URL`). Without `npm run worker` (or an authorized `GET /api/worker/process` request carrying `Authorization: Bearer $CRON_SECRET`), analyses remain in `queued` status and will not complete.
+
+   To run the static analyzer directly against any local directory without starting PostgreSQL, Redis, or GitHub OAuth:
+
+   ```bash
+   npm run analyze:local -- .
+   ```
 
 ## Tech Stack
 
-- Next.js 14 (App Router)
-- TypeScript strict mode
-- tRPC
-- PostgreSQL + Prisma
-- NextAuth.js (GitHub OAuth)
-- BullMQ + Redis
-- React Flow + Recharts
+- **Framework:** Next.js 15 (App Router, `15.5.27`), React 18 (`18.2.0`), TypeScript `5.9.3` (`strict: true`)
+- **API:** tRPC v11 (`11.19.0`) + TanStack React Query v5 (`5.105.0`) + Zod (`3.22.4`)
+- **Database:** PostgreSQL 16 + Prisma 5 (`5.22.0`)
+- **Auth:** NextAuth.js v4 (GitHub OAuth; optional allowlisted admin credentials for non-production use)
+- **Queue & Rate Limiting:** BullMQ + Redis 7 (`ioredis`)
+- **Visualisation & UI:** React Flow, Recharts, Tailwind CSS, Radix UI
 
-## Development
+## Environment Variables
 
-```bash
-npm run typecheck
-npm run lint
-npm test
-npm run test:e2e
+`src/lib/env.ts` validates the server environment contract with Zod at import time. Copy `.env.example` to `.env` for a complete template.
+
+### Required (no default — app, worker, and `next build` fail without them)
+
+| Variable | Description |
+| --- | --- |
+| `DATABASE_URL` | PostgreSQL connection URL (e.g. `postgresql://arbor:arbor@localhost:5432/arbor`) |
+| `REDIS_URL` | Redis connection URL (e.g. `redis://localhost:6379`) |
+| `NEXTAUTH_SECRET` | Non-empty secret used by NextAuth.js to sign/encrypt JWT sessions |
+| `ENCRYPTION_SECRET` | Non-empty secret used (AES-256-GCM) to encrypt stored user BYOK AI provider keys and GitHub access tokens; rotating it invalidates previously stored keys |
+
+### Optional (defaults defined in `src/lib/env.ts`)
+
+| Variable | Default | Description |
+| --- | --- | --- |
+| `GITHUB_CLIENT_ID` | `""` | GitHub OAuth App Client ID (`githubConfigured` is `false` when empty) |
+| `GITHUB_CLIENT_SECRET` | `""` | GitHub OAuth App Client Secret |
+| `GITHUB_WEBHOOK_SECRET` | `""` | HMAC secret for verifying `/api/webhooks/github` deliveries |
+| `APP_URL` | `https://arborgit.vercel.app` | Canonical application base URL (set `http://localhost:3000` locally) |
+| `CRON_SECRET` | `""` | Bearer token guarding the serverless fallback route `/api/worker/process` |
+| `CLONE_BASE_DIR` | `/tmp/arbor-clones` | Temporary directory for shallow repository clones during analysis |
+| `CLONE_TIMEOUT` | `60` | Git clone timeout in seconds |
+| `MAX_REPO_SIZE_MB` | `500` | Maximum repository size budget (MB) |
+| `MAX_FILES` | `5000` | Maximum files indexed per scan |
+| `MAX_FILE_SIZE_KB` | `100` | Maximum size per parsed source file (KB) |
+| `MAX_PARSE_FILES` | `2500` | Maximum source files parsed with Babel AST per scan |
+| `ANALYSIS_TIMEOUT_MS` | `300000` | Overall per-analysis timeout in milliseconds |
+| `ADMIN_EMAILS` | `""` | Allowlist of admin user emails (comma-, semicolon-, or whitespace-separated) |
+| `ADMIN_GITHUB_USERNAMES` | `""` | Allowlist of admin GitHub usernames |
+| `ADMIN_USERNAME` | `""` | Optional admin credential username — must remain empty in production |
+| `ADMIN_PASSWORD` | `""` | Optional admin credential password — must remain empty in production |
+
+### Read outside `src/lib/env.ts`
+
+- `NEXTAUTH_URL` — read by NextAuth.js at runtime for callback URL resolution.
+- `RESEND_API_KEY`, `EMAIL_FROM` — optional; read directly in `src/server/services/admin.ts` for admin email broadcasts.
+
+> **AI provider keys are not environment variables.** OpenAI and Anthropic keys are bring-your-own-key per user, encrypted in PostgreSQL via `ENCRYPTION_SECRET`.
+
+## Source Layout
+
+```text
+src/
+├── app/                  # Next.js 15 App Router pages & API route handlers
+│   ├── (auth)/           # GitHub login & admin login pages
+│   ├── (dashboard)/      # Authenticated workbench (/dashboard, /projects, /systems, /settings)
+│   ├── admin/            # Platform admin views (users, workspaces, audit, waitlist, system)
+│   ├── api/              # NextAuth, tRPC, GitHub webhooks, badges, share JSON, SBOM, cron worker
+│   └── share/[token]/    # Public read-only shared report page
+├── components/           # UI components (dashboard, marketing, auth, Radix/CreateUI primitives)
+├── lib/                  # Zod env schema (env.ts), Prisma, Redis, NextAuth, AES-256-GCM crypto, SSRF
+├── server/
+│   ├── analysis/         # Deterministic Babel AST parser, dependency/SBOM scanner, policy packs
+│   ├── routers/          # tRPC v11 routers
+│   └── services/         # Domain logic (projects, workspaces, PR checks, triage, sharing, BYOK AI)
+├── types/                # Module ambient type declarations
+├── worker/               # Standalone BullMQ worker, startup stale-job recovery, schedule dispatcher
+└── middleware.ts         # Route protection & security headers
 ```
 
-## Architecture
+For phase-by-phase backend architecture notes and verification tracking, see [`docs/backend-review-feature-roadmap.md`](docs/backend-review-feature-roadmap.md) and [`docs/typecheck-baseline.md`](docs/typecheck-baseline.md).
 
-See `.ai/architecture.md` and `docs/architecture/` for the full system design.
+## Development & Verification
+
+```bash
+npm ci
+npx prisma generate
+npx prisma validate
+npm run typecheck
+npm run lint
+npm test -- --run
+npm run build
+```
+
+## Status
+
+- **Verified by local verification command:**
+  - `npx prisma generate` & `npx prisma validate`: valid schema (`28` Prisma models, Prisma CLI `5.22.0`).
+  - `npm run typecheck` (`tsc --noEmit` with TypeScript `5.9.3`, `strict: true`): `0` diagnostics.
+  - `npm run lint` (ESLint CLI across `268` files, `--max-warnings 0`): `0` errors, `0` warnings.
+  - `npm test -- --run` (Vitest + Testing Library): `53` test files, `271` tests passing.
+  - `npm run build`: Next.js `15.5.27` production build succeeds.
+- **GitHub Actions CI (`verify` and `build` jobs):** `unverified` — `.github/workflows/ci.yml` is authored with `postgres:16` and `redis:7` service containers, `npx prisma migrate deploy`, typecheck, lint, tests, and production build, and the CI badge above remains commented out until a maintainer with `workflows` GitHub permission pushes `.github/workflows/ci.yml` and confirms both jobs green.
+- **Unit-tested only (`unverified` against live external services):**
+  - Database-backed routes, `npx prisma migrate deploy` against live PostgreSQL 16, and BullMQ job execution against live Redis.
+  - GitHub OAuth sign-in, webhook signature delivery lifecycle, and pull-request Check Runs against live GitHub repositories.
+  - Optional BYOK OpenAI / Anthropic finding explanations and review-only patch suggestions against live provider APIs.
+  - Resend email delivery (`RESEND_API_KEY`), live OSV advisory queries, and official CycloneDX schema validation (SBOM checks are currently structural only).
+- **Known gaps & unbuilt capabilities:**
+  - **Migration drift:** `prisma/schema.prisma` defines `28` models, whereas the `9` SQL migrations in `prisma/migrations/` create `23` tables (`AdminEmail`, `ProjectGroup`, `ProjectGroupMember`, `SystemAnalysis`, `WaitlistLead`, and `User` admin/plan fields are not yet in a SQL migration; use `npm run db:push` on fresh local databases).
+  - **Serverless worker latency:** `vercel.json` triggers `/api/worker/process` once daily at `03:00 UTC` (`maxDuration = 300`); continuous background processing requires running `npm run worker` against shared PostgreSQL and Redis.
+  - **Browser E2E suite:** `@playwright/test` is listed in `devDependencies`, but no `playwright.config` or E2E spec suite exists yet (`unverified`).
+  - **Billing:** Not built. The Teams plan is a waitlist only; no payment processor is integrated.
+  - **PDF export:** Not built. Reports export as Markdown (`.md`) and JSON (`.json`), and shareable links render HTML/JSON with hashed, expiring, revocable tokens.
+  - **Application container image:** Not built. `docker-compose.yml` provisions PostgreSQL 16 and Redis 7 only; there is no `Dockerfile` for the Next.js app or BullMQ worker.
+
+## Licence
+
+Arbor is licensed under the [GNU Affero General Public License v3.0](LICENSE) (`AGPL-3.0`).
+
+- **Self-hosting and modification are free** under the terms of the AGPL-3.0.
+- **Network use:** Offering a modified version of Arbor as a network service requires publishing your complete corresponding source modifications under the AGPL-3.0.
+- **Commercial licensing:** A commercial licence is available for white-label deployments or closed-source hosting — contact [shahnawasadeel@gmail.com](mailto:shahnawasadeel@gmail.com).
