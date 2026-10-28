@@ -9,6 +9,10 @@ export const env = createEnv({
     GITHUB_CLIENT_ID: z.string().default(''),
     GITHUB_CLIENT_SECRET: z.string().default(''),
     GITHUB_WEBHOOK_SECRET: z.string().default(''),
+    LEMONSQUEEZY_API_KEY: z.string().default(''),
+    LEMONSQUEEZY_STORE_ID: z.string().default(''),
+    LEMONSQUEEZY_TEAMS_VARIANT_ID: z.string().default(''),
+    LEMONSQUEEZY_WEBHOOK_SECRET: z.string().default(''),
     ENCRYPTION_SECRET: z.string().min(1),
     CLONE_BASE_DIR: z.string().default('/tmp/arbor-clones'),
     CLONE_TIMEOUT: z.coerce.number().default(60),
@@ -32,3 +36,6 @@ export const env = createEnv({
 })
 
 export const githubConfigured = Boolean(env.GITHUB_CLIENT_ID && env.GITHUB_CLIENT_SECRET)
+export const billingConfigured = Boolean(
+  env.LEMONSQUEEZY_API_KEY && env.LEMONSQUEEZY_STORE_ID && env.LEMONSQUEEZY_TEAMS_VARIANT_ID
+)

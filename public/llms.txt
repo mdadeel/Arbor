@@ -23,8 +23,8 @@ Arbor helps developers inspect software structure and repository health. Its aud
 - **Policies**: Privacy Policy at https://arborgit.vercel.app/privacy and Terms of Service at https://arborgit.vercel.app/terms.
 
 ## Pricing & Tiers
-- **Community (Free)**: Up to 10 audits per hour per account across all connected repositories, with dependency maps and README badges for public repositories.
-- **Teams (in development, join the waitlist)**: Planned shared workspaces with role-based access, scheduled health sync, and CI checks. No billing integration, launch date, or pricing is live yet.
+- **Free ($0 / forever)**: Up to 10 audits per hour, up to 5 members per workspace, up to 3 active scheduled scans, dependency maps, A4 PDF audit reports, and README badges for public repositories.
+- **Teams ($15 / month per workspace, not per seat)**: Up to 60 audits per hour per workspace, up to 50 workspace members with RBAC, up to 50 active scheduled repository scans, and merchant-of-record billing & customer portal via Lemon Squeezy.
 
 ## Canonical URLs
 - Website: https://arborgit.vercel.app

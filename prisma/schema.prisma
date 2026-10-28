@@ -79,6 +79,30 @@ enum WorkspaceRole {
   viewer
 }
 
+enum WorkspacePlan {
+  free
+  teams
+}
+
+enum SubscriptionStatus {
+  inactive
+  on_trial
+  active
+  past_due
+  unpaid
+  cancelled
+  expired
+  paused
+}
+
+enum BillingWebhookStatus {
+  received
+  processing
+  processed
+  ignored
+  failed
+}
+
 enum InvitationStatus {
   pending
   accepted
@@ -445,23 +469,71 @@ model DocVersion {
 // ─────────────────────────────────────────────
 
 model Workspace {
-  id          String   @id @default(cuid())
+  id          String        @id @default(cuid())
   name        String
-  slug        String   @unique
+  slug        String        @unique
   avatarUrl   String?
   ownerId     String
+  plan        WorkspacePlan @default(free)
 
-  members     WorkspaceMember[]
-  invitations   WorkspaceInvitation[]
-  projects      Project[]
-  projectGroups ProjectGroup[]
-  auditLogs     AuditLog[]
-  policyPackSettings PolicyPackSetting[]
+  members              WorkspaceMember[]
+  invitations          WorkspaceInvitation[]
+  projects             Project[]
+  projectGroups        ProjectGroup[]
+  auditLogs            AuditLog[]
+  policyPackSettings   PolicyPackSetting[]
+  subscription         WorkspaceSubscription?
+  billingWebhookEvents BillingWebhookEvent[]
 
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
   @@index([ownerId])
+}
+
+model WorkspaceSubscription {
+  id                     String             @id @default(cuid())
+  workspaceId            String             @unique
+  provider               String             @default("lemonsqueezy")
+  plan                   WorkspacePlan      @default(free)
+  status                 SubscriptionStatus @default(inactive)
+  providerCustomerId     String?
+  providerSubscriptionId String?            @unique
+  providerOrderId        String?
+  providerVariantId      String?
+  customerPortalUrl      String?
+  updatePaymentMethodUrl String?
+  renewsAt               DateTime?
+  endsAt                 DateTime?
+  cancelAtPeriodEnd      Boolean            @default(false)
+  lastEventAt            DateTime?
+
+  workspace              Workspace          @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  createdAt              DateTime           @default(now())
+  updatedAt              DateTime           @updatedAt
+
+  @@index([status])
+}
+
+model BillingWebhookEvent {
+  id                     String               @id @default(cuid())
+  deliveryKey            String               @unique
+  provider               String               @default("lemonsqueezy")
+  eventName              String
+  workspaceId            String?
+  providerSubscriptionId String?
+  status                 BillingWebhookStatus @default(received)
+  payload                Json
+  errorMessage           String?
+  processedAt            DateTime?
+  createdAt              DateTime             @default(now())
+  updatedAt              DateTime             @updatedAt
+
+  workspace              Workspace?           @relation(fields: [workspaceId], references: [id], onDelete: SetNull)
+
+  @@index([workspaceId, createdAt(sort: Desc)])
+  @@index([providerSubscriptionId])
 }
 
 model WorkspaceMember {

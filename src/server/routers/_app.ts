@@ -16,6 +16,7 @@ import { insightsRouter } from './insights'
 import { notificationsRouter } from './notifications'
 import { shareRouter } from './share'
 import { patchSuggestionRouter } from './patch-suggestions'
+import { billingRouter } from './billing'
 
 export const appRouter = router({
   health: healthRouter,
@@ -26,6 +27,7 @@ export const appRouter = router({
   document: documentRouter,
   search: searchRouter,
   workspace: workspaceRouter,
+  billing: billingRouter,
   audit: auditRouter,
   ai: aiRouter,
   system: systemRouter,

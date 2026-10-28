@@ -120,7 +120,7 @@ export default async function HomePage() {
         <HowItWorks />
         <ProductRows />
         <WorkbenchBento />
-        <PricingSection />
+        <PricingSection isSignedIn={Boolean(user)} />
         <FaqSection />
 
         <section className="relative isolate overflow-hidden border-y border-border">

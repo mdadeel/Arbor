@@ -81,7 +81,7 @@ export const systemRouter = router({
       }
 
       // System scans consume the shared analysis budget and run asynchronously.
-      await consumeAnalysisQuota(ctx.session.user.id)
+      await consumeAnalysisQuota(ctx.session.user.id, { workspaceId: group.workspaceId })
       const analysis = await enqueueSystemAnalysis(group.id)
 
       logAuditEvent({
