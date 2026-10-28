@@ -2,6 +2,7 @@ import { TRPCError } from '@trpc/server'
 import { prisma } from '@/lib/prisma'
 import { getAnalysisQueue } from '@/server/queue'
 import { consumeAnalysisQuota } from './quotas'
+import { PLAN_LIMITS, getEffectiveWorkspacePlan, getPlanLimits } from './plan-limits'
 import type { Finding } from '@/server/analysis/types'
 import { isSafeGitRef, nextScheduleTime, type ScanCadenceName } from '@/lib/schedule-utils'
 import { selectComparableRuns } from '@/lib/trend-utils'
@@ -88,6 +89,29 @@ export async function updateProjectScanSchedule(input: {
   if (!isSafeGitRef(branch)) throw new TRPCError({ code: 'BAD_REQUEST', message: 'The branch name is not a valid Git ref.' })
 
   const existing = await prisma.scanSchedule.findUnique({ where: { projectId: project.id } })
+
+  if (input.enabled && !existing?.enabled) {
+    const effectivePlan = await getEffectiveWorkspacePlan(project.workspaceId)
+    const limits = getPlanLimits(effectivePlan)
+    const enabledCount = await prisma.scanSchedule.count({
+      where: {
+        enabled: true,
+        project: project.workspaceId
+          ? { workspaceId: project.workspaceId, status: 'active' }
+          : { userId: project.userId, workspaceId: null, status: 'active' },
+      },
+    })
+    if (enabledCount >= limits.maxScheduledScans) {
+      throw new TRPCError({
+        code: 'FORBIDDEN',
+        message:
+          effectivePlan === 'teams'
+            ? `Scheduled scan limit reached (${limits.maxScheduledScans} active schedules on Teams). Disable an existing schedule first.`
+            : `Scheduled scan limit reached for the Free plan (${limits.maxScheduledScans} active schedules). Upgrade the workspace to Teams for up to ${PLAN_LIMITS.teams.maxScheduledScans} scheduled scans.`,
+      })
+    }
+  }
+
   const shouldReschedule = !existing || existing.enabled !== input.enabled || existing.cadence !== input.cadence || existing.branch !== branch
   const nextRunAt = input.enabled
     ? shouldReschedule ? new Date(Date.now() + 60_000) : existing.nextRunAt
@@ -142,7 +166,7 @@ export async function enqueueDueScheduledScans(now = new Date()) {
 
         const project = await tx.project.findUnique({
           where: { id: schedule.projectId },
-          select: { id: true, status: true, userId: true },
+          select: { id: true, status: true, userId: true, workspaceId: true },
         })
         if (!project || project.status !== 'active') {
           await tx.scanSchedule.update({ where: { id: schedule.id }, data: { enabled: false, lastError: 'Project is archived or unavailable.' } })
@@ -157,7 +181,11 @@ export async function enqueueDueScheduledScans(now = new Date()) {
           return null
         }
         try {
-          await consumeAnalysisQuota(project.userId)
+          if (project.workspaceId) {
+            await consumeAnalysisQuota(project.userId, { workspaceId: project.workspaceId })
+          } else {
+            await consumeAnalysisQuota(project.userId)
+          }
         } catch (error) {
           if (error instanceof TRPCError && error.code === 'TOO_MANY_REQUESTS') {
             await tx.scanSchedule.update({

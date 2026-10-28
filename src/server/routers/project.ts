@@ -58,7 +58,7 @@ export const projectRouter = router({
     // The automatic first analysis consumes the same hourly budget as a manual scan,
     // so creating projects cannot bypass the analysis rate limit. It is consumed
     // up-front so a refused request never leaves a half-initialized project.
-    await consumeAnalysisQuota(userId)
+    await consumeAnalysisQuota(userId, { workspaceId: input.workspaceId })
 
     const project = await createProject(userId, {
       ...input,
@@ -284,7 +284,7 @@ export const projectRouter = router({
       await requireProjectEditor(ctx.session.user.id, project)
 
       // Shared hourly analysis budget (also consumed by project-create auto-analysis).
-      await consumeAnalysisQuota(ctx.session.user.id)
+      await consumeAnalysisQuota(ctx.session.user.id, { workspaceId: project.workspaceId })
 
       const analysis = await (async () => {
         try {

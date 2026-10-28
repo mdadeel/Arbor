@@ -3,6 +3,12 @@ import { prisma } from '@/lib/prisma'
 import { TRPCError } from '@trpc/server'
 import type { WorkspaceRole } from '@prisma/client'
 import { logAuditEvent } from '@/server/services/audit'
+import {
+  PLAN_LIMITS,
+  getEffectiveWorkspacePlan,
+  getPlanLimits,
+  resolveEffectiveWorkspacePlanFromRecord,
+} from '@/server/services/plan-limits'
 
 export function canManageMembers(role: WorkspaceRole): boolean {
   return role === 'owner' || role === 'admin'
@@ -82,6 +88,12 @@ export async function listUserWorkspaces(userId: string) {
     include: {
       workspace: {
         include: {
+          subscription: {
+            select: {
+              status: true,
+              endsAt: true,
+            },
+          },
           _count: {
             select: {
               members: true,
@@ -94,8 +106,10 @@ export async function listUserWorkspaces(userId: string) {
     orderBy: { createdAt: 'asc' },
   })
 
-  return memberships.map((m: any) => ({
+  const now = new Date()
+  return memberships.map((m) => ({
     ...m.workspace,
+    plan: resolveEffectiveWorkspacePlanFromRecord(m.workspace, now),
     role: m.role,
     memberCount: m.workspace._count.members,
     projectCount: m.workspace._count.projects,
@@ -109,6 +123,12 @@ export async function getWorkspace(userId: string, workspaceIdOrSlug: string) {
       members: { some: { userId } },
     },
     include: {
+      subscription: {
+        select: {
+          status: true,
+          endsAt: true,
+        },
+      },
       members: {
         include: {
           user: {
@@ -143,10 +163,11 @@ export async function getWorkspace(userId: string, workspaceIdOrSlug: string) {
     })
   }
 
-  const currentMember = workspace.members.find((m: any) => m.userId === userId)
+  const currentMember = workspace.members.find((m) => m.userId === userId)
 
   return {
     ...workspace,
+    plan: resolveEffectiveWorkspacePlanFromRecord(workspace),
     currentUserRole: currentMember?.role ?? 'viewer',
   }
 }
@@ -183,9 +204,11 @@ export async function inviteMember(
     })
   }
 
+  const normalizedEmail = input.email.trim().toLowerCase()
+
   // Check if user is already a member
   const existingUser = await prisma.user.findUnique({
-    where: { email: input.email.toLowerCase() },
+    where: { email: normalizedEmail },
   })
 
   if (existingUser) {
@@ -205,6 +228,42 @@ export async function inviteMember(
     }
   }
 
+  // Enforce server-side workspace member count limits (including pending unexpired invites)
+  const effectivePlan = await getEffectiveWorkspacePlan(input.workspaceId)
+  const limits = getPlanLimits(effectivePlan)
+  const memberCount =
+    typeof prisma.workspaceMember.count === 'function'
+      ? await prisma.workspaceMember.count({
+          where: { workspaceId: input.workspaceId },
+        })
+      : 0
+  const pendingInvites =
+    typeof prisma.workspaceInvitation.findMany === 'function'
+      ? await prisma.workspaceInvitation.findMany({
+          where: {
+            workspaceId: input.workspaceId,
+            status: 'pending',
+            expiresAt: { gt: new Date() },
+          },
+          select: { email: true },
+        })
+      : []
+  const distinctOtherPendingEmails = new Set(
+    pendingInvites
+      .map((inv) => inv.email.trim().toLowerCase())
+      .filter((email) => email !== normalizedEmail)
+  )
+
+  if (memberCount + distinctOtherPendingEmails.size >= limits.maxWorkspaceMembers) {
+    throw new TRPCError({
+      code: 'FORBIDDEN',
+      message:
+        effectivePlan === 'teams'
+          ? `Workspace member limit reached (${limits.maxWorkspaceMembers} members including pending invitations on Teams).`
+          : `Workspace member limit reached for the Free plan (${limits.maxWorkspaceMembers} members). Upgrade this workspace to Teams for up to ${PLAN_LIMITS.teams.maxWorkspaceMembers} members.`,
+    })
+  }
+
   const token = crypto.randomBytes(32).toString('base64url')
   const tokenHash = crypto.createHash('sha256').update(token).digest('hex')
   const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 days
@@ -212,7 +271,7 @@ export async function inviteMember(
   const invitation = await prisma.workspaceInvitation.create({
     data: {
       workspaceId: input.workspaceId,
-      email: input.email.trim().toLowerCase(),
+      email: normalizedEmail,
       role: input.role,
       tokenHash,
       expiresAt,
@@ -268,6 +327,42 @@ export async function acceptInvitation(userId: string, token: string) {
   }
 
   const member = await prisma.$transaction(async (tx) => {
+    const existingMembership = await tx.workspaceMember.findUnique({
+      where: {
+        workspaceId_userId: {
+          workspaceId: invitation.workspaceId,
+          userId,
+        },
+      },
+    })
+
+    if (!existingMembership && typeof tx.workspaceMember.count === 'function') {
+      const wsRecord =
+        typeof tx.workspace.findUnique === 'function'
+          ? await tx.workspace.findUnique({
+              where: { id: invitation.workspaceId },
+              select: {
+                plan: true,
+                subscription: { select: { status: true, endsAt: true } },
+              },
+            })
+          : null
+      const effectivePlan = resolveEffectiveWorkspacePlanFromRecord(wsRecord)
+      const limits = getPlanLimits(effectivePlan)
+      const currentMembers = await tx.workspaceMember.count({
+        where: { workspaceId: invitation.workspaceId },
+      })
+      if (currentMembers >= limits.maxWorkspaceMembers) {
+        throw new TRPCError({
+          code: 'FORBIDDEN',
+          message:
+            effectivePlan === 'teams'
+              ? `Workspace member limit reached (${limits.maxWorkspaceMembers} members on Teams).`
+              : `Workspace member limit reached for the Free plan (${limits.maxWorkspaceMembers} members). Ask the workspace owner to upgrade to Teams.`,
+        })
+      }
+    }
+
     // The conditional write makes acceptance single-use even if requests race.
     const consumed = await tx.workspaceInvitation.updateMany({
       where: { id: invitation.id, status: 'pending', expiresAt: { gt: new Date() } },

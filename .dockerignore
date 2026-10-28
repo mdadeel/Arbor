@@ -1,0 +1,17 @@
+.git
+.gitignore
+node_modules
+.next
+dist
+build
+coverage
+playwright-report
+test-results
+tmp
+*.log
+*.tsbuildinfo
+.env
+.env.*
+.vscode
+.idea
+.DS_Store
