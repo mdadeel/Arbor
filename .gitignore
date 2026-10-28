@@ -56,6 +56,8 @@ Thumbs.db
 /docs/*
 !/docs/backend-review-feature-roadmap.md
 !/docs/typecheck-baseline.md
+!/docs/examples/
+!/docs/examples/arbor-audit-mdadeel-arbor.pdf
 .ai 
 .claude
 .stitch
