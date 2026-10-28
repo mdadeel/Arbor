@@ -11,8 +11,10 @@ Arbor's core analysis is deterministic: it shallow-clones a temporary working co
 1. **Start PostgreSQL 16 and Redis 7:**
 
    ```bash
-   docker compose up -d
+   docker compose up -d postgres redis
    ```
+
+   *(To build and run the Next.js app and long-lived BullMQ worker inside Docker as well, run `docker compose up -d --build`; see [docs/worker-deployment.md](docs/worker-deployment.md).)*
 
 2. **Create `.env` from `.env.example`:**
 
@@ -148,7 +150,13 @@ scripts/
 └── export-report.ts      # Playwright headless Chromium A4 PDF exporter (report:pdf)
 ```
 
-For phase-by-phase backend architecture notes and verification tracking, see [`docs/backend-review-feature-roadmap.md`](docs/backend-review-feature-roadmap.md) and [`docs/typecheck-baseline.md`](docs/typecheck-baseline.md).
+For phase-by-phase backend architecture notes, worker container deployment, and verification tracking, see [`docs/worker-deployment.md`](docs/worker-deployment.md), [`docs/backend-review-feature-roadmap.md`](docs/backend-review-feature-roadmap.md), and [`docs/typecheck-baseline.md`](docs/typecheck-baseline.md).
+
+## Worker Deployment (Docker, Fly.io, Railway & Cron Fallback)
+
+- **Docker Compose (`Dockerfile` + `docker-compose.yml`):** Run `docker compose up -d --build` to start `postgres`, `redis`, `app` (`npm run start`), and `worker` (`npm run worker`) as long-lived containers.
+- **Fly.io or Railway:** Build from the root `Dockerfile` with start command `npm run worker`, pointing `REDIS_URL`, `DATABASE_URL`, and `ENCRYPTION_SECRET` at the **exact same instances** configured on your Next.js web deployment so queued jobs are picked up continuously. Step-by-step instructions and `fly.worker.toml` config live in [`docs/worker-deployment.md`](docs/worker-deployment.md).
+- **Serverless cron fallback (`/api/worker/process`):** `vercel.json` retains the daily `0 3 * * *` UTC cron (`Authorization: Bearer $CRON_SECRET`, `maxDuration = 300`) as a zero-infrastructure fallback when no long-lived worker is active.
 
 ## Development & Verification
 
@@ -167,8 +175,8 @@ npm run build
 - **Verified by local verification command:**
   - `npx prisma generate` & `npx prisma validate`: valid schema (`30` Prisma models, Prisma CLI `5.22.0`).
   - `npm run typecheck` (`tsc --noEmit` with TypeScript `5.9.3`, `strict: true`): `0` diagnostics.
-  - `npm run lint` (ESLint CLI across `283` files, `--max-warnings 0`): `0` errors, `0` warnings.
-  - `npm test -- --run` (Vitest + Testing Library): `58` test files, `287` tests passing.
+  - `npm run lint` (ESLint CLI across `284` files, `--max-warnings 0`): `0` errors, `0` warnings.
+  - `npm test -- --run` (Vitest + Testing Library): `59` test files, `290` tests passing.
   - `npm run build`: Next.js `15.5.27` production build succeeds (including `/report/[token]` and `/api/webhooks/lemonsqueezy`).
   - `npm run report:pdf -- <token>`: verified end-to-end against PostgreSQL + `next start` + headless Chromium, producing an 8-page A4 consultant audit PDF (`docs/examples/arbor-audit-mdadeel-arbor.pdf`) with cover metadata, deterministic top-5 recommended actions, severity-grouped `file:line` findings, dependency risk inventory, per-page commit SHA watermark, and HTTP `404` on expired/revoked tokens.
 - **GitHub Actions CI (`verify` and `build` jobs):** `unverified` — `.github/workflows/ci.yml` is authored with `postgres:16` and `redis:7` service containers, `npx prisma migrate deploy`, typecheck, lint, tests, and production build, and the CI badge above remains commented out until a maintainer with `workflows` GitHub permission pushes `.github/workflows/ci.yml` and confirms both jobs green.
@@ -180,9 +188,9 @@ npm run build
   - Resend email delivery (`RESEND_API_KEY`), live OSV advisory queries, and official CycloneDX schema validation (SBOM checks are currently structural only).
 - **Known gaps & unbuilt capabilities:**
   - **Migration drift:** `prisma/schema.prisma` defines `30` models, whereas the `11` SQL migrations in `prisma/migrations/` create `25` tables (`AdminEmail`, `ProjectGroup`, `ProjectGroupMember`, `SystemAnalysis`, `WaitlistLead`, and `User` admin/plan fields are not yet in a SQL migration; use `npm run db:push` on fresh local databases).
-  - **Serverless worker latency:** `vercel.json` triggers `/api/worker/process` once daily at `03:00 UTC` (`maxDuration = 300`); continuous background processing requires running `npm run worker` against shared PostgreSQL and Redis.
+  - **Serverless fallback latency:** When deployed without the long-lived `worker` container (`Dockerfile` / `docker-compose.yml` / Fly.io / Railway), `vercel.json` triggers `/api/worker/process` once daily at `03:00 UTC` (`maxDuration = 300`).
+  - **Container runtime execution:** `Dockerfile` and `docker-compose.yml` (`app` and `worker` services) are structurally validated by `src/worker/container-config.test.ts`, while live `docker build` / `docker compose up` image execution is `unverified` in sandbox environments without a Docker daemon.
   - **Browser E2E suite:** `@playwright/test` powers `npm run report:pdf`, but no `playwright.config` or automated UI E2E spec suite exists yet (`unverified`).
-  - **Application container image:** Not built. `docker-compose.yml` provisions PostgreSQL 16 and Redis 7 only; there is no `Dockerfile` for the Next.js app or BullMQ worker.
 
 ## Licence
 

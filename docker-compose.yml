@@ -1,4 +1,4 @@
-# Arbor — Docker Compose
+# Arbor — Docker Compose (PostgreSQL, Redis, Next.js App, and Long-Lived BullMQ Worker)
 
 services:
   postgres:
@@ -31,6 +31,68 @@ services:
       timeout: 5s
       retries: 5
 
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: arbor-app
+    command: ["npm", "run", "start"]
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: ${DOCKER_DATABASE_URL:-postgresql://arbor:arbor@postgres:5432/arbor}
+      REDIS_URL: ${DOCKER_REDIS_URL:-redis://redis:6379}
+      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET:-dev-compose-nextauth-placeholder-change-me}
+      ENCRYPTION_SECRET: ${ENCRYPTION_SECRET:-dev-compose-encryption-placeholder-change-me}
+      NEXTAUTH_URL: ${NEXTAUTH_URL:-http://localhost:3000}
+      APP_URL: ${APP_URL:-http://localhost:3000}
+      CRON_SECRET: ${CRON_SECRET:-}
+      GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID:-}
+      GITHUB_CLIENT_SECRET: ${GITHUB_CLIENT_SECRET:-}
+      GITHUB_WEBHOOK_SECRET: ${GITHUB_WEBHOOK_SECRET:-}
+      LEMONSQUEEZY_API_KEY: ${LEMONSQUEEZY_API_KEY:-}
+      LEMONSQUEEZY_STORE_ID: ${LEMONSQUEEZY_STORE_ID:-}
+      LEMONSQUEEZY_TEAMS_VARIANT_ID: ${LEMONSQUEEZY_TEAMS_VARIANT_ID:-}
+      LEMONSQUEEZY_WEBHOOK_SECRET: ${LEMONSQUEEZY_WEBHOOK_SECRET:-}
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: arbor-worker
+    command: ["npm", "run", "worker"]
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: ${DOCKER_DATABASE_URL:-postgresql://arbor:arbor@postgres:5432/arbor}
+      REDIS_URL: ${DOCKER_REDIS_URL:-redis://redis:6379}
+      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET:-dev-compose-nextauth-placeholder-change-me}
+      ENCRYPTION_SECRET: ${ENCRYPTION_SECRET:-dev-compose-encryption-placeholder-change-me}
+      APP_URL: ${APP_URL:-http://localhost:3000}
+      GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID:-}
+      GITHUB_CLIENT_SECRET: ${GITHUB_CLIENT_SECRET:-}
+      GITHUB_WEBHOOK_SECRET: ${GITHUB_WEBHOOK_SECRET:-}
+      CLONE_BASE_DIR: /tmp/arbor-clones
+      CLONE_TIMEOUT: ${CLONE_TIMEOUT:-60}
+      MAX_REPO_SIZE_MB: ${MAX_REPO_SIZE_MB:-500}
+      MAX_FILES: ${MAX_FILES:-5000}
+      MAX_FILE_SIZE_KB: ${MAX_FILE_SIZE_KB:-100}
+      MAX_PARSE_FILES: ${MAX_PARSE_FILES:-2500}
+      ANALYSIS_TIMEOUT_MS: ${ANALYSIS_TIMEOUT_MS:-300000}
+    volumes:
+      - worker_clones:/tmp/arbor-clones
+
 volumes:
   postgres_data:
   redis_data:
+  worker_clones:
