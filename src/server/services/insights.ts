@@ -4,11 +4,16 @@ import { getAnalysisQueue } from '@/server/queue'
 import { consumeAnalysisQuota } from './quotas'
 import { PLAN_LIMITS, getEffectiveWorkspacePlan, getPlanLimits } from './plan-limits'
 import type { Finding } from '@/server/analysis/types'
+import { computeScanDiff } from '@/lib/scan-diff'
 import { isSafeGitRef, nextScheduleTime, type ScanCadenceName } from '@/lib/schedule-utils'
 import { selectComparableRuns } from '@/lib/trend-utils'
 import { requireAccessibleProject, requireProjectEditor } from './project-access'
 
-export async function getProjectTrend(userId: string, slug: string) {
+export async function getProjectTrend(
+  userId: string,
+  slug: string,
+  baselineAnalysisId?: string
+) {
   const project = await requireAccessibleProject(userId, slug)
   const rows = await prisma.analysis.findMany({
     where: { projectId: project.id, status: 'completed', overallScore: { not: null } },
@@ -34,6 +39,27 @@ export async function getProjectTrend(userId: string, slug: string) {
 
   // Cross-branch comparisons and changes in analyzer/policy semantics can be misleading.
   const trendSelection = selectComparableRuns(rows)
+  const latestRow = trendSelection.rows[0] ?? null
+  const baselineRow =
+    (baselineAnalysisId
+      ? trendSelection.rows.slice(1).find((row) => row.id === baselineAnalysisId)
+      : undefined) ??
+    trendSelection.rows[1] ??
+    null
+
+  let scanDiff = null
+  if (latestRow && baselineRow) {
+    const metricRows = await prisma.analysis.findMany({
+      where: { id: { in: [latestRow.id, baselineRow.id] } },
+      select: { id: true, metrics: true },
+    })
+    const metricsById = new Map(metricRows.map((item) => [item.id, item.metrics]))
+    scanDiff = computeScanDiff(
+      { ...baselineRow, metrics: metricsById.get(baselineRow.id) },
+      { ...latestRow, metrics: metricsById.get(latestRow.id) }
+    )
+  }
+
   const series = [...trendSelection.rows].reverse().map((row) => {
     const findings = Array.isArray(row.findings) ? row.findings as unknown as Finding[] : []
     const visible = findings.filter((finding) => !finding.policySuppressed)
@@ -68,6 +94,7 @@ export async function getProjectTrend(userId: string, slug: string) {
       findingsCount: latest.findingsCount - previous.findingsCount,
       criticalCount: latest.criticalCount - previous.criticalCount,
     } : null,
+    scanDiff,
   }
 }
 

@@ -74,6 +74,7 @@ import { PolicyControls } from '@/components/dashboard/policy-controls'
 import { PullRequestChecksView, ScheduleControls, ShareReportControl, SupplyChainView, TrendView } from '@/components/dashboard/analysis-tools'
 import { HotspotTable } from '@/components/dashboard/hotspot-table'
 import { OwnershipMapCard } from '@/components/dashboard/ownership-map'
+import { OverviewScanDiff } from '@/components/dashboard/scan-diff-card'
 import { buildRecommendedActions } from '@/lib/recommended-actions'
 import {
   PrintableProjectReport,
@@ -752,6 +753,15 @@ function InteractiveProjectReport({ slug, project }: { slug: string; project: Pr
                 </Card>
               </div>
 
+              {/* Scan Diff Since Previous Scan (uses existing comparable trend data) */}
+              {project.analyses.filter((a) => a.status === 'completed').length >= 2 && (
+                <OverviewScanDiff
+                  slug={slug}
+                  repoUrl={project.repoUrl}
+                  onOpenInsights={() => handleTabChange('insights')}
+                />
+              )}
+
               {/* Recommended Actions (Top 5 by Severity & Blast Radius) */}
               {recommendedActions.length > 0 && (
                 <Card className="border-border">
@@ -1169,7 +1179,7 @@ function InteractiveProjectReport({ slug, project }: { slug: string; project: Pr
 
             {/* TAB: Insights, sharing, and recoverable scheduled scans */}
             <TabsContent value="insights" className="space-y-4">
-              <TrendView slug={slug} />
+              <TrendView slug={slug} repoUrl={project.repoUrl} />
               <div className="grid gap-4 xl:grid-cols-2">
                 <ScheduleControls slug={slug} defaultBranch={project.defaultBranch} />
                 {completed ? (
