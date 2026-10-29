@@ -1,8 +1,10 @@
 // Self-check + dogfood: analyze a local dir with the engine and print scores/findings.
-// Usage: npx tsx scripts/analyze-dir.ts [dir] [--sarif <output-path>] [--branch <ref>] [--commit <sha>] [--repo-url <url>]
+// Usage: npx tsx scripts/analyze-dir.ts [dir] [--sarif <output-path>] [--sbom <output-path>] [--branch <ref>] [--commit <sha>] [--repo-url <url>]
 import fs from 'node:fs'
 import path from 'node:path'
 import { runAnalysis } from '../src/server/analysis'
+import { assertValidCycloneDxSbom } from '../src/server/analysis/cyclonedx-validator'
+import { buildCycloneDxSbom, collectDependencyInventory } from '../src/server/analysis/dependencies'
 import { collectGitChurn, computeHotspotReport } from '../src/server/analysis/hotspots'
 import { analyzeOwnership } from '../src/server/analysis/ownership'
 import { buildSarifLog } from '../src/lib/sarif'
@@ -11,6 +13,7 @@ import { assertValidSarifLog } from '../src/server/analysis/sarif-validator'
 interface CliArgs {
   dir: string
   sarifPath: string | null
+  sbomPath: string | null
   branch: string | null
   commitSha: string | null
   repoUrl: string | null
@@ -19,6 +22,7 @@ interface CliArgs {
 function parseArgs(argv: readonly string[]): CliArgs {
   let dirArg: string | null = null
   let sarifPath: string | null = null
+  let sbomPath: string | null = null
   let branch: string | null = null
   let commitSha: string | null = null
   let repoUrl: string | null = null
@@ -32,6 +36,13 @@ function parseArgs(argv: readonly string[]): CliArgs {
       }
     } else if (arg.startsWith('--sarif=')) {
       sarifPath = arg.slice('--sarif='.length)
+    } else if (arg === '--sbom') {
+      sbomPath = argv[++i] ?? null
+      if (!sbomPath) {
+        throw new Error('Missing output file path after --sbom')
+      }
+    } else if (arg.startsWith('--sbom=')) {
+      sbomPath = arg.slice('--sbom='.length)
     } else if (arg === '--branch') {
       branch = argv[++i] ?? null
     } else if (arg === '--commit') {
@@ -46,6 +57,7 @@ function parseArgs(argv: readonly string[]): CliArgs {
   return {
     dir: path.resolve(dirArg ?? process.cwd()),
     sarifPath: sarifPath ? path.resolve(sarifPath) : null,
+    sbomPath: sbomPath ? path.resolve(sbomPath) : null,
     branch,
     commitSha,
     repoUrl,
@@ -98,6 +110,22 @@ async function main() {
     fs.mkdirSync(path.dirname(args.sarifPath), { recursive: true })
     fs.writeFileSync(args.sarifPath, JSON.stringify(sarifLog, null, 2), 'utf8')
     console.log(`  wrote validated SARIF 2.1.0 (${report.findings.length} results) -> ${args.sarifPath}`)
+  }
+
+  if (args.sbomPath) {
+    const inventory = collectDependencyInventory(args.dir)
+    const sbom = buildCycloneDxSbom(inventory, {
+      status: 'not_applicable',
+      source: 'GitHub Advisory Database',
+      checkedAt: new Date().toISOString(),
+      queriedCount: 0,
+      advisoryCount: 0,
+      advisories: [],
+    })
+    assertValidCycloneDxSbom(sbom)
+    fs.mkdirSync(path.dirname(args.sbomPath), { recursive: true })
+    fs.writeFileSync(args.sbomPath, JSON.stringify(sbom, null, 2), 'utf8')
+    console.log(`  wrote validated CycloneDX 1.5 SBOM (${inventory.packages.length} components) -> ${args.sbomPath}`)
   }
 }
 

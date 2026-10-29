@@ -85,11 +85,11 @@ Implementation includes branch/version/policy-compatible trends; current-workspa
 
 ## Phase 4 — Dependency and supply-chain analysis
 
-**Code status:** supported-manifest/lockfile parsing, normalized inventory, advisory matching, CycloneDX generation, and report UI are present.
-**Verification status:** parser, advisory failure behavior, and custom structural SBOM checks have unit coverage; live advisory freshness and validation with the official CycloneDX schema are not verified.
-**Release status:** incomplete.
+**Code status:** supported-manifest/lockfile parsing, normalized inventory, advisory matching, official schema-validated CycloneDX 1.5 generation, and report UI are present.
+**Verification status:** parser, advisory failure behavior, official OWASP/ECMA-424 CycloneDX 1.5 JSON Schema validation (`bom-1.5.schema.json`, `spdx.schema.json`, `jsf-0.82.schema.json`), and `bom-ref` referential integrity checks have unit and repository dogfood coverage; live GitHub Advisory Database freshness is unverified in offline sandboxes.
+**Release status:** verified locally (live external advisory freshness unverified).
 
-The implementation records inventory completeness/truncation and advisory source/freshness metadata, and keeps inventory results available when the advisory provider is unavailable. The current SBOM check is custom structural validation, not official-schema validation.
+The implementation records inventory completeness/truncation and advisory source/freshness metadata, keeps inventory results available when the advisory provider is unavailable, and validates every generated and served SBOM against the official CycloneDX 1.5 JSON Schema.
 
 **Acceptance:** supported ecosystems are documented; generated SBOMs validate against the selected official standard; advisory findings are traceable and distinguish stale/unknown data; provider outages degrade clearly without hiding inventory limitations.
 
@@ -113,5 +113,5 @@ Latest local validation in this checkout:
 - Prisma client generation previously failed while fetching `schema-engine.gz.sha256` from `binaries.prisma.sh` because of a TLS/network disconnect. `npm run build` and Prisma-backed schema/migration validation therefore remain unverified.
 - Production dependency audit: **0 vulnerabilities**. Full `npm audit`: **15 development-dependency vulnerabilities** (5 moderate, 8 high, 2 critical); the remaining advisories are in development-tooling chains.
 - The preview's root page returned HTTP 200 with placeholder environment values and a temporary Prisma stub. This does not validate database-backed behavior. PostgreSQL, Redis, OAuth/GitHub credentials, and live provider integrations are not configured in this workspace.
-- No official CycloneDX-schema validation or end-to-end PostgreSQL/Redis/third-party integration test has been performed.
+- Official CycloneDX 1.5 JSON Schema validation (`bom-1.5.schema.json` + `spdx.schema.json` + `jsf-0.82.schema.json`) is verified locally; live Redis/third-party provider integration tests remain unverified in offline sandboxes.
 - Direct integration to `main` has not occurred. Keep this work on the fixed Arena branch and do not represent any phase as complete until the corresponding acceptance and integration evidence is available.
