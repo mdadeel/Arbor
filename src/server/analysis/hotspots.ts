@@ -17,10 +17,25 @@ export interface FileGitChurn {
   lastModifiedAt: string | null
 }
 
+export interface GitCommitTouch {
+  file: string
+  linesAdded: number
+  linesDeleted: number
+}
+
+export interface GitCommitSummary {
+  sha: string
+  committedAt: string | null
+  authorEmail: string
+  authorName: string
+  touches: GitCommitTouch[]
+}
+
 export interface GitChurnSnapshot {
   commitsAnalyzed: number
   windowDays: number
   files: Map<string, FileGitChurn>
+  commits?: GitCommitSummary[]
 }
 
 interface MutableFileChurn {
@@ -63,10 +78,12 @@ export function parseGitLogNumstat(
 ): GitChurnSnapshot {
   const mutable = new Map<string, MutableFileChurn>()
   const seenCommits = new Set<string>()
+  const commits: GitCommitSummary[] = []
 
   let currentSha: string | null = null
   let currentDateIso: string | null = null
   let currentAuthor = 'unknown'
+  let currentCommitRecord: GitCommitSummary | null = null
 
   for (const rawLine of rawLog.split(/\r?\n/)) {
     const line = rawLine.trimEnd()
@@ -74,13 +91,27 @@ export function parseGitLogNumstat(
 
     if (line.startsWith(COMMIT_MARKER)) {
       const payload = line.slice(COMMIT_MARKER.length)
-      const [sha = '', dateStr = '', author = ''] = payload.split('\t')
+      const [sha = '', dateStr = '', author = '', ...nameRest] = payload.split('\t')
       currentSha = sha.trim() || null
       const parsedDate = dateStr ? new Date(dateStr.trim()) : null
       currentDateIso =
         parsedDate && !Number.isNaN(parsedDate.getTime()) ? parsedDate.toISOString() : null
-      currentAuthor = (author.trim() || 'unknown').toLowerCase()
-      if (currentSha) seenCommits.add(currentSha)
+      const trimmedEmail = author.trim()
+      currentAuthor = (trimmedEmail || 'unknown').toLowerCase()
+      const authorName = nameRest.join('\t').trim() || trimmedEmail || 'unknown'
+      if (currentSha) {
+        seenCommits.add(currentSha)
+        currentCommitRecord = {
+          sha: currentSha,
+          committedAt: currentDateIso,
+          authorEmail: currentAuthor,
+          authorName,
+          touches: [],
+        }
+        commits.push(currentCommitRecord)
+      } else {
+        currentCommitRecord = null
+      }
       continue
     }
 
@@ -96,6 +127,12 @@ export function parseGitLogNumstat(
     const deleted = deletedStr === '-' ? 0 : Number.parseInt(deletedStr, 10)
     const safeAdded = Number.isFinite(added) && added > 0 ? added : 0
     const safeDeleted = Number.isFinite(deleted) && deleted > 0 ? deleted : 0
+
+    currentCommitRecord?.touches.push({
+      file: normalizedPath,
+      linesAdded: safeAdded,
+      linesDeleted: safeDeleted,
+    })
 
     let entry = mutable.get(normalizedPath)
     if (!entry) {
@@ -137,6 +174,7 @@ export function parseGitLogNumstat(
     commitsAnalyzed: seenCommits.size,
     windowDays,
     files,
+    commits,
   }
 }
 
@@ -149,7 +187,7 @@ export async function collectGitChurn(
   const timeoutMs = options?.timeoutMs ?? 15_000
 
   if (!fs.existsSync(path.join(repoDir, '.git'))) {
-    return { commitsAnalyzed: 0, windowDays, files: new Map() }
+    return { commitsAnalyzed: 0, windowDays, files: new Map(), commits: [] }
   }
 
   try {
@@ -158,7 +196,7 @@ export async function collectGitChurn(
       maxConcurrentProcesses: 1,
     })
 
-    const formatArg = `--format=${COMMIT_MARKER}%H%x09%aI%x09%ae`
+    const formatArg = `--format=${COMMIT_MARKER}%H%x09%aI%x09%ae%x09%an`
     const recentRaw = await git.raw([
       'log',
       '-n',
@@ -185,7 +223,7 @@ export async function collectGitChurn(
     ])
     return parseGitLogNumstat(fallbackRaw, 0)
   } catch {
-    return { commitsAnalyzed: 0, windowDays, files: new Map() }
+    return { commitsAnalyzed: 0, windowDays, files: new Map(), commits: [] }
   }
 }
 

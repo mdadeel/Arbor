@@ -73,6 +73,7 @@ import { FindingItem, FindingData } from '@/components/dashboard/finding-item'
 import { PolicyControls } from '@/components/dashboard/policy-controls'
 import { PullRequestChecksView, ScheduleControls, ShareReportControl, SupplyChainView, TrendView } from '@/components/dashboard/analysis-tools'
 import { HotspotTable } from '@/components/dashboard/hotspot-table'
+import { OwnershipMapCard } from '@/components/dashboard/ownership-map'
 import { buildRecommendedActions } from '@/lib/recommended-actions'
 import {
   PrintableProjectReport,
@@ -839,6 +840,13 @@ function InteractiveProjectReport({ slug, project }: { slug: string; project: Pr
               {/* Ranked Code Hotspots (Git Log Churn × AST Complexity) */}
               <HotspotTable
                 rawHotspots={completed?.metrics?.hotspots}
+                repoUrl={project.repoUrl}
+                commitSha={completed?.commitSha}
+              />
+
+              {/* Ownership Map & Top-Level Directory Bus Factor */}
+              <OwnershipMapCard
+                rawOwnership={completed?.metrics?.ownership}
                 repoUrl={project.repoUrl}
                 commitSha={completed?.commitSha}
               />
