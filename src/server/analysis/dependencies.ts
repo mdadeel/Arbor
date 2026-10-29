@@ -1,6 +1,11 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { randomUUID } from 'node:crypto'
+import {
+  assertValidCycloneDxSbom,
+  isOfficialSpdxLicenseId,
+  validateCycloneDx15Sbom,
+} from './cyclonedx-validator'
 
 export type DependencyEcosystem = 'npm' | 'pypi'
 export type DependencyRecord = {
@@ -446,20 +451,79 @@ export async function lookupDependencyAdvisories(
   }
 }
 
+type CycloneDxSeverity =
+  | 'critical'
+  | 'high'
+  | 'medium'
+  | 'low'
+  | 'info'
+  | 'none'
+  | 'unknown'
+
+const VALID_CYCLONEDX_SEVERITIES = new Set<CycloneDxSeverity>([
+  'critical',
+  'high',
+  'medium',
+  'low',
+  'info',
+  'none',
+  'unknown',
+])
+
+function normalizeCycloneDxSeverity(raw: string): CycloneDxSeverity {
+  const lowered = raw.trim().toLowerCase()
+  if (lowered === 'moderate') return 'medium'
+  if (VALID_CYCLONEDX_SEVERITIES.has(lowered as CycloneDxSeverity)) {
+    return lowered as CycloneDxSeverity
+  }
+  return 'unknown'
+}
+
+export function formatVersRange(ecosystem: DependencyEcosystem, rawRange: string): string {
+  const trimmed = rawRange.trim()
+  if (trimmed.startsWith('vers:')) return trimmed.slice(0, 1024)
+  // Convert comma-separated GitHub Advisory ranges (`>= 1.0.0, < 1.2.3`) into
+  // Package URL Version Range (`vers:<scheme>/<constraints>`) syntax.
+  const normalizedConstraints = trimmed
+    .split(',')
+    .map((part) => part.trim().replace(/\s+/g, ''))
+    .filter(Boolean)
+    .join('|')
+  return `vers:${ecosystem}/${normalizedConstraints || trimmed}`.slice(0, 1024)
+}
+
+function buildCycloneDxLicenses(rawLicense: string) {
+  const trimmed = rawLicense.trim()
+  if (!trimmed) return undefined
+  if (isOfficialSpdxLicenseId(trimmed)) {
+    return [{ license: { id: trimmed } }]
+  }
+  if (/\s+(?:AND|OR|WITH)\s+/i.test(trimmed) || (trimmed.startsWith('(') && trimmed.endsWith(')'))) {
+    return [{ expression: trimmed }]
+  }
+  return [{ license: { name: trimmed } }]
+}
+
+function packageMatchesAdvisory(pkg: DependencyRecord, advisory: DependencyAdvisory): boolean {
+  if (pkg.ecosystem !== advisory.ecosystem) return false
+  if (pkg.ecosystem === 'pypi') {
+    return (
+      pkg.name.toLowerCase().replace(/_/g, '-') ===
+      advisory.packageName.toLowerCase().replace(/_/g, '-')
+    )
+  }
+  return pkg.name === advisory.packageName
+}
+
 export function buildCycloneDxSbom(
   inventory: DependencyInventory,
   advisories: DependencyAdvisoryReport,
   timestamp = new Date().toISOString()
 ) {
-  const advisoriesByPackage = new Map<string, DependencyAdvisory[]>()
-  for (const advisory of advisories.advisories) {
-    const items = advisoriesByPackage.get(advisory.packageName) ?? []
-    items.push(advisory)
-    advisoriesByPackage.set(advisory.packageName, items)
-  }
   return {
-    bomFormat: 'CycloneDX',
-    specVersion: '1.5',
+    $schema: 'http://cyclonedx.org/schema/bom-1.5.schema.json',
+    bomFormat: 'CycloneDX' as const,
+    specVersion: '1.5' as const,
     serialNumber: `urn:uuid:${randomUUID()}`,
     version: 1,
     metadata: {
@@ -472,95 +536,60 @@ export function buildCycloneDxSbom(
         { name: 'arbor:advisory-status', value: advisories.status },
       ],
     },
-    components: inventory.packages.map((pkg) => ({
-      type: 'library',
-      'bom-ref': pkg.purl,
-      name: pkg.name,
-      version: pkg.version,
-      purl: pkg.purl,
-      scope: pkg.direct ? 'required' : 'optional',
-      ...(pkg.license ? { licenses: [{ license: { name: pkg.license } }] } : {}),
-      properties: [
-        { name: 'arbor:ecosystem', value: pkg.ecosystem },
-        { name: 'arbor:direct', value: String(pkg.direct) },
-        { name: 'arbor:resolved', value: String(pkg.resolved) },
-        { name: 'arbor:dependency-type', value: pkg.dependencyType },
-        { name: 'arbor:dependency-path', value: pkg.dependencyPath.join(' -> ') },
-      ],
-    })),
+    components: inventory.packages.map((pkg) => {
+      const licenses = pkg.license ? buildCycloneDxLicenses(pkg.license) : undefined
+      return {
+        type: 'library' as const,
+        'bom-ref': pkg.purl,
+        name: pkg.name,
+        version: pkg.version,
+        purl: pkg.purl,
+        scope: (pkg.direct ? 'required' : 'optional') as 'required' | 'optional',
+        ...(licenses ? { licenses } : {}),
+        properties: [
+          { name: 'arbor:ecosystem', value: pkg.ecosystem },
+          { name: 'arbor:direct', value: String(pkg.direct) },
+          { name: 'arbor:resolved', value: String(pkg.resolved) },
+          { name: 'arbor:dependency-type', value: pkg.dependencyType },
+          { name: 'arbor:dependency-path', value: pkg.dependencyPath.join(' -> ') },
+        ],
+      }
+    }),
     ...(advisories.advisories.length ? {
       vulnerabilities: advisories.advisories.map((advisory) => ({
         id: advisory.id,
-        source: { name: advisories.source, ...(advisory.url ? { url: advisory.url } : {}) },
-        ratings: [{ severity: advisory.severity }],
+        source: {
+          name: advisories.source,
+          ...(advisory.url ? { url: advisory.url } : {}),
+        },
+        ratings: [{ severity: normalizeCycloneDxSeverity(advisory.severity) }],
         description: advisory.summary,
         affects: inventory.packages
-          .filter((pkg) => pkg.name === advisory.packageName && pkg.ecosystem === advisory.ecosystem)
+          .filter((pkg) => packageMatchesAdvisory(pkg, advisory))
           .map((pkg) => ({
             ref: pkg.purl,
-            versions: [{
-              version: pkg.version,
-              ...(advisory.vulnerableRange ? { range: { range: advisory.vulnerableRange } } : {}),
-              status: 'affected',
-            }],
+            versions: [
+              { version: pkg.version, status: 'affected' as const },
+              ...(advisory.vulnerableRange
+                ? [
+                    {
+                      range: formatVersRange(pkg.ecosystem, advisory.vulnerableRange),
+                      status: 'affected' as const,
+                    },
+                  ]
+                : []),
+            ],
           })),
-        ...(advisory.patchedVersion ? { recommendation: `Upgrade to ${advisory.patchedVersion} or a later fixed version.` } : {}),
+        ...(advisory.patchedVersion
+          ? { recommendation: `Upgrade to ${advisory.patchedVersion} or a later fixed version.` }
+          : {}),
       })),
     } : {}),
   }
 }
 
 export function validateCycloneDxSbom(value: unknown): { valid: boolean; errors: string[] } {
-  const errors: string[] = []
-  const root = value && typeof value === 'object' && !Array.isArray(value) ? value as JsonRecord : null
-  if (!root) return { valid: false, errors: ['SBOM must be a JSON object.'] }
-  if (root.bomFormat !== 'CycloneDX' || root.specVersion !== '1.5') errors.push('SBOM format/version must be CycloneDX 1.5.')
-  if (!Number.isInteger(root.version) || Number(root.version) < 1) errors.push('SBOM version must be a positive integer.')
-  if (typeof root.serialNumber !== 'string' || !/^urn:uuid:[a-f0-9-]{36}$/i.test(root.serialNumber)) errors.push('SBOM serialNumber must be a UUID URN.')
-  const metadata = root.metadata && typeof root.metadata === 'object' && !Array.isArray(root.metadata) ? root.metadata as JsonRecord : null
-  if (!metadata || typeof metadata.timestamp !== 'string' || !Number.isFinite(Date.parse(metadata.timestamp))) errors.push('SBOM metadata must include an ISO timestamp.')
-
-  const components = Array.isArray(root.components) ? root.components : []
-  const refs = new Set<string>()
-  for (const [index, raw] of components.entries()) {
-    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
-      errors.push(`Component ${index} must be an object.`)
-      continue
-    }
-    const component = raw as JsonRecord
-    if (component.type !== 'library' || typeof component.name !== 'string' || !component.name || typeof component.version !== 'string' || !component.version) {
-      errors.push(`Component ${index} must have library type, name, and version.`)
-    }
-    if (typeof component['bom-ref'] !== 'string' || !component['bom-ref'] || refs.has(component['bom-ref'])) {
-      errors.push(`Component ${index} must have a unique bom-ref.`)
-    } else {
-      refs.add(component['bom-ref'])
-    }
-    if (typeof component.purl !== 'string' || !component.purl.startsWith('pkg:')) errors.push(`Component ${index} must include a package URL.`)
-  }
-
-  if (root.vulnerabilities !== undefined && !Array.isArray(root.vulnerabilities)) errors.push('SBOM vulnerabilities must be an array when present.')
-  if (Array.isArray(root.vulnerabilities)) {
-    for (const [index, raw] of root.vulnerabilities.entries()) {
-      if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
-        errors.push(`Vulnerability ${index} must be an object.`)
-        continue
-      }
-      const vulnerability = raw as JsonRecord
-      if (typeof vulnerability.id !== 'string' || !vulnerability.id) errors.push(`Vulnerability ${index} must have an identifier.`)
-      const affects = Array.isArray(vulnerability.affects) ? vulnerability.affects : []
-      if (affects.length === 0) errors.push(`Vulnerability ${index} must reference an affected component.`)
-      for (const affected of affects) {
-        if (!affected || typeof affected !== 'object' || Array.isArray(affected)) {
-          errors.push(`Vulnerability ${index} has an invalid affected component.`)
-          continue
-        }
-        const ref = (affected as JsonRecord).ref
-        if (typeof ref !== 'string' || !refs.has(ref)) errors.push(`Vulnerability ${index} references an unknown component.`)
-      }
-    }
-  }
-  return { valid: errors.length === 0, errors }
+  return validateCycloneDx15Sbom(value)
 }
 
 export async function analyzeDependencies(
@@ -570,7 +599,6 @@ export async function analyzeDependencies(
   const inventory = collectDependencyInventory(repoDir)
   const advisories = await lookupDependencyAdvisories(inventory.packages, options)
   const sbom = buildCycloneDxSbom(inventory, advisories)
-  const validation = validateCycloneDxSbom(sbom)
-  if (!validation.valid) throw new Error(`Generated CycloneDX SBOM failed structural validation: ${validation.errors.join('; ')}`)
+  assertValidCycloneDxSbom(sbom)
   return { inventory, advisories, sbom }
 }

@@ -75,10 +75,11 @@ describe('dependency inventory and SBOM', () => {
     expect(report.error).toContain('offline')
   })
 
-  it('matches affected packages, normalizes severity, and emits a CycloneDX 1.5 vulnerability section', async () => {
+  it('matches affected packages, normalizes severity, and emits an official schema-valid CycloneDX 1.5 SBOM', async () => {
     const packageRecord = {
       name: 'lodash', version: '4.17.20', ecosystem: 'npm' as const,
-      direct: true, dependencyType: 'prod' as const, purl: 'pkg:npm/lodash@4.17.20', dependencyPath: ['lodash'], resolved: true,
+      direct: true, dependencyType: 'prod' as const, purl: 'pkg:npm/lodash@4.17.20',
+      dependencyPath: ['lodash'], license: 'MIT', resolved: true,
     }
     const fetcher = vi.fn().mockResolvedValue(new Response(JSON.stringify([{
       ghsa_id: 'GHSA-test-1234-abcd',
@@ -98,12 +99,66 @@ describe('dependency inventory and SBOM', () => {
     }
     const sbom = buildCycloneDxSbom(inventory, advisories, '2026-10-07T00:00:00.000Z')
     expect(advisories.advisories[0]).toMatchObject({ id: 'GHSA-test-1234-abcd', severity: 'medium', patchedVersion: '4.17.21' })
-    expect(sbom).toMatchObject({ bomFormat: 'CycloneDX', specVersion: '1.5' })
+    expect(sbom).toMatchObject({
+      $schema: 'http://cyclonedx.org/schema/bom-1.5.schema.json',
+      bomFormat: 'CycloneDX',
+      specVersion: '1.5',
+    })
+    expect(sbom.components[0]?.licenses).toEqual([{ license: { id: 'MIT' } }])
     expect(sbom.vulnerabilities?.[0].affects[0]).toMatchObject({
       ref: packageRecord.purl,
-      versions: [{ version: '4.17.20', range: { range: '<4.17.21' }, status: 'affected' }],
+      versions: [
+        { version: '4.17.20', status: 'affected' },
+        { range: 'vers:npm/<4.17.21', status: 'affected' },
+      ],
     })
     expect(validateCycloneDxSbom(sbom)).toEqual({ valid: true, errors: [] })
-    expect(validateCycloneDxSbom({ ...sbom, components: [{ 'bom-ref': 'unknown' }], vulnerabilities: [{ id: 'GHSA', affects: [{ ref: 'missing' }] }] }).valid).toBe(false)
+
+    // Official CycloneDX 1.5 schema rejects the legacy combined { version, range: { range } } violation
+    const legacyBrokenVuln = {
+      ...sbom,
+      vulnerabilities: [
+        {
+          id: 'GHSA-legacy',
+          affects: [
+            {
+              ref: packageRecord.purl,
+              versions: [{ version: '4.17.20', range: { range: '<4.17.21' }, status: 'affected' }],
+            },
+          ],
+        },
+      ],
+    }
+    expect(validateCycloneDxSbom(legacyBrokenVuln).valid).toBe(false)
+
+    // Official SPDX enum rejects invented license.id values
+    const invalidSpdx = {
+      ...sbom,
+      components: [{ ...sbom.components[0], licenses: [{ license: { id: 'NOT-AN-SPDX-ID-999' } }] }],
+    }
+    expect(validateCycloneDxSbom(invalidSpdx).valid).toBe(false)
+
+    // Referential integrity rejects dangling affects[].ref
+    expect(
+      validateCycloneDxSbom({
+        ...sbom,
+        components: [{ 'bom-ref': 'unknown' }],
+        vulnerabilities: [{ id: 'GHSA', affects: [{ ref: 'missing' }] }],
+      }).valid
+    ).toBe(false)
+  })
+
+  it('validates Arbor’s own real repository dependency inventory against the official CycloneDX 1.5 schema', () => {
+    const inventory = collectDependencyInventory(process.cwd())
+    expect(inventory.packages.length).toBeGreaterThan(50)
+    const sbom = buildCycloneDxSbom(inventory, {
+      status: 'not_applicable',
+      source: 'GitHub Advisory Database',
+      checkedAt: '2026-10-29T00:00:00.000Z',
+      queriedCount: 0,
+      advisoryCount: 0,
+      advisories: [],
+    })
+    expect(validateCycloneDxSbom(sbom)).toEqual({ valid: true, errors: [] })
   })
 })

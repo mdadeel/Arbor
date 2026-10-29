@@ -51,11 +51,12 @@ Arbor's core analysis is deterministic: it shallow-clones a temporary working co
 
    **Why the worker is required:** Repository scans are asynchronous jobs queued in PostgreSQL and BullMQ (`REDIS_URL`). Without `npm run worker` (or an authorized `GET /api/worker/process` request carrying `Authorization: Bearer $CRON_SECRET`), analyses remain in `queued` status and will not complete.
 
-   To run the static analyzer directly against any local directory without starting PostgreSQL, Redis, or GitHub OAuth (and optionally emit a schema-validated SARIF 2.1.0 report for GitHub Code Scanning):
+   To run the static analyzer directly against any local directory without starting PostgreSQL, Redis, or GitHub OAuth (and optionally emit a schema-validated SARIF 2.1.0 report or CycloneDX 1.5 SBOM):
 
    ```bash
    npm run analyze:local -- .
    npm run analyze:local -- . --sarif ./arbor-results.sarif
+   npm run analyze:local -- . --sbom ./arbor-sbom.cdx.json
    ```
 
    See [`docs/sarif-github-code-scanning.md`](docs/sarif-github-code-scanning.md) for the GitHub Actions workflow (`github/codeql-action/upload-sarif@v3`) and `gh api` upload commands that publish Arbor findings into GitHub's **Security -> Code scanning** tab.
@@ -182,10 +183,10 @@ npm run build
 - **Verified by local verification command:**
   - `npx prisma generate` & `npx prisma validate`: valid schema (`30` Prisma models, Prisma CLI `5.22.0`).
   - `npm run typecheck` (`tsc --noEmit` with TypeScript `5.9.3`, `strict: true`): `0` diagnostics.
-  - `npm run lint` (ESLint CLI across `303` files, `--max-warnings 0`): `0` errors, `0` warnings.
-  - `npm test -- --run` (Vitest + Testing Library): `68` test files, `315` tests passing.
-  - `npm run build`: Next.js `15.5.27` production build succeeds (including `/api/health`, `/report/[token]`, `/api/webhooks/lemonsqueezy`, and `/api/projects/[slug]/analyses/[analysisId]/sarif`).
-  - `npm run analyze:local -- . --sarif <file>`: computes per-file Babel AST cyclomatic complexity crossed with `simple-git` `git log` churn (`hotspots`), per-top-level-directory bus factors + copy-ready `.github/CODEOWNERS` ownership map (`ownership`), and OASIS SARIF 2.1.0 validated at runtime against `sarif-schema-2.1.0.json` (`1.5s` cold analysis across 3 runs vs `1.8s` baseline — `0%` slowdown, well inside the `<20%` budget).
+  - `npm run lint` (ESLint CLI across `305` files, `--max-warnings 0`): `0` errors, `0` warnings.
+  - `npm test -- --run` (Vitest + Testing Library): `69` test files, `319` tests passing.
+  - `npm run build`: Next.js `15.5.27` production build succeeds (including `/api/health`, `/report/[token]`, `/api/webhooks/lemonsqueezy`, `/api/projects/[slug]/analyses/[analysisId]/sarif`, and `/api/projects/[slug]/analyses/[analysisId]/sbom`).
+  - `npm run analyze:local -- . --sarif <file> --sbom <file>`: computes per-file Babel AST cyclomatic complexity crossed with `simple-git` `git log` churn (`hotspots`), per-top-level-directory bus factors + copy-ready `.github/CODEOWNERS` ownership map (`ownership`), OASIS SARIF 2.1.0 validated at runtime against `sarif-schema-2.1.0.json`, and CycloneDX 1.5 SBOMs validated at runtime against the official OWASP/ECMA-424 `bom-1.5.schema.json` + `spdx.schema.json` + `jsf-0.82.schema.json` (`2.0s–2.2s` cold analysis vs `2.0s` baseline — `0%–10%` delta, well inside the `<20%` budget).
   - `npm run report:pdf -- <token>`: verified end-to-end against PostgreSQL + `next start` + headless Chromium, producing an 8-page A4 consultant audit PDF (`docs/examples/arbor-audit-mdadeel-arbor.pdf`) with cover metadata, deterministic top-5 recommended actions, severity-grouped `file:line` findings, dependency risk inventory, per-page commit SHA watermark, and HTTP `404` on expired/revoked tokens.
 - **GitHub Actions CI (`verify` and `build` jobs):** `unverified` — `.github/workflows/ci.yml` is authored with `postgres:16` and `redis:7` service containers, `npx prisma migrate deploy`, typecheck, lint, tests, and production build, and the CI badge above remains commented out until a maintainer with `workflows` GitHub permission pushes `.github/workflows/ci.yml` and confirms both jobs green.
 - **Unit-tested only (`unverified` against live external services):**
@@ -193,7 +194,7 @@ npm run build
   - GitHub OAuth sign-in, webhook signature delivery lifecycle, and pull-request Check Runs against live GitHub repositories.
   - Lemon Squeezy live store checkout creation, customer billing portal refresh, and live merchant webhook delivery (HMAC-SHA256 verification, `BillingWebhookEvent` replay idempotency, owner-only checkout/portal authorization, and server-side `Free` vs `Teams` plan limits are verified by unit tests).
   - Optional BYOK OpenAI / Anthropic finding explanations and review-only patch suggestions against live provider APIs.
-  - Resend email delivery (`RESEND_API_KEY`), live OSV advisory queries, and official CycloneDX schema validation (SBOM checks are currently structural only).
+  - Resend email delivery (`RESEND_API_KEY`) and live GitHub Advisory Database HTTP queries (offline lockfile inventory + official OWASP CycloneDX 1.5 JSON Schema validation are verified locally).
 - **Known gaps & unbuilt capabilities:**
   - **Migration drift:** `prisma/schema.prisma` defines `30` models, whereas the `11` SQL migrations in `prisma/migrations/` create `25` tables (`AdminEmail`, `ProjectGroup`, `ProjectGroupMember`, `SystemAnalysis`, `WaitlistLead`, and `User` admin/plan fields are not yet in a SQL migration; use `npm run db:push` on fresh local databases).
   - **Serverless fallback latency:** When deployed without the long-lived `worker` container (`Dockerfile` / `docker-compose.yml` / Fly.io / Railway), `vercel.json` triggers `/api/worker/process` once daily at `03:00 UTC` (`maxDuration = 300`).
