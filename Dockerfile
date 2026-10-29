@@ -38,7 +38,7 @@ FROM node:20-bookworm-slim AS runner
 WORKDIR /app
 
 RUN apt-get update \
-  && apt-get install -y --no-install-recommends ca-certificates git openssh-client openssl \
+  && apt-get install -y --no-install-recommends ca-certificates git openssh-client openssl procps \
   && rm -rf /var/lib/apt/lists/* \
   && groupadd --system --gid 1001 arbor \
   && useradd --system --uid 1001 --gid arbor --create-home arbor \
@@ -59,9 +59,15 @@ COPY --from=builder --chown=arbor:arbor /app/prisma ./prisma
 COPY --from=builder --chown=arbor:arbor /app/src ./src
 COPY --from=builder --chown=arbor:arbor /app/scripts ./scripts
 
+RUN chmod +x /app/scripts/docker-entrypoint.sh
+
 USER arbor
 EXPOSE 3000
 
-# Default entrypoint starts the Next.js server; override with `["npm", "run", "worker"]`
-# in docker-compose, Fly.io, or Railway to run the long-lived BullMQ worker.
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
+  CMD sh -c 'node -e "fetch(\"http://127.0.0.1:${PORT:-3000}/api/health\").then((r) => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"'
+
+# Single image serves `migrate` (`npx prisma db push --skip-generate`), `app` (`npm run start`),
+# and `worker` (`npm run worker`) via `ENTRYPOINT` + overridable `CMD`.
+ENTRYPOINT ["/app/scripts/docker-entrypoint.sh"]
 CMD ["npm", "run", "start"]

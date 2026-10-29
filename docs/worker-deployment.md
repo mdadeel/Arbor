@@ -24,24 +24,16 @@ The long-lived worker **must** connect to the **exact same** PostgreSQL database
 
 ---
 
-## 1. Local & Self-Hosted Docker Compose
+## 1. Self-Hosted & Local Docker Compose
 
-The root `Dockerfile` builds a single Node 20 (`bookworm-slim`) image containing `git`, `openssh-client`, `openssl`, Prisma Client, the compiled Next.js app, and the TypeScript worker entrypoint (`src/worker/index.ts`).
+The root `Dockerfile` builds a single Node 20 (`bookworm-slim`) image (`arbor-selfhosted:local`) containing `git`, `openssh-client`, `openssl`, Prisma CLI + Client, the compiled Next.js app, and the TypeScript worker entrypoint (`src/worker/index.ts`).
 
-Start PostgreSQL, Redis, the Next.js app (`arbor-app`), and the long-lived BullMQ worker (`arbor-worker`):
+`docker-compose.yml` uses Compose profiles (`postgres`, `redis`, `bundled`) with `COMPOSE_PROFILES="postgres,redis"` enabled by default in `.env.example`, so one command starts PostgreSQL, Redis, automatic Prisma migrations (`arbor-migrate`), the Next.js app (`arbor-app`), and the long-lived BullMQ worker (`arbor-worker`):
 
 ```bash
 cp .env.example .env
-# Edit .env with real NEXTAUTH_SECRET and ENCRYPTION_SECRET values
+# Edit .env with real NEXTAUTH_SECRET and ENCRYPTION_SECRET values (and adjust COMPOSE_PROFILES if using external DB/Redis)
 docker compose up -d --build
-```
-
-If you prefer running `npm run dev` on the host machine while running `postgres`, `redis`, and `worker` in Docker:
-
-```bash
-docker compose up -d --build postgres redis worker
-npm run db:push
-npm run dev
 ```
 
 Inspect live worker logs:
@@ -49,6 +41,8 @@ Inspect live worker logs:
 ```bash
 docker compose logs -f worker
 ```
+
+For full self-hosted topology options (bundled vs. external managed PostgreSQL/Redis via `COMPOSE_PROFILES`), health probes (`GET /api/health`), and upgrade steps, see [`docs/self-hosting.md`](./self-hosting.md).
 
 ---
 

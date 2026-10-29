@@ -1,19 +1,28 @@
-# Arbor — Docker Compose (PostgreSQL, Redis, Next.js App, and Long-Lived BullMQ Worker)
+# Arbor — Self-Hosted Docker Compose
+# Single `Dockerfile` (`arbor-selfhosted:local`) serves migrations, Next.js web app, and BullMQ worker.
+# Canonical quickstart (`.env.example` sets `COMPOSE_PROFILES=postgres,redis` by default):
+#   cp .env.example .env && docker compose up -d --build
+# To bring external managed PostgreSQL and/or Redis, adjust `COMPOSE_PROFILES` in `.env`
+# (`postgres`, `redis`, `postgres,redis`, or empty `""`) and set `DOCKER_DATABASE_URL` / `DOCKER_REDIS_URL`.
 
 services:
   postgres:
     image: postgres:16-alpine
     container_name: arbor-postgres
+    profiles:
+      - postgres
+      - bundled
+    restart: unless-stopped
     environment:
-      POSTGRES_USER: arbor
-      POSTGRES_PASSWORD: arbor
-      POSTGRES_DB: arbor
+      POSTGRES_USER: ${POSTGRES_USER:-arbor}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-arbor}
+      POSTGRES_DB: ${POSTGRES_DB:-arbor}
     ports:
-      - "5432:5432"
+      - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U arbor"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-arbor} -d ${POSTGRES_DB:-arbor}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -21,8 +30,13 @@ services:
   redis:
     image: redis:7-alpine
     container_name: arbor-redis
+    profiles:
+      - redis
+      - bundled
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
     ports:
-      - "6379:6379"
+      - "${REDIS_PORT:-6379}:6379"
     volumes:
       - redis_data:/data
     healthcheck:
@@ -31,7 +45,26 @@ services:
       timeout: 5s
       retries: 5
 
+  migrate:
+    image: arbor-selfhosted:local
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: arbor-migrate
+    command: ["npx", "prisma", "db", "push", "--skip-generate"]
+    restart: "no"
+    depends_on:
+      postgres:
+        condition: service_healthy
+        required: false
+    environment:
+      DATABASE_URL: ${DOCKER_DATABASE_URL:-postgresql://arbor:arbor@postgres:5432/arbor}
+      REDIS_URL: ${DOCKER_REDIS_URL:-redis://redis:6379}
+      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET:-dev-compose-nextauth-placeholder-change-me}
+      ENCRYPTION_SECRET: ${ENCRYPTION_SECRET:-dev-compose-encryption-placeholder-change-me}
+
   app:
+    image: arbor-selfhosted:local
     build:
       context: .
       dockerfile: Dockerfile
@@ -39,12 +72,16 @@ services:
     command: ["npm", "run", "start"]
     restart: unless-stopped
     ports:
-      - "3000:3000"
+      - "${APP_PORT:-3000}:3000"
     depends_on:
       postgres:
         condition: service_healthy
+        required: false
       redis:
         condition: service_healthy
+        required: false
+      migrate:
+        condition: service_completed_successfully
     environment:
       DATABASE_URL: ${DOCKER_DATABASE_URL:-postgresql://arbor:arbor@postgres:5432/arbor}
       REDIS_URL: ${DOCKER_REDIS_URL:-redis://redis:6379}
@@ -60,8 +97,25 @@ services:
       LEMONSQUEEZY_STORE_ID: ${LEMONSQUEEZY_STORE_ID:-}
       LEMONSQUEEZY_TEAMS_VARIANT_ID: ${LEMONSQUEEZY_TEAMS_VARIANT_ID:-}
       LEMONSQUEEZY_WEBHOOK_SECRET: ${LEMONSQUEEZY_WEBHOOK_SECRET:-}
+      ADMIN_EMAILS: ${ADMIN_EMAILS:-}
+      ADMIN_GITHUB_USERNAMES: ${ADMIN_GITHUB_USERNAMES:-}
+      ADMIN_USERNAME: ${ADMIN_USERNAME:-}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
+      EMAIL_FROM: ${EMAIL_FROM:-Arbor Platform <noreply@example.com>}
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "node -e \"fetch('http://127.0.0.1:3000/api/health').then((r) => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))\"",
+        ]
+      interval: 30s
+      timeout: 5s
+      start_period: 20s
+      retries: 3
 
   worker:
+    image: arbor-selfhosted:local
     build:
       context: .
       dockerfile: Dockerfile
@@ -71,8 +125,12 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+        required: false
       redis:
         condition: service_healthy
+        required: false
+      migrate:
+        condition: service_completed_successfully
     environment:
       DATABASE_URL: ${DOCKER_DATABASE_URL:-postgresql://arbor:arbor@postgres:5432/arbor}
       REDIS_URL: ${DOCKER_REDIS_URL:-redis://redis:6379}
@@ -91,6 +149,12 @@ services:
       ANALYSIS_TIMEOUT_MS: ${ANALYSIS_TIMEOUT_MS:-300000}
     volumes:
       - worker_clones:/tmp/arbor-clones
+    healthcheck:
+      test: ["CMD-SHELL", "pgrep -f 'src/worker/index.ts' >/dev/null || exit 1"]
+      interval: 30s
+      timeout: 5s
+      start_period: 15s
+      retries: 3
 
 volumes:
   postgres_data:

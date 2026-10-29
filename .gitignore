@@ -58,6 +58,7 @@ Thumbs.db
 !/docs/typecheck-baseline.md
 !/docs/worker-deployment.md
 !/docs/sarif-github-code-scanning.md
+!/docs/self-hosting.md
 !/docs/examples/
 !/docs/examples/arbor-audit-mdadeel-arbor.pdf
 .ai 
