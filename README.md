@@ -6,25 +6,28 @@ Connect a GitHub repository to generate an inspectable architecture map, six-dim
 
 Arbor's core analysis is deterministic: it shallow-clones a temporary working copy, parses supported source files with Babel AST and rule-based static checks, records derived metrics and findings, and removes the clone when processing finishes. Optional AI explanations and unified-diff patch suggestions are bring-your-own-key (BYOK) and review-only — Arbor never writes commits or opens pull requests on your behalf.
 
-## Quick Start
+## Self-Hosted Quick Start (Docker Compose)
 
-1. **Start PostgreSQL 16 and Redis 7:**
+1. **Create `.env` from `.env.example` and start the stack:**
 
    ```bash
-   docker compose up -d postgres redis
+   cp .env.example .env
+   docker compose up -d --build
    ```
 
-   *(To build and run the Next.js app and long-lived BullMQ worker inside Docker as well, run `docker compose up -d --build`; see [docs/worker-deployment.md](docs/worker-deployment.md).)*
+   `.env.example` defaults `COMPOSE_PROFILES="postgres,redis"`, so this single command builds the root `Dockerfile` once (`arbor-selfhosted:local`), starts bundled PostgreSQL 16 + Redis 7, reconciles all 30 Prisma models (`arbor-migrate`), and launches the Next.js app (`http://localhost:3000`, probed via `GET /api/health`) alongside the long-lived BullMQ worker (`arbor-worker`). To use external managed PostgreSQL and/or Redis instead of the bundled containers, adjust `COMPOSE_PROFILES` (`postgres`, `redis`, or `""`) and `DOCKER_DATABASE_URL` / `DOCKER_REDIS_URL` in `.env` — see [`docs/self-hosting.md`](docs/self-hosting.md).
 
-2. **Create `.env` from `.env.example`:**
+## Local Node.js Development
+
+1. **Create `.env` from `.env.example`:**
 
    ```bash
    cp .env.example .env
    ```
 
-   Set real random values for `NEXTAUTH_SECRET` and `ENCRYPTION_SECRET`, and configure `GITHUB_CLIENT_ID` and `GITHUB_CLIENT_SECRET` from a GitHub OAuth App (`http://localhost:3000/api/auth/callback/github`) if you want to sign in through the web UI.
+   Set real random values for `NEXTAUTH_SECRET` and `ENCRYPTION_SECRET`, point `DATABASE_URL` and `REDIS_URL` at a running PostgreSQL 16 and Redis 7 instance, and configure `GITHUB_CLIENT_ID` and `GITHUB_CLIENT_SECRET` from a GitHub OAuth App (`http://localhost:3000/api/auth/callback/github`) if you want to sign in through the web UI.
 
-3. **Install dependencies and sync the database schema:**
+2. **Install dependencies and sync the database schema:**
 
    ```bash
    npm install
@@ -33,7 +36,7 @@ Arbor's core analysis is deterministic: it shallow-clones a temporary working co
 
    > `npm run db:push` creates all 30 models from `prisma/schema.prisma` for local development. (`npx prisma migrate deploy` applies the 11 committed SQL migrations covering 25 tables; see [Status](#status).)
 
-4. **Run the web app AND the background worker:**
+3. **Run the web app AND the background worker:**
 
    ```bash
    npm run dev:all
@@ -57,7 +60,7 @@ Arbor's core analysis is deterministic: it shallow-clones a temporary working co
 
    See [`docs/sarif-github-code-scanning.md`](docs/sarif-github-code-scanning.md) for the GitHub Actions workflow (`github/codeql-action/upload-sarif@v3`) and `gh api` upload commands that publish Arbor findings into GitHub's **Security -> Code scanning** tab.
 
-6. **Export an A4 consultant audit report PDF** from any valid read-only share token:
+4. **Export an A4 consultant audit report PDF** from any valid read-only share token:
 
    ```bash
    # One-time Chromium install on a standard developer machine:
@@ -125,6 +128,7 @@ Arbor's core analysis is deterministic: it shallow-clones a temporary working co
 - `NEXTAUTH_URL` — read by NextAuth.js at runtime for callback URL resolution.
 - `RESEND_API_KEY`, `EMAIL_FROM` — optional; read directly in `src/server/services/admin.ts` for admin email broadcasts.
 - `REPORT_BASE_URL`, `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH`, `PLAYWRIGHT_CHROMIUM_ARGS` — optional CLI overrides read by `scripts/export-report.ts` (`npm run report:pdf`).
+- `COMPOSE_PROFILES`, `DOCKER_DATABASE_URL`, `DOCKER_REDIS_URL`, `APP_PORT`, `POSTGRES_PORT`, `REDIS_PORT`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`, `ARBOR_RUN_MIGRATIONS` — optional Docker Compose / container entrypoint variables used by `docker-compose.yml` and `scripts/docker-entrypoint.sh` (see [`docs/self-hosting.md`](docs/self-hosting.md)).
 
 > **AI provider keys are not environment variables.** OpenAI and Anthropic keys are bring-your-own-key per user, encrypted in PostgreSQL via `ENCRYPTION_SECRET`.
 
@@ -153,11 +157,11 @@ scripts/
 └── export-report.ts      # Playwright headless Chromium A4 PDF exporter (report:pdf)
 ```
 
-For phase-by-phase backend architecture notes, SARIF Code Scanning upload, worker container deployment, and verification tracking, see [`docs/sarif-github-code-scanning.md`](docs/sarif-github-code-scanning.md), [`docs/worker-deployment.md`](docs/worker-deployment.md), [`docs/backend-review-feature-roadmap.md`](docs/backend-review-feature-roadmap.md), and [`docs/typecheck-baseline.md`](docs/typecheck-baseline.md).
+For self-hosting, phase-by-phase backend architecture notes, SARIF Code Scanning upload, worker container deployment, and verification tracking, see [`docs/self-hosting.md`](docs/self-hosting.md), [`docs/sarif-github-code-scanning.md`](docs/sarif-github-code-scanning.md), [`docs/worker-deployment.md`](docs/worker-deployment.md), [`docs/backend-review-feature-roadmap.md`](docs/backend-review-feature-roadmap.md), and [`docs/typecheck-baseline.md`](docs/typecheck-baseline.md).
 
 ## Worker Deployment (Docker, Fly.io, Railway & Cron Fallback)
 
-- **Docker Compose (`Dockerfile` + `docker-compose.yml`):** Run `docker compose up -d --build` to start `postgres`, `redis`, `app` (`npm run start`), and `worker` (`npm run worker`) as long-lived containers.
+- **Self-hosted Docker Compose (`Dockerfile` + `docker-compose.yml`):** Run `cp .env.example .env && docker compose up -d --build` to launch bundled `postgres` and `redis` (controlled via `COMPOSE_PROFILES="postgres,redis"`), schema sync (`migrate`), `app` (`npm run start`), and `worker` (`npm run worker`) from the single `Dockerfile`. See [`docs/self-hosting.md`](docs/self-hosting.md).
 - **Fly.io or Railway:** Build from the root `Dockerfile` with start command `npm run worker`, pointing `REDIS_URL`, `DATABASE_URL`, and `ENCRYPTION_SECRET` at the **exact same instances** configured on your Next.js web deployment so queued jobs are picked up continuously. Step-by-step instructions and `fly.worker.toml` config live in [`docs/worker-deployment.md`](docs/worker-deployment.md).
 - **Serverless cron fallback (`/api/worker/process`):** `vercel.json` retains the daily `0 3 * * *` UTC cron (`Authorization: Bearer $CRON_SECRET`, `maxDuration = 300`) as a zero-infrastructure fallback when no long-lived worker is active.
 
@@ -178,10 +182,10 @@ npm run build
 - **Verified by local verification command:**
   - `npx prisma generate` & `npx prisma validate`: valid schema (`30` Prisma models, Prisma CLI `5.22.0`).
   - `npm run typecheck` (`tsc --noEmit` with TypeScript `5.9.3`, `strict: true`): `0` diagnostics.
-  - `npm run lint` (ESLint CLI across `301` files, `--max-warnings 0`): `0` errors, `0` warnings.
-  - `npm test -- --run` (Vitest + Testing Library): `67` test files, `312` tests passing.
-  - `npm run build`: Next.js `15.5.27` production build succeeds (including `/report/[token]`, `/api/webhooks/lemonsqueezy`, and `/api/projects/[slug]/analyses/[analysisId]/sarif`).
-  - `npm run analyze:local -- . --sarif <file>`: computes per-file Babel AST cyclomatic complexity crossed with `simple-git` `git log` churn (`hotspots`), per-top-level-directory bus factors + copy-ready `.github/CODEOWNERS` ownership map (`ownership`), and OASIS SARIF 2.1.0 validated at runtime against `sarif-schema-2.1.0.json` (`1.9s` cold analysis across 3 runs vs `1.9s` baseline — `0%` slowdown, well inside the `<20%` budget).
+  - `npm run lint` (ESLint CLI across `303` files, `--max-warnings 0`): `0` errors, `0` warnings.
+  - `npm test -- --run` (Vitest + Testing Library): `68` test files, `315` tests passing.
+  - `npm run build`: Next.js `15.5.27` production build succeeds (including `/api/health`, `/report/[token]`, `/api/webhooks/lemonsqueezy`, and `/api/projects/[slug]/analyses/[analysisId]/sarif`).
+  - `npm run analyze:local -- . --sarif <file>`: computes per-file Babel AST cyclomatic complexity crossed with `simple-git` `git log` churn (`hotspots`), per-top-level-directory bus factors + copy-ready `.github/CODEOWNERS` ownership map (`ownership`), and OASIS SARIF 2.1.0 validated at runtime against `sarif-schema-2.1.0.json` (`1.5s` cold analysis across 3 runs vs `1.8s` baseline — `0%` slowdown, well inside the `<20%` budget).
   - `npm run report:pdf -- <token>`: verified end-to-end against PostgreSQL + `next start` + headless Chromium, producing an 8-page A4 consultant audit PDF (`docs/examples/arbor-audit-mdadeel-arbor.pdf`) with cover metadata, deterministic top-5 recommended actions, severity-grouped `file:line` findings, dependency risk inventory, per-page commit SHA watermark, and HTTP `404` on expired/revoked tokens.
 - **GitHub Actions CI (`verify` and `build` jobs):** `unverified` — `.github/workflows/ci.yml` is authored with `postgres:16` and `redis:7` service containers, `npx prisma migrate deploy`, typecheck, lint, tests, and production build, and the CI badge above remains commented out until a maintainer with `workflows` GitHub permission pushes `.github/workflows/ci.yml` and confirms both jobs green.
 - **Unit-tested only (`unverified` against live external services):**
@@ -193,7 +197,7 @@ npm run build
 - **Known gaps & unbuilt capabilities:**
   - **Migration drift:** `prisma/schema.prisma` defines `30` models, whereas the `11` SQL migrations in `prisma/migrations/` create `25` tables (`AdminEmail`, `ProjectGroup`, `ProjectGroupMember`, `SystemAnalysis`, `WaitlistLead`, and `User` admin/plan fields are not yet in a SQL migration; use `npm run db:push` on fresh local databases).
   - **Serverless fallback latency:** When deployed without the long-lived `worker` container (`Dockerfile` / `docker-compose.yml` / Fly.io / Railway), `vercel.json` triggers `/api/worker/process` once daily at `03:00 UTC` (`maxDuration = 300`).
-  - **Container runtime execution:** `Dockerfile` and `docker-compose.yml` (`app` and `worker` services) are structurally validated by `src/worker/container-config.test.ts`, while live `docker build` / `docker compose up` image execution is `unverified` in sandbox environments without a Docker daemon.
+  - **Container runtime execution:** Single-`Dockerfile` structure, `scripts/docker-entrypoint.sh` POSIX shell syntax (`sh -n`), `/api/health` readiness/liveness route, and `docker-compose.yml` `postgres`/`redis` profiles (`migrate`, `app`, and `worker` services) are verified by `src/worker/container-config.test.ts` and `src/app/api/health/route.test.ts`, while live `docker build` / `docker compose up` daemon execution is `unverified` in sandbox environments without a Docker daemon.
   - **Browser E2E suite:** `@playwright/test` powers `npm run report:pdf`, but no `playwright.config` or automated UI E2E spec suite exists yet (`unverified`).
 
 ## Licence
