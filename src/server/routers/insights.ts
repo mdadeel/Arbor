@@ -8,8 +8,15 @@ import {
 
 export const insightsRouter = router({
   trends: protectedProcedure
-    .input(z.object({ slug: z.string().min(1).max(100) }))
-    .query(({ ctx, input }) => getProjectTrend(ctx.session.user.id, input.slug)),
+    .input(
+      z.object({
+        slug: z.string().min(1).max(100),
+        baselineAnalysisId: z.string().min(1).max(100).optional(),
+      })
+    )
+    .query(({ ctx, input }) =>
+      getProjectTrend(ctx.session.user.id, input.slug, input.baselineAnalysisId)
+    ),
 
   schedule: protectedProcedure
     .input(z.object({ slug: z.string().min(1).max(100) }))

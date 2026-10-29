@@ -27,6 +27,7 @@ import {
 import { trpc } from '@/lib/trpc'
 import { Button } from '@/components/ui/createui/button'
 import { StatusBadge } from '@/components/dashboard/status-badge'
+import { ScanDiffCard } from '@/components/dashboard/scan-diff-card'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
 
@@ -35,63 +36,87 @@ function signed(value: number | null | undefined, suffix = '') {
   return `${value > 0 ? '+' : ''}${value}${suffix}`
 }
 
-export function TrendView({ slug }: { slug: string }) {
-  const trend = trpc.insights.trends.useQuery({ slug })
+export function TrendView({ slug, repoUrl }: { slug: string; repoUrl?: string }) {
+  const [baselineAnalysisId, setBaselineAnalysisId] = useState<string | undefined>(undefined)
+  const trend = trpc.insights.trends.useQuery(
+    baselineAnalysisId ? { slug, baselineAnalysisId } : { slug }
+  )
   if (trend.isLoading) return <Card><CardContent className="py-10 text-center text-xs text-muted-foreground">Loading comparable analysis history…</CardContent></Card>
   if (trend.error) return <Card><CardContent className="py-10 text-center text-xs text-destructive">{trend.error.message}</CardContent></Card>
   const data = trend.data?.series ?? []
+  const baselineOptions = [...data]
+    .slice(0, -1)
+    .reverse()
+    .map((point) => ({
+      id: point.id,
+      createdAt: point.createdAt,
+      commitSha: point.commitSha,
+      overallScore: point.overallScore,
+    }))
 
   return (
-    <Card className="border-border">
-      <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-3 border-b border-border/70 pb-3">
-        <div>
-          <CardTitle className="flex items-center gap-2 text-sm"><TrendingUp className="h-4 w-4 text-primary" />Analysis trends</CardTitle>
-          <CardDescription className="mt-1 max-w-2xl text-xs leading-relaxed">
-            Comparable score and visible-finding changes. Arbor keeps this chart on the latest branch and only joins runs with the same analyzer and effective policy versions; results remain historical static-analysis snapshots.
-          </CardDescription>
-        </div>
-        {trend.data?.latest && (
-          <div className="flex flex-wrap gap-2 text-[10px]">
-            <span className="rounded-md border border-border px-2 py-1 text-muted-foreground">Latest score <strong className="ml-1 font-mono text-foreground">{trend.data.latest.overallScore ?? '—'}</strong></span>
-            <span className="rounded-md border border-border px-2 py-1 text-muted-foreground">Since previous <strong className={cn('ml-1 font-mono', (trend.data.delta?.overallScore ?? 0) >= 0 ? 'text-emerald-400' : 'text-amber-300')}>{signed(trend.data.delta?.overallScore)}</strong></span>
-            <span className="rounded-md border border-border px-2 py-1 text-muted-foreground">Critical change <strong className="ml-1 font-mono text-foreground">{signed(trend.data.delta?.criticalCount)}</strong></span>
+    <div className="space-y-4">
+      <Card className="border-border">
+        <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-3 border-b border-border/70 pb-3">
+          <div>
+            <CardTitle className="flex items-center gap-2 text-sm"><TrendingUp className="h-4 w-4 text-primary" />Analysis trends</CardTitle>
+            <CardDescription className="mt-1 max-w-2xl text-xs leading-relaxed">
+              Comparable score and visible-finding changes. Arbor keeps this chart on the latest branch and only joins runs with the same analyzer and effective policy versions; results remain historical static-analysis snapshots.
+            </CardDescription>
           </div>
-        )}
-      </CardHeader>
-      <CardContent className="p-3 sm:p-5">
-        {data.length < 2 ? (
-          <div className="flex min-h-52 flex-col items-center justify-center gap-2 text-center text-xs text-muted-foreground">
-            <HelpCircle className="h-5 w-5 text-primary/70" />
-            <p className="font-medium text-foreground">Run another scan to establish a trend.</p>
-            <p>Arbor compares completed scans for this project; the graph appears after two results.</p>
-          </div>
-        ) : (
-          <div className="h-64 w-full" role="img" aria-label="Line chart of overall health score and finding counts over time">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={data.map((point) => ({ ...point, dateLabel: new Date(point.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) }))} margin={{ top: 8, right: 8, left: -18, bottom: 4 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
-                <XAxis dataKey="dateLabel" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }} axisLine={false} tickLine={false} minTickGap={16} />
-                <YAxis yAxisId="scores" domain={[0, 100]} tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }} axisLine={false} tickLine={false} />
-                <YAxis yAxisId="findings" orientation="right" allowDecimals={false} width={30} tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }} axisLine={false} tickLine={false} />
-                <Tooltip
-                  contentStyle={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: 8, fontSize: 11 }}
-                  labelStyle={{ color: 'hsl(var(--foreground))' }}
-                  formatter={(value, name) => [value, name === 'overallScore' ? 'Overall score' : name === 'findingsCount' ? 'Findings' : 'Critical findings']}
-                  labelFormatter={(label, values) => {
-                    const point = values[0]?.payload as { branch?: string; commitSha?: string | null } | undefined
-                    return `${label}${point?.branch ? ` · ${point.branch}` : ''}${point?.commitSha ? ` · ${point.commitSha.slice(0, 7)}` : ''}`
-                  }}
-                />
-                <Line yAxisId="scores" type="monotone" dataKey="overallScore" name="overallScore" stroke="hsl(var(--primary))" strokeWidth={2.5} dot={{ r: 3 }} activeDot={{ r: 5 }} connectNulls />
-                <Line yAxisId="findings" type="monotone" dataKey="findingsCount" name="findingsCount" stroke="#f59e0b" strokeWidth={1.8} dot={false} />
-                <Line yAxisId="findings" type="monotone" dataKey="criticalCount" name="criticalCount" stroke="#ef4444" strokeWidth={1.8} dot={false} />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        )}
-        {data.length > 0 && <p className="mt-2 text-[10px] text-muted-foreground">Showing {data.length} compatible scan(s) on <span className="font-mono text-foreground">{trend.data?.branch}</span> · analyzer version {trend.data?.analysisVersion} · {trend.data?.excludedRuns ?? 0} recent run(s) from other branches or policy versions excluded · finding counts omit policy-suppressed items.</p>}
-      </CardContent>
-    </Card>
+          {trend.data?.latest && (
+            <div className="flex flex-wrap gap-2 text-[10px]">
+              <span className="rounded-md border border-border px-2 py-1 text-muted-foreground">Latest score <strong className="ml-1 font-mono text-foreground">{trend.data.latest.overallScore ?? '—'}</strong></span>
+              <span className="rounded-md border border-border px-2 py-1 text-muted-foreground">Since previous <strong className={cn('ml-1 font-mono', (trend.data.delta?.overallScore ?? 0) >= 0 ? 'text-emerald-400' : 'text-amber-300')}>{signed(trend.data.delta?.overallScore)}</strong></span>
+              <span className="rounded-md border border-border px-2 py-1 text-muted-foreground">Critical change <strong className="ml-1 font-mono text-foreground">{signed(trend.data.delta?.criticalCount)}</strong></span>
+            </div>
+          )}
+        </CardHeader>
+        <CardContent className="p-3 sm:p-5">
+          {data.length < 2 ? (
+            <div className="flex min-h-52 flex-col items-center justify-center gap-2 text-center text-xs text-muted-foreground">
+              <HelpCircle className="h-5 w-5 text-primary/70" />
+              <p className="font-medium text-foreground">Run another scan to establish a trend.</p>
+              <p>Arbor compares completed scans for this project; the graph appears after two results.</p>
+            </div>
+          ) : (
+            <div className="h-64 w-full" role="img" aria-label="Line chart of overall health score and finding counts over time">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={data.map((point) => ({ ...point, dateLabel: new Date(point.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) }))} margin={{ top: 8, right: 8, left: -18, bottom: 4 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+                  <XAxis dataKey="dateLabel" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }} axisLine={false} tickLine={false} minTickGap={16} />
+                  <YAxis yAxisId="scores" domain={[0, 100]} tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }} axisLine={false} tickLine={false} />
+                  <YAxis yAxisId="findings" orientation="right" allowDecimals={false} width={30} tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }} axisLine={false} tickLine={false} />
+                  <Tooltip
+                    contentStyle={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: 8, fontSize: 11 }}
+                    labelStyle={{ color: 'hsl(var(--foreground))' }}
+                    formatter={(value, name) => [value, name === 'overallScore' ? 'Overall score' : name === 'findingsCount' ? 'Findings' : 'Critical findings']}
+                    labelFormatter={(label, values) => {
+                      const point = values[0]?.payload as { branch?: string; commitSha?: string | null } | undefined
+                      return `${label}${point?.branch ? ` · ${point.branch}` : ''}${point?.commitSha ? ` · ${point.commitSha.slice(0, 7)}` : ''}`
+                    }}
+                  />
+                  <Line yAxisId="scores" type="monotone" dataKey="overallScore" name="overallScore" stroke="hsl(var(--primary))" strokeWidth={2.5} dot={{ r: 3 }} activeDot={{ r: 5 }} connectNulls />
+                  <Line yAxisId="findings" type="monotone" dataKey="findingsCount" name="findingsCount" stroke="#f59e0b" strokeWidth={1.8} dot={false} />
+                  <Line yAxisId="findings" type="monotone" dataKey="criticalCount" name="criticalCount" stroke="#ef4444" strokeWidth={1.8} dot={false} />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+          {data.length > 0 && <p className="mt-2 text-[10px] text-muted-foreground">Showing {data.length} compatible scan(s) on <span className="font-mono text-foreground">{trend.data?.branch}</span> · analyzer version {trend.data?.analysisVersion} · {trend.data?.excludedRuns ?? 0} recent run(s) from other branches or policy versions excluded · finding counts omit policy-suppressed items.</p>}
+        </CardContent>
+      </Card>
+
+      <ScanDiffCard
+        scanDiff={trend.data?.scanDiff}
+        repoUrl={repoUrl}
+        baselineOptions={baselineOptions}
+        selectedBaselineId={baselineAnalysisId}
+        onSelectBaseline={(id) =>
+          setBaselineAnalysisId(id === baselineOptions[0]?.id ? undefined : id)
+        }
+      />
+    </div>
   )
 }
 
