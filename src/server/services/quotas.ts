@@ -21,7 +21,15 @@ export async function consumeAnalysisQuota(
       ? `rate:analyze:ws:${options.workspaceId}`
       : `rate:analyze:${userId}`
 
-  const { allowed } = await checkRateLimit(scopeKey, hourlyAnalyses, 3600)
+  const { allowed, degraded } = await checkRateLimit(scopeKey, hourlyAnalyses, 3600)
+  if (!allowed && degraded) {
+    // Redis is unreachable in production — fail closed but honestly: this is
+    // an outage, not a quota the user exhausted.
+    throw new TRPCError({
+      code: 'SERVICE_UNAVAILABLE',
+      message: 'Analysis service is temporarily unavailable. Please try again in a moment.',
+    })
+  }
   if (!allowed) {
     throw new TRPCError({
       code: 'TOO_MANY_REQUESTS',

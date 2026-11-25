@@ -31,7 +31,7 @@ export async function checkRateLimit(
   key: string,
   maxRequests = 10,
   windowSeconds = 3600
-): Promise<{ allowed: boolean; remaining: number }> {
+): Promise<{ allowed: boolean; remaining: number; degraded: boolean }> {
   try {
     const redis = getRedisClient()
     if (redis.status === 'wait') {
@@ -43,12 +43,15 @@ export async function checkRateLimit(
     return {
       allowed: current <= maxRequests,
       remaining,
+      degraded: false,
     }
   } catch {
     if (process.env.NODE_ENV === 'production') {
-      return { allowed: false, remaining: 0 }
+      // Fail closed, but let callers distinguish "limit reached" from
+      // "the rate-limit store is unreachable" so users get honest errors.
+      return { allowed: false, remaining: 0, degraded: true }
     }
     // Keep local development and isolated tests usable when Redis is absent.
-    return { allowed: true, remaining: maxRequests }
+    return { allowed: true, remaining: maxRequests, degraded: true }
   }
 }

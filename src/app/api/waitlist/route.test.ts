@@ -44,7 +44,7 @@ describe('Waitlist API Route', () => {
   })
 
   it('rate limits repeated waitlist requests', async () => {
-    vi.mocked(checkRateLimit).mockResolvedValueOnce({ allowed: false, remaining: 0 })
+    vi.mocked(checkRateLimit).mockResolvedValueOnce({ allowed: false, remaining: 0, degraded: false })
 
     const req = new NextRequest('http://localhost:3000/api/waitlist', {
       method: 'POST',

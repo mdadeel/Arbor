@@ -214,7 +214,7 @@ describe('authOptions callbacks', () => {
 
     it('authenticates valid admin credentials', async () => {
       const authorize = getAuthorize()
-      vi.mocked(checkRateLimit).mockResolvedValueOnce({ allowed: true, remaining: 5 })
+      vi.mocked(checkRateLimit).mockResolvedValueOnce({ allowed: true, remaining: 5, degraded: false })
       vi.mocked(prisma.user.findFirst).mockResolvedValueOnce({
         id: 'admin-cuid',
         name: 'Test Admin',
@@ -237,7 +237,7 @@ describe('authOptions callbacks', () => {
 
     it('rejects invalid password', async () => {
       const authorize = getAuthorize()
-      vi.mocked(checkRateLimit).mockResolvedValueOnce({ allowed: true, remaining: 5 })
+      vi.mocked(checkRateLimit).mockResolvedValueOnce({ allowed: true, remaining: 5, degraded: false })
 
       const result = await authorize({
         username: 'test-admin',
@@ -260,7 +260,7 @@ describe('authOptions callbacks', () => {
 
     it('enforces brute-force rate limit', async () => {
       const authorize = getAuthorize()
-      vi.mocked(checkRateLimit).mockResolvedValueOnce({ allowed: false, remaining: 0 })
+      vi.mocked(checkRateLimit).mockResolvedValueOnce({ allowed: false, remaining: 0, degraded: false })
 
       await expect(
         authorize({
