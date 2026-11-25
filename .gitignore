@@ -1,58 +1,92 @@
-# dependencies
-node_modules
-.next
-dist
-build
-.pnpm-store
-*.tsbuildinfo
+# Dependencies
+node_modules/
+.pnpm-store/
 
-# environment
+# Next.js & Build Outputs
+.next/
+out/
+dist/
+build/
+*.tsbuildinfo
+next-env.d.ts
+
+# Environment & Credentials
 .env
 .env*.local
-
-# analysis artifacts
-/tmp/arbor-clones
-*.log
-nohup.out
-
-# runtime / deploy
-/.vercel
-/.netlify
-cache
-tmp
-
-# python (some aux scripts are py)
-__pycache__/
-*.py[cod]
-.venv/
-venv/
-
-# secrets & keys
+.env.production
+.env.development
 *.pem
 *.key
 *.p12
+*.crt
 
-# testing
-coverage
-playwright-report
-test-results
+# Always keep example configuration templates tracked
+!.env.example
 
-# os
+# Analysis artifacts & temporary storage
+/tmp/arbor-clones
+cache/
+tmp/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+nohup.out
+
+# Runtime, Hosting & Serverless
+.vercel/
+.netlify/
+.turbo/
+
+# Testing & Coverage
+coverage/
+playwright-report/
+test-results/
+.nyc_output/
+.playwright-mcp/
+
+# OS-generated files
 .DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
 Thumbs.db
-.agents 
-# editors
+
+# Editor & IDE configurations
 *~
 *.swp
 *.swo
+.idea/
+.vscode/
+*.sublime-project
+*.sublime-workspace
 *.eslintcache
 
-# ide
-.idea
-.vscode
+# Development & Patch artifacts
+*.patch
+*.diff
+*.orig
 
-# stitch
-.stitch/designs
+# Python artifacts (for aux scripts)
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+env/
+
+# AI, Agent & Internal Workspace configs
+.agents
+.ai
+.claude
+.stitch
+.zcode/
+project plans
+
+# Documentation exclusions (keep curated architecture and operational guides tracked)
 /docs/*
 !/docs/backend-review-feature-roadmap.md
 !/docs/typecheck-baseline.md
@@ -61,9 +95,14 @@ Thumbs.db
 !/docs/self-hosting.md
 !/docs/examples/
 !/docs/examples/arbor-audit-mdadeel-arbor.pdf
-.ai 
-.claude
-.stitch
-project plans
-CLAUDE.md 
+
+# Case study artifacts (local portfolio notes)
+case-study/
+/dashboard-*.png
+
+# Core project documentation tracked
+CLAUDE.md
 AGENTS.md
+!README.md
+!LICENSE
+superpowers
