@@ -2,6 +2,15 @@
 
 > Turn a GitHub repository into an inspectable architecture map, dependency graph, and saved health report. Audits run asynchronously via a background worker or a scheduled daily 03:00 UTC serverless fallback.
 
+Last updated: 2026-11-25
+
+## Key Facts
+- Arbor is a developer workbench that produces saved, inspectable architecture and health reports for GitHub repositories.
+- The core audit uses Babel AST parsing and explicit static checks. It does not use a generative AI model, so the same input and rules produce the same result.
+- Full source analysis supports JavaScript and TypeScript. Stack detection also recognizes Python and Go; Python requirements files are read for dependency data.
+- Reports contain derived results (scores, module relationships, findings with file paths and line numbers), not complete source files. Temporary working copies are deleted after processing.
+- GitHub OAuth requests `read:user`, `user:email`, and `repo`. Public repositories can be analyzed without granting private-repository access.
+
 ## Overview
 Arbor helps developers inspect software structure and repository health. Its audits use Babel AST parsing and explicit static checks rather than generative AI. The same source and rule set produce repeatable structural checks; results cover the checks Arbor implements and do not replace code review.
 
@@ -26,6 +35,19 @@ Arbor helps developers inspect software structure and repository health. Its aud
 ## Pricing & Tiers
 - **Free ($0 / forever)**: Up to 10 audits per hour, up to 5 members per workspace, up to 3 active scheduled scans, dependency maps, A4 PDF audit reports, and README badges for public repositories.
 - **Teams ($15 / month per workspace, not per seat)**: Up to 60 audits per hour per workspace, up to 50 workspace members with RBAC, up to 50 active scheduled repository scans, and merchant-of-record billing & customer portal via Lemon Squeezy.
+
+## How It Works
+1. Connect a GitHub repository and review the requested permissions.
+2. Queue an asynchronous audit; Arbor clones the repository, parses source structure and imports, and saves an inspectable report. Worker-backed deployments drain the queue continuously; serverless-only deployments use a scheduled daily 03:00 UTC batch.
+3. Open the saved report to inspect health dimensions and findings with the file paths and checks behind each result.
+
+## Frequently Asked Questions
+- Does Arbor store or train on private repository code? Temporary working copies are removed after processing; saved reports contain derived results. The core audit does not send source code to an AI model. Optional AI features stay off unless you add your own provider key.
+- How are scores calculated? Scores (0–100) cover Architecture, Tech Debt, Performance, Documentation, Security, and Design System. Design-system weighting is omitted for projects without UI components.
+- What permissions does Arbor request? `read:user`, `user:email`, and `repo`; the `repo` scope is used to read repository contents and, when enabled, to write pull-request Check Runs.
+- Are results guaranteed? No. Reports cover the checks Arbor implements and do not replace code review.
+- Human-readable FAQ on the site: https://arborgit.vercel.app/#faq
+- Step-by-step overview on the site: https://arborgit.vercel.app/#how-it-works
 
 ## Canonical URLs
 - Website: https://arborgit.vercel.app

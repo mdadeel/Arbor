@@ -9,7 +9,6 @@ export default function robots(): MetadataRoute.Robots {
         userAgent: '*',
         allow: [
           '/',
-          '/login',
           '/api/badge/',
           '/google7ecf99f475b9e5b2.html',
           '/llms.txt',

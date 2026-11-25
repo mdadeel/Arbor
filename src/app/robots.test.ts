@@ -11,7 +11,7 @@ describe('robots.ts', () => {
     const defaultRule = rules.find((r) => r.userAgent === '*')
     expect(defaultRule).toBeDefined()
     expect(defaultRule?.allow).toContain('/')
-    expect(defaultRule?.allow).toContain('/login')
+    expect(defaultRule?.allow).not.toContain('/login')
     expect(defaultRule?.allow).toContain('/api/badge/')
     expect(defaultRule?.allow).toContain('/google7ecf99f475b9e5b2.html')
     expect(defaultRule?.allow).toContain('/llms.txt')

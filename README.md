@@ -15,7 +15,8 @@ Arbor parses codebases using deterministic AST analysis (Babel AST), dependency 
 
 ### Key Architectural Highlights
 - **Deterministic AST Analysis:** AST parser generates cyclomatic complexity, circular dependencies, and maintainability metrics across JavaScript/TypeScript without executing untrusted code.
-- **Enterprise-Grade Distributed Architecture:** Dual execution pipeline supporting dedicated long-lived BullMQ workers or serverless cron dispatch on Vercel.
+- **Enterprise-Grade Distributed Architecture:** Shared `analysis-runner.ts` pipeline supporting dedicated long-lived BullMQ workers (`ANALYSIS_QUEUE_DRIVER=bullmq`) or database-backed serverless cron dispatch (`ANALYSIS_QUEUE_DRIVER=db`).
+- **macOS 26/27 (Liquid Glass & Apple HIG) Design System:** Adaptive Light and Dark themes with semantic label hierarchy (`label-primary`, `label-secondary`, `label-tertiary`, `label-quaternary`) and WCAG AA contrast across workbench, reports, and marketing surfaces.
 - **OASIS SARIF 2.1.0 Compatible:** Native exporter formats findings for GitHub Code Scanning and Security tabs.
 - **Consultant-Grade PDF Reports:** Headless Playwright integration renders audit-ready A4 reports with watermarks and executive summaries.
 - **Strict Cryptographic Boundaries:** User-provided BYOK keys and GitHub tokens are encrypted at rest using AES-256-GCM.
@@ -133,7 +134,8 @@ Arbor parses codebases using deterministic AST analysis (Babel AST), dependency 
 | `LEMONSQUEEZY_TEAMS_VARIANT_ID` | `""` | Lemon Squeezy product variant ID for the Teams workspace subscription |
 | `LEMONSQUEEZY_WEBHOOK_SECRET` | `""` | HMAC-SHA256 signing secret for verifying `/api/webhooks/lemonsqueezy` deliveries |
 | `APP_URL` | `https://arborgit.vercel.app` | Canonical application base URL (set `http://localhost:3000` locally) |
-| `CRON_SECRET` | `""` | Bearer token guarding the serverless fallback route `/api/worker/process` |
+| `ANALYSIS_QUEUE_DRIVER` | `bullmq` | Queue delivery mode: `bullmq` (Redis/BullMQ worker) or `db` (database-backed queue for serverless cron) |
+| `CRON_SECRET` | `""` | Bearer token guarding the serverless processor route `/api/worker/process` |
 | `CLONE_BASE_DIR` | `/tmp/arbor-clones` | Temporary directory for shallow repository clones during analysis |
 | `CLONE_TIMEOUT` | `60` | Git clone timeout in seconds |
 | `MAX_REPO_SIZE_MB` | `500` | Maximum repository size budget (MB) |
@@ -186,7 +188,7 @@ For self-hosting, phase-by-phase backend architecture notes, SARIF Code Scanning
 
 - **Self-hosted Docker Compose (`Dockerfile` + `docker-compose.yml`):** Run `cp .env.example .env && docker compose up -d --build` to launch bundled `postgres` and `redis` (controlled via `COMPOSE_PROFILES="postgres,redis"`), schema sync (`migrate`), `app` (`npm run start`), and `worker` (`npm run worker`) from the single `Dockerfile`. See [`docs/self-hosting.md`](docs/self-hosting.md).
 - **Fly.io or Railway:** Build from the root `Dockerfile` with start command `npm run worker`, pointing `REDIS_URL`, `DATABASE_URL`, and `ENCRYPTION_SECRET` at the **exact same instances** configured on your Next.js web deployment so queued jobs are picked up continuously. Step-by-step instructions and `fly.worker.toml` config live in [`docs/worker-deployment.md`](docs/worker-deployment.md).
-- **Serverless cron fallback (`/api/worker/process`):** `vercel.json` retains the daily `0 3 * * *` UTC cron (`Authorization: Bearer $CRON_SECRET`, `maxDuration = 300`) as a zero-infrastructure fallback when no long-lived worker is active. It attempts up to five repository/system jobs per invocation within a bounded runtime; it is not an immediate queue consumer.
+- **Serverless cron (`ANALYSIS_QUEUE_DRIVER=db` + `/api/worker/process`):** `.github/workflows/analysis-cron.yml` runs every 5 minutes (`*/5`) and `vercel.json` retains the daily `0 3 * * *` UTC cron (`Authorization: Bearer $CRON_SECRET`, `maxDuration = 300`), processing up to 12 queued jobs per invocation within a bounded runtime.
 
 ## Development & Verification
 
@@ -206,7 +208,7 @@ npm run build
   - `npx prisma generate` & `npx prisma validate`: valid schema (`30` Prisma models, Prisma CLI `5.22.0`).
   - `npm run typecheck` (`tsc --noEmit` with TypeScript `5.9.3`, `strict: true`): `0` diagnostics.
   - `npm run lint` (ESLint CLI across files, `--max-warnings 0`): `0` errors, `0` warnings.
-  - `npm test -- --run` (Vitest + Testing Library): `80` test files, `410` tests passing.
+  - `npm test -- --run` (Vitest + Testing Library): `87` test files, `452` tests passing.
   - `npm run build`: Next.js `15.5.27` production build succeeds (including `/api/health`, `/report/[token]`, `/api/webhooks/lemonsqueezy`, and `/api/projects/[slug]/analyses/[analysisId]/sarif`).
   - `npm run analyze:local -- . --sarif <file>`: computes per-file Babel AST cyclomatic complexity crossed with `simple-git` `git log` churn (`hotspots`), per-top-level-directory bus factors + copy-ready `.github/CODEOWNERS` ownership map (`ownership`), and OASIS SARIF 2.1.0 validated at runtime against `sarif-schema-2.1.0.json`.
   - `npm run report:pdf -- <token>`: verified end-to-end against PostgreSQL + `next start` + headless Chromium, producing an 8-page A4 consultant audit PDF (`docs/examples/arbor-audit-mdadeel-arbor.pdf`) with cover metadata, deterministic top-5 recommended actions, severity-grouped `file:line` findings, dependency risk inventory, per-page commit SHA watermark, and HTTP `404` on expired/revoked tokens.
