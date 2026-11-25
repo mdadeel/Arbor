@@ -1,11 +1,11 @@
 # Background Worker Deployment Guide (`src/worker/`)
 
-Arbor processes repository analyses, fullstack system scans, and scheduled repository syncs asynchronously through **BullMQ** queues (`arbor-analysis` and `arbor-system-analysis`) backed by **Redis** and **PostgreSQL**.
+Arbor processes repository analyses, fullstack system scans, and scheduled repository syncs asynchronously through **BullMQ** queues (`analysis` and `system-analysis`) backed by **Redis** and **PostgreSQL**.
 
 You can run the worker in two modes:
 
-1. **Continuous long-lived worker (`npm run worker` via `Dockerfile`)** — recommended for production so queued scans start within seconds and scheduled scans dispatch every 60 seconds.
-2. **Serverless daily cron fallback (`GET /api/worker/process` via `vercel.json`)** — preserved for zero-infrastructure serverless deployments (`0 3 * * *` UTC, up to `maxDuration = 300` seconds per run).
+1. **Continuous long-lived worker (`npm run worker` via `Dockerfile`)** — recommended for production so queued scans start within seconds and scheduled scans and queued-job reconciliation run every 30 seconds.
+2. **Serverless scheduled processor (`GET /api/worker/process`)** — for zero-infrastructure serverless deployments (Vercel). Driven by the `analysis-cron` GitHub Actions workflow every 5 minutes (`.github/workflows/analysis-cron.yml`, requires the `CRON_SECRET` and `APP_URL` repository secrets); the daily `vercel.json` cron (`0 3 * * *` UTC) remains as a safety net. Set `ANALYSIS_QUEUE_DRIVER="db"` so analyze requests skip Redis delivery and the queued database row is treated as the queue — each invocation processes queued rows for up to 240 seconds with atomic claims, so overlapping runs are safe.
 
 ---
 
@@ -15,7 +15,7 @@ The long-lived worker **must** connect to the **exact same** PostgreSQL database
 
 | Variable | Why it must match the web app |
 | --- | --- |
-| `REDIS_URL` | Points at the exact same Redis / Upstash / managed Redis instance (`redis://...` or `rediss://...` with TLS) where the web app enqueues `arbor-analysis` and `arbor-system-analysis` jobs. |
+| `REDIS_URL` | Points at the exact same Redis / Upstash / managed Redis instance (`redis://...` or `rediss://...` with TLS) where the web app enqueues `analysis` and `system-analysis` jobs. |
 | `DATABASE_URL` | Points at the same PostgreSQL database storing `Project`, `Analysis`, `ScanSchedule`, and `GitHubAccount` records. |
 | `ENCRYPTION_SECRET` | Must be byte-for-byte identical to the web app's `ENCRYPTION_SECRET` so the worker can decrypt stored GitHub OAuth / PAT credentials when cloning private repositories. |
 | `NEXTAUTH_SECRET` | Required by `src/lib/env.ts` startup validation (non-empty secret). |
@@ -84,7 +84,7 @@ Deploy the web app on Vercel (or Fly.io) and run `src/worker/index.ts` as a head
      APP_URL="https://your-arbor-domain.example.com"
    ```
 
-4. **Deploy and pin at least 1 always-on machine** so the BullMQ consumer and 60-second schedule dispatcher stay active continuously:
+4. **Deploy and pin at least 1 always-on machine** so the BullMQ consumer and 30-second schedule/recovery dispatcher stay active continuously:
 
    ```bash
    fly deploy -c fly.worker.toml --ha=false
@@ -106,7 +106,7 @@ Deploy the web app on Vercel (or Fly.io) and run `src/worker/index.ts` as a head
    - Set **Restart Policy** to **Always**.
    - Leave **Public Networking** disabled (no public HTTP domain is needed for the queue worker).
 4. Under **Variables**, set `REDIS_URL` to the **exact same Redis instance URL** configured on your Next.js web deployment (for example `${{Redis.REDIS_URL}}` if Redis is in the same Railway project, or your shared Upstash/managed `rediss://...` URL), along with matching `DATABASE_URL`, `ENCRYPTION_SECRET`, `NEXTAUTH_SECRET`, and `APP_URL`.
-5. Trigger a deploy and confirm `[worker] ready — waiting for analysis and system jobs` appears in the Railway deployment logs.
+5. Trigger a deploy and confirm `[worker] Arbor analysis worker running` appears in the Railway deployment logs.
 
 ---
 
@@ -126,5 +126,59 @@ Deploy the web app on Vercel (or Fly.io) and run `src/worker/index.ts` as a head
 ```
 
 - **Authentication:** Requests to `GET /api/worker/process` must present `Authorization: Bearer <CRON_SECRET>` matching `CRON_SECRET` in the server environment.
-- **Behavior:** Drains waiting jobs from the same `REDIS_URL` BullMQ queues within a bounded execution window (`maxDuration = 300` seconds) and dispatches due `ScanSchedule` rows.
-- **Coexistence with a long-lived worker:** Keeping `/api/worker/process` enabled while a Fly.io or Railway worker is running is safe — BullMQ's Redis job lock guarantees a queued analysis is claimed by at most one consumer, and startup/cron stale-job recovery (`recoverWorkerState`) cleans up interrupted runs.
+- **Behavior:** Reads queued repository and system analyses directly from the shared database. Each invocation attempts at most **five** jobs, interleaving the two types, with a **240-second admission/analysis budget** inside the 300-second route limit. No new job is admitted when fewer than 60 seconds remain in that budget. Small jobs can therefore drain faster than one per day; a large job may still consume most of an invocation. External I/O and platform hard limits can interrupt execution. The fallback does **not** dispatch scheduled scans; those require the continuous worker.
+- **Coexistence with a long-lived worker:** Both processors atomically claim the database record from `queued` before doing work. The cron processor does not use BullMQ locks. Startup, periodic worker recovery, and cron recovery mark overdue interrupted executions failed; only worker startup sweeps orphaned clone directories.
+
+
+## 5. Diagnosing a scan that stays queued
+
+`npm start` and `npm run dev` start the **web app only**. Run `npm run worker`
+in a separately supervised process, or use the Compose worker service. For local
+development, `npm run dev:all` starts both. Deploying only the web app does not
+create a continuous queue consumer.
+
+1. Check `docker compose ps worker` and `docker compose logs --tail=100 worker`
+   (or the corresponding Fly/Railway service logs). Look for the worker startup
+   message above and database/Redis connection errors. Never paste secret values
+   into logs or support messages.
+2. Compare the web/worker configurations privately: they must use the **same
+   Redis instance, Redis logical database, PostgreSQL database, and encryption
+   key**. A connected worker using a different database can consume a queue job
+   without finding the corresponding analysis.
+3. Open the project's scan status card. Authenticated `project.processingHealth`
+   and `system.processingHealth` report queue reachability, pause state, and
+   whether a BullMQ worker connection was detected. Detection is not a heartbeat
+   or proof of progress. Redis ACLs that disallow worker inspection yield
+   `worker: unknown`, not a claim that Redis is down.
+4. If no worker is deployed, inspect the production cron logs and ensure
+   `CRON_SECRET` is non-empty and matches its exact bearer token. Unauthorized
+   calls return **401**. On serverless deployments the `analysis-cron` GitHub
+   Actions workflow drives processing every 5 minutes; confirm it is enabled and
+   its `CRON_SECRET`/`APP_URL` secrets match the deployment, or use the
+   recommended continuous worker.
+5. An editor can select **Retry delivery**. It repairs the **same queued scan**
+   with its stable job ID, preserves active/waiting/delayed jobs, and removes only
+   retained terminal queue jobs. It does not create another scan, spend another
+   analysis quota, resume a paused queue, or start an absent worker. Repairs are
+   rate-limited to six requests per user per minute.
+
+### Recovery guarantees and limits
+
+The queued database row is the durable pending-work record. Repository/system
+submission retains it and records a sanitized explanation if Redis delivery
+fails. The worker reconciles both queue types at startup and every 30 seconds,
+including jobs lost after startup or a Redis restart. This relies on a running
+worker; the independent daily fallback can process pending rows without Redis
+queue delivery. No system can run scans when **both** processors are absent or
+misconfigured.
+
+Overdue `cloning`/`analyzing` executions are marked failed after the greater of
+10 minutes or `ANALYSIS_TIMEOUT_MS + 60 seconds`. Queued jobs are not falsely
+failed merely because they have waited for that duration. Their status card
+shows elapsed wait, a warning after two minutes, connection diagnostics, scan ID,
+and inline retry errors. Old completed reports are identified as previous
+snapshots; uncompleted scans do not render empty reports as successful results.
+
+`GET /api/health` remains an **infrastructure readiness** check for PostgreSQL and
+Redis, not an assertion that analysis workers are processing jobs. Use the
+scan-specific authenticated diagnostics above for processing availability.
