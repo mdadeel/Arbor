@@ -315,6 +315,10 @@ model Analysis {
   securityScore      Int?
   designSystemScore  Int?
 
+  // Denormalized finding totals for list views (JSON counts are expensive to aggregate).
+  findingsCount         Int?
+  criticalFindingsCount Int?
+
   // Detailed results (JSON, null until completed)
   techStack       Json? // DetectedTechStack
   structure       Json? // ProjectStructure
@@ -667,6 +671,8 @@ model SystemAnalysis {
   updatedAt      DateTime             @updatedAt
 
   @@index([groupId])
+  // Serves the cron processor's work picker: oldest queued (or stale analyzing) row.
+  @@index([status, createdAt])
 }
 
 // ─────────────────────────────────────────────
