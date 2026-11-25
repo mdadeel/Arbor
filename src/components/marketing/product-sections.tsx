@@ -167,7 +167,7 @@ export function ProductRows() {
   )
 }
 
-const steps = [
+export const howItWorksSteps = [
   { number: '01', icon: Github, title: 'Connect a repository', body: 'Choose a GitHub repository and review the requested permissions before connecting. No workflow file or local setup is required.' },
   { number: '02', icon: GitBranch, title: 'Queue the audit', body: 'Arbor queues an asynchronous scan that clones the repository, parses source structure and imports, and saves an inspectable report. Deployments with a dedicated worker process queued scans continuously; serverless-only deployments process queued jobs via a scheduled daily 03:00 UTC batch.' },
   { number: '03', icon: ClipboardCheck, title: 'Review the evidence', body: 'Open the saved report to inspect health dimensions and findings with the file paths and checks behind each result.' },
@@ -184,7 +184,7 @@ export function HowItWorks() {
           </h2>
         </div>
         <ol className="divide-y divide-border border-y border-border lg:col-span-8">
-          {steps.map(({ number, icon: Icon, title, body }) => (
+          {howItWorksSteps.map(({ number, icon: Icon, title, body }) => (
             <li key={number} className="grid gap-4 py-7 sm:grid-cols-[72px_1fr_auto] sm:items-start sm:gap-8">
               <span className="font-mono text-sm font-semibold text-muted-foreground">{number}</span>
               <div>

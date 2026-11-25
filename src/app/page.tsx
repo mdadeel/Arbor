@@ -10,6 +10,9 @@ import { FaqSection } from '@/components/marketing/faq-section'
 import { LandingFooter } from '@/components/marketing/landing-footer'
 import { Button, ButtonLabel } from '@/components/ui/createui/button'
 import { ArrowRight, Github, LockKeyhole, GitBranch, Timer } from 'lucide-react'
+import { buildHomeJsonLd } from '@/lib/seo-jsonld'
+
+const appUrl = process.env.APP_URL || 'https://arborgit.vercel.app'
 
 export const revalidate = 3600
 
@@ -19,13 +22,20 @@ export const metadata: Metadata = {
   alternates: { canonical: '/' },
 }
 
+const homeJsonLd = buildHomeJsonLd(appUrl)
+
 const technologies = ['TypeScript', 'JavaScript', 'React', 'Next.js', 'Python', 'Go']
 
 function TechnologyStrip() {
   return (
     <section className="border-y border-border" aria-label="Supported languages and tooling">
       <div className="mx-auto flex max-w-[1400px] flex-col gap-4 px-4 py-6 sm:px-6 md:flex-row md:items-center md:justify-between lg:px-8">
-        <p className="shrink-0 text-sm text-muted-foreground">Languages and frameworks Arbor recognizes</p>
+        <p className="shrink-0 text-sm text-label-secondary">
+          Languages and frameworks Arbor detects{' '}
+          <span className="block text-xs text-label-tertiary">
+            Full source analysis currently supports JavaScript and TypeScript.
+          </span>
+        </p>
         <ul className="flex flex-wrap items-center gap-x-6 gap-y-2 font-mono text-sm text-foreground" aria-label="Supported technologies">
           {technologies.map((technology) => (
             <li key={technology}>{technology}</li>
@@ -44,6 +54,10 @@ export default async function HomePage() {
 
   return (
     <div className="flex min-h-screen flex-col bg-background text-foreground selection:bg-primary/20 selection:text-foreground">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(homeJsonLd).replace(/</g, '\\u003c') }}
+      />
       <LandingNavbar user={user} />
 
       <main className="flex-1 space-y-24 pb-16 sm:space-y-32 sm:pb-24">

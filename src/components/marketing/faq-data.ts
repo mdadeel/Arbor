@@ -22,7 +22,7 @@ export const faqs: FaqItem[] = [
   {
     question: 'What permissions does Arbor request from GitHub?',
     answer:
-      'Arbor asks GitHub for the read:user, user:email, and repo scopes. The repo scope is broad: GitHub uses it for private repositories, and it can also allow write actions. Arbor uses it to read repository contents for audits. The current code does not create commits or pull requests. Review GitHub’s authorization screen before approving. Public repositories can also be analyzed without connecting a private repository.',
+      'Arbor asks GitHub for the read:user, user:email, and repo scopes. The repo scope is broad: GitHub uses it for private repositories, and it can also allow write actions. Arbor uses it to read repository contents for audits. When pull-request checks are enabled, it also writes GitHub Check Runs (status and annotations) on pull requests; it does not create commits or pull requests. Review GitHub’s authorization screen before approving. Public repositories can also be analyzed without connecting a private repository.',
   },
   {
     question: 'How are repository health scores calculated?',
