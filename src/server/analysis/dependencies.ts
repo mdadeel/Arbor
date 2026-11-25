@@ -400,7 +400,9 @@ export async function lookupDependencyAdvisories(
   const timeoutMs = Math.min(15_000, Math.max(1000, options.timeoutMs ?? 6_000))
   let errors: string[] = []
 
-  for (const ecosystem of ecosystems) {
+  // Ecosystems are independent HTTP calls — fetch them concurrently instead of
+  // paying up to ~6s per ecosystem sequentially.
+  await Promise.all(ecosystems.map(async (ecosystem) => {
     const subset = selected.filter((pkg) => pkg.ecosystem === ecosystem)
     const url = new URL(`${'https://api.github.com'}/advisories`)
     url.searchParams.set('ecosystem', ecosystem === 'pypi' ? 'pip' : 'npm')
@@ -430,7 +432,7 @@ export async function lookupDependencyAdvisories(
     } finally {
       clearTimeout(timer)
     }
-  }
+  }))
 
   const results = [...advisories.values()].sort((a, b) => a.severity.localeCompare(b.severity) || a.id.localeCompare(b.id))
   const partial = selected.length < exactPackages.length || exactPackages.length < packages.length

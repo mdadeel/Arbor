@@ -244,7 +244,6 @@ export function runAnalysis(
 
     if (!parsePaths.has(entry.path)) continue
 
-    parsedFiles++
     let parsed
     try {
       parsed = parseFile(entry.path, text, repoDir)
@@ -254,6 +253,9 @@ export function runAnalysis(
     }
     if (parsed.parseFailed) parseFailedFiles++
     else {
+      // Count successes only: `parsedFiles` feeds the "N of M files were
+      // parsed" coverage message, which must not include failed parses.
+      parsedFiles++
       fileComplexities.push({
         file: relativePath,
         loc: lineCounts.get(relativePath) ?? 0,

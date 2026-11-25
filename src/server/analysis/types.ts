@@ -224,9 +224,3 @@ export interface AnalysisReport {
   findings: Finding[]
   scores: Scores
 }
-
-export interface EnvCheck {
-  required: string[]
-  documented: string[]
-  missingFromExample: string[]
-}

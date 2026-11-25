@@ -12,13 +12,10 @@ export interface FileAnalysis {
   hooks: number
   anyTypes: number
   consoleLogs: number
-  imgTags: number
   nextImageImports: boolean
   processEnv: string[]
   clientDirective: boolean
   isReactFile: boolean
-  commentLines: number
-  jsdocCount: number
   localTargets: string[]
   importedSymbols: string[]
   cyclomaticComplexity: number
@@ -98,13 +95,10 @@ export function parseFile(file: string, suppliedText?: string | null, repoRoot?:
     hooks: 0,
     anyTypes: 0,
     consoleLogs: 0,
-    imgTags: 0,
     nextImageImports: false,
     processEnv: [],
     clientDirective: false,
     isReactFile: false,
-    commentLines: 0,
-    jsdocCount: 0,
     localTargets: [],
     importedSymbols: [],
     cyclomaticComplexity: 0,
@@ -116,14 +110,6 @@ export function parseFile(file: string, suppliedText?: string | null, repoRoot?:
   // text-scoped cheap counters (work even when parsing fails)
   const firstLine = text.split('\n').find((l) => l.trim() !== '') ?? ''
   result.clientDirective = /^['"]use client['"];?$/.test(firstLine.trim())
-  result.imgTags = countOccurrences(text, /\b<img\b/g)
-  result.jsdocCount = countOccurrences(text, /\/\*\*/g)
-  result.commentLines = text
-    .split('\n')
-    .filter((l) => {
-      const t = l.trim()
-      return t.startsWith('//') || t.startsWith('/*') || t.startsWith('*')
-    }).length
   for (const m of text.matchAll(/process\.env\.([A-Z0-9_]+)/g)) result.processEnv.push(m[1])
   for (const m of text.matchAll(/import\.meta\.env\.([A-Z0-9_]+)/g)) result.processEnv.push(m[1])
   for (const m of text.matchAll(/process\.env\[['"]([A-Z0-9_]+)['"]\]/g)) result.processEnv.push(m[1])

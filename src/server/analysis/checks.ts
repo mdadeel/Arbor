@@ -84,24 +84,41 @@ export function findCircularDeps(graph: ImportGraph): string[][] {
   const canonical = (cycle: string[]) =>
     [...cycle.slice(0, -1)].sort().join('->')
 
-  const visit = (node: string) => {
-    if (stacked.has(node)) {
-      const start = stack.indexOf(node)
-      const cycle = [...stack.slice(start), node]
-      const key = canonical(cycle)
-      if (!seenCanonical.has(key)) {
-        seenCanonical.add(key)
-        cycles.push(cycle)
+  // Iterative DFS with an explicit stack — a deep import chain (thousands of
+  // modules) would overflow the call stack with a recursive visit().
+  const visit = (root: string) => {
+    if (visited.has(root)) return
+    // Frames carry the node and a snapshot of its remaining edges so the
+    // stack/unwind semantics match the recursive version exactly.
+    const callStack: Array<{ node: string; edges: string[] }> = [{ node: root, edges: [...(adj.get(root) ?? [])] }]
+    visited.add(root)
+    stack.push(root)
+    stacked.add(root)
+    while (callStack.length > 0) {
+      const frame = callStack[callStack.length - 1]
+      const next = frame.edges.shift()
+      if (next === undefined) {
+        callStack.pop()
+        stack.pop()
+        stacked.delete(frame.node)
+        continue
       }
-      return
+      if (stacked.has(next)) {
+        const start = stack.indexOf(next)
+        const cycle = [...stack.slice(start), next]
+        const key = canonical(cycle)
+        if (!seenCanonical.has(key)) {
+          seenCanonical.add(key)
+          cycles.push(cycle)
+        }
+        continue
+      }
+      if (visited.has(next)) continue
+      visited.add(next)
+      stack.push(next)
+      stacked.add(next)
+      callStack.push({ node: next, edges: [...(adj.get(next) ?? [])] })
     }
-    if (visited.has(node)) return
-    visited.add(node)
-    stack.push(node)
-    stacked.add(node)
-    for (const next of adj.get(node) ?? []) visit(next)
-    stack.pop()
-    stacked.delete(node)
   }
 
   for (const n of graph.nodes) visit(n)
