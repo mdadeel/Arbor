@@ -48,6 +48,16 @@ async function githubJson(url: string, token: string, init?: RequestInit): Promi
     })
     if (!response.ok) {
       await response.body?.cancel()
+      const rateLimited =
+        response.status === 429 ||
+        (response.status === 403 && response.headers.get('x-ratelimit-remaining') === '0')
+      if (rateLimited) {
+        // Surface the reset time so the failure classifies as a rate limit,
+        // not a generic GitHub error.
+        const reset = response.headers.get('x-ratelimit-reset')
+        const when = reset ? new Date(Number(reset) * 1000).toISOString() : 'an unknown time'
+        throw new Error(`GitHub API rate limit reached for Check Runs; resets at ${when} (HTTP ${response.status}).`)
+      }
       throw new Error(`GitHub API returned HTTP ${response.status}.`)
     }
     if (!response.body) return {}
@@ -204,12 +214,38 @@ async function completeCheckRun(
   const critical = activeFindings.filter((finding) => finding.severity === 'critical').length
   const warnings = activeFindings.filter((finding) => finding.severity === 'warning').length
   const detailsUrl = `${env.APP_URL.replace(/\/$/, '')}/projects/${encodeURIComponent(pr.project.slug)}?tab=findings`
+
+  // Review summary: the most severe findings on this PR, most urgent first.
+  const severityRank: Record<string, number> = { critical: 0, warning: 1, info: 2 }
+  const topFindings = [...activeFindings]
+    .sort((a, b) => (severityRank[a.severity] ?? 3) - (severityRank[b.severity] ?? 3))
+    .slice(0, 10)
+  const topFindingsTable = topFindings.length
+    ? [
+        '### Top findings',
+        '',
+        '| Severity | Category | Location | Finding |',
+        '| --- | --- | --- | --- |',
+        ...topFindings.map((finding) => {
+          const location = finding.file ? `${finding.file}${finding.line ? `:${finding.line}` : ''}` : '—'
+          const title = finding.title.replace(/\|/g, '\\|').slice(0, 120)
+          return `| ${finding.severity} | ${finding.category} | ${location} | ${title} |`
+        }),
+        topFindings.length < activeFindings.length
+          ? `\n…and ${activeFindings.length - topFindings.length} more in the full report.`
+          : '',
+      ]
+        .filter(Boolean)
+        .join('\n')
+    : 'No findings were reported for this pull request.'
+
   const summary = [
     `**Overall score:** ${overallScore ?? 'not available'}/100`,
     `**Findings:** ${critical} critical, ${warnings} warnings, ${findings.length} total.`,
     annotations.length
       ? `${annotations.length} annotation(s) point to findings on added pull-request lines.`
       : 'No finding could be confidently mapped to an added line in this pull request.',
+    topFindingsTable,
     `This is a bounded static analysis; it is not a security certification or a replacement for tests and review. [Open the full Arbor report](${detailsUrl}).`,
   ].join('\n\n')
 
