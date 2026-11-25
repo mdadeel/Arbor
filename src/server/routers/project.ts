@@ -3,12 +3,13 @@ import { TRPCError } from '@trpc/server'
 import { Prisma } from '@prisma/client'
 import { router, protectedProcedure } from '@/server/trpc'
 import { prisma } from '@/lib/prisma'
-import { getAnalysisQueue } from '@/server/queue'
+import { deliverQueuedAnalysis, getProcessingHealth, QUEUE_DELIVERY_ERROR } from '@/server/services/analysis-dispatch'
 import { normalizeGitHubRepoUrl } from '@/lib/github-repo'
 import { checkRateLimit } from '@/lib/redis'
 import { consumeAnalysisQuota } from '@/server/services/quotas'
 import { logAuditEvent } from '@/server/services/audit'
 import { getProjectCommits } from '@/server/services/commits'
+import { getFindingCodeContext } from '@/server/services/finding-context'
 import {
   createProject,
   getProjectBySlug,
@@ -70,7 +71,7 @@ export const projectRouter = router({
     const analysis = await prisma.analysis.create({
       data: { projectId: project.id, branch: input.defaultBranch, status: 'queued' },
     })
-    await getAnalysisQueue().add('analyze', { analysisId: analysis.id }, { jobId: analysis.id })
+    await deliverQueuedAnalysis('repository', analysis.id)
 
     logAuditEvent({
       userId,
@@ -283,30 +284,26 @@ export const projectRouter = router({
       const project = await requireAccessibleProject(ctx.session.user.id, input.slug)
       await requireProjectEditor(ctx.session.user.id, project)
 
+      const existingRunning = await prisma.analysis.findFirst({
+        where: { projectId: project.id, status: { in: ['queued', 'cloning', 'analyzing'] } },
+        select: { id: true, createdAt: true },
+      })
+      if (existingRunning) {
+        throw new TRPCError({ code: 'CONFLICT', message: 'An analysis is already waiting or running. Use Retry delivery to repair a queued scan without starting a duplicate.' })
+      }
+
       // Shared hourly analysis budget (also consumed by project-create auto-analysis).
       await consumeAnalysisQuota(ctx.session.user.id, { workspaceId: project.workspaceId })
 
       const analysis = await (async () => {
         try {
           return await prisma.$transaction(async (tx) => {
-            const existingRunning = await tx.analysis.findFirst({
+            const runningInTx = await tx.analysis.findFirst({
               where: { projectId: project.id, status: { in: ['queued', 'cloning', 'analyzing'] } },
               select: { id: true, createdAt: true },
             })
-            if (existingRunning) {
-              const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000)
-              if (existingRunning.createdAt < tenMinutesAgo) {
-                await tx.analysis.update({
-                  where: { id: existingRunning.id },
-                  data: {
-                    status: 'failed',
-                    errorMessage: 'Analysis timed out in queue. No worker was active to process the job.',
-                    completedAt: new Date(),
-                  },
-                })
-              } else {
-                throw new TRPCError({ code: 'CONFLICT', message: 'An analysis is already running.' })
-              }
+            if (runningInTx) {
+              throw new TRPCError({ code: 'CONFLICT', message: 'An analysis is already waiting or running. Use Retry delivery to repair a queued scan without starting a duplicate.' })
             }
             return tx.analysis.create({
               data: { projectId: project.id, branch: project.defaultBranch, status: 'queued' },
@@ -320,7 +317,7 @@ export const projectRouter = router({
           throw error
         }
       })()
-      await getAnalysisQueue().add('analyze', { analysisId: analysis.id }, { jobId: analysis.id })
+      await deliverQueuedAnalysis('repository', analysis.id)
 
       logAuditEvent({
         userId: ctx.session.user.id,
@@ -334,6 +331,85 @@ export const projectRouter = router({
       appCache.clearPrefix('projects:')
       appCache.clearPrefix('analyses:')
       return analysis
+    }),
+
+  processingHealth: protectedProcedure
+    .input(z.object({ slug: z.string() }))
+    .query(async ({ ctx, input }) => {
+      const project = await requireAccessibleProject(ctx.session.user.id, input.slug)
+      let canRetry = true
+      try { await requireProjectEditor(ctx.session.user.id, project) } catch (error) {
+        if (!(error instanceof TRPCError) || error.code !== 'FORBIDDEN') throw error
+        canRetry = false
+      }
+      return { ...await getProcessingHealth('repository'), canRetry }
+    }),
+
+  retryQueued: protectedProcedure
+    .input(z.object({ slug: z.string(), analysisId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const project = await requireAccessibleProject(ctx.session.user.id, input.slug)
+      await requireProjectEditor(ctx.session.user.id, project)
+      const analysis = await prisma.analysis.findFirst({
+        where: { id: input.analysisId, projectId: project.id, status: 'queued' },
+        select: { id: true },
+      })
+      if (!analysis) throw new TRPCError({ code: 'CONFLICT', message: 'This scan is no longer queued. Refresh to see its current status.' })
+      const { allowed } = await checkRateLimit(`rate:analysis-repair:${ctx.session.user.id}`, 6, 60)
+      if (!allowed) throw new TRPCError({ code: 'TOO_MANY_REQUESTS', message: 'Please wait a minute before retrying delivery again.' })
+      if (!await deliverQueuedAnalysis('repository', analysis.id)) {
+        throw new TRPCError({ code: 'SERVICE_UNAVAILABLE', message: QUEUE_DELIVERY_ERROR })
+      }
+      appCache.clearPrefix('project:')
+      return { analysisId: analysis.id }
+    }),
+
+  analysisReport: protectedProcedure
+    .input(z.object({ slug: z.string(), analysisId: z.string() }))
+    .query(async ({ ctx, input }) => {
+      const project = await requireAccessibleProject(ctx.session.user.id, input.slug)
+      const analysis = await prisma.analysis.findFirst({
+        where: { id: input.analysisId, projectId: project.id, status: 'completed' },
+        select: {
+          id: true,
+          status: true,
+          branch: true,
+          commitSha: true,
+          overallScore: true,
+          architectureScore: true,
+          techDebtScore: true,
+          performanceScore: true,
+          documentationScore: true,
+          securityScore: true,
+          designSystemScore: true,
+          techStack: true,
+          structure: true,
+          findings: true,
+          metrics: true,
+          dependencyGraph: true,
+          designSystem: true,
+          durationMs: true,
+          errorMessage: true,
+          createdAt: true,
+          completedAt: true,
+        },
+      })
+      if (!analysis) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'Historical report not found or analysis did not complete.' })
+      }
+      return analysis
+    }),
+
+  findingContext: protectedProcedure
+    .input(
+      z.object({
+        slug: z.string(),
+        analysisId: z.string(),
+        fingerprint: z.string().min(1).max(200),
+      })
+    )
+    .query(async ({ ctx, input }) => {
+      return getFindingCodeContext(ctx.session.user.id, input)
     }),
 
   commits: protectedProcedure
