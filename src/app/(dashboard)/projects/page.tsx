@@ -18,13 +18,17 @@ import { ScoreBadge } from '@/components/dashboard/score-badge'
 import { TechStackGroup } from '@/components/dashboard/tech-stack-badge'
 import { StatusBadge } from '@/components/dashboard/status-badge'
 import { SummaryBar } from '@/components/dashboard/summary-bar'
+import { Sparkline } from '@/components/dashboard/sparkline'
+import { getProjectScanPresentation } from '@/lib/analysis-status'
+import { cn } from '@/lib/utils'
 
 export default async function ProjectsPage() {
   const session = await getServerSession(authOptions)
   if (!session?.user) redirect('/login')
 
   const caller = await getServerCaller()
-  const projects = await caller.project.list()
+  const rawProjects = await caller.project.list()
+  const projects = Array.from(new Map(rawProjects.map((p) => [p.id, p])).values())
 
   // Calculate summary metrics
   const counts = {
@@ -58,11 +62,30 @@ export default async function ProjectsPage() {
       languages?: string[]
       databases?: string[]
     } | null
+    const scan = getProjectScanPresentation(project)
+
+    // analyses arrive newest-first; reverse the completed subset so the
+    // sparkline reads left-to-right from oldest to newest.
+    const analyses = project.analyses as Array<{
+      status: string
+      overallScore: number | null
+      findingsCount: number | null
+      criticalFindingsCount: number | null
+    }>
+    const trendScores = [...analyses]
+      .reverse()
+      .filter((analysis) => analysis.status === 'completed' && typeof analysis.overallScore === 'number')
+      .map((analysis) => analysis.overallScore as number)
+    const latestCompleted = analyses.find((analysis) => analysis.status === 'completed')
 
     return {
       project,
+      scan,
       effectiveScore: scores?.overall ?? health?.score,
       stackItems: [stack?.framework, ...(stack?.languages ?? []).slice(0, 2), ...(stack?.databases ?? []).slice(0, 1)].filter(Boolean),
+      trendScores,
+      findingsCount: latestCompleted?.findingsCount ?? null,
+      criticalFindingsCount: latestCompleted?.criticalFindingsCount ?? 0,
     }
   })
 
@@ -114,6 +137,8 @@ export default async function ProjectsPage() {
                 <TableRow className="hover:bg-transparent">
                   <TableHead className="w-[280px]">Project</TableHead>
                   <TableHead>Score</TableHead>
+                  <TableHead>Trend</TableHead>
+                  <TableHead>Findings</TableHead>
                   <TableHead>Detected Stack</TableHead>
                   <TableHead>Latest scan</TableHead>
                   <TableHead>Branch</TableHead>
@@ -122,7 +147,7 @@ export default async function ProjectsPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {projectRows.map(({ project, effectiveScore, stackItems }) => (
+                {projectRows.map(({ project, scan, effectiveScore, stackItems, trendScores, findingsCount, criticalFindingsCount }) => (
                     <TableRow key={project.id} className="transition-colors hover:bg-muted/50">
                       <TableCell className="font-medium">
                         <Link
@@ -148,6 +173,29 @@ export default async function ProjectsPage() {
                       </TableCell>
 
                       <TableCell>
+                        <Sparkline
+                          values={trendScores}
+                          label={`${project.name} health score trend`}
+                        />
+                      </TableCell>
+
+                      <TableCell>
+                        {findingsCount == null ? (
+                          <span className="text-xs text-muted-foreground">—</span>
+                        ) : (
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <span className="font-mono text-xs text-foreground">{findingsCount}</span>
+                            <span className="text-[11px] text-muted-foreground">visible</span>
+                            {criticalFindingsCount > 0 && (
+                              <span className="rounded-full border border-red-500/30 bg-red-500/10 px-1.5 py-0.5 font-mono text-[10px] text-red-300">
+                                {criticalFindingsCount} critical
+                              </span>
+                            )}
+                          </div>
+                        )}
+                      </TableCell>
+
+                      <TableCell>
                         {stackItems.length > 0 ? (
                           <TechStackGroup items={stackItems} />
                         ) : (
@@ -156,7 +204,20 @@ export default async function ProjectsPage() {
                       </TableCell>
 
                       <TableCell>
-                        <StatusBadge status={project.analyses?.[0]?.status ?? 'no-analysis'} />
+                        <div className="flex flex-col gap-0.5">
+                          <StatusBadge
+                            status={scan.statusKey}
+                            showSpinner={scan.state.startsWith('processing')}
+                          />
+                          {scan.sublabel && (
+                            <span className={cn(
+                              "text-[10px] font-mono",
+                              scan.isDelayed ? "text-amber-500 font-semibold" : "text-muted-foreground"
+                            )}>
+                              {scan.sublabel}
+                            </span>
+                          )}
+                        </div>
                       </TableCell>
 
                       <TableCell className="font-mono text-xs text-muted-foreground">
@@ -181,7 +242,7 @@ export default async function ProjectsPage() {
               </Table>
             </div>
             <div className="divide-y divide-border lg:hidden">
-              {projectRows.map(({ project, effectiveScore, stackItems }) => (
+              {projectRows.map(({ project, scan, effectiveScore, stackItems, trendScores, findingsCount, criticalFindingsCount }) => (
                 <article key={project.id} className="space-y-4 p-4">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
@@ -196,6 +257,24 @@ export default async function ProjectsPage() {
                     <ScoreBadge score={effectiveScore} showOutOf size="sm" />
                   </div>
 
+                  <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-border/70 px-3 py-2">
+                    <div className="min-w-0">
+                      <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Score trend</p>
+                      <Sparkline values={trendScores} label={`${project.name} health score trend`} />
+                    </div>
+                    <div className="text-right">
+                      <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Findings</p>
+                      {findingsCount == null ? (
+                        <p className="text-xs text-muted-foreground">—</p>
+                      ) : (
+                        <p className="font-mono text-xs text-foreground">
+                          {findingsCount}
+                          {criticalFindingsCount > 0 && <span className="ml-1.5 text-red-300">({criticalFindingsCount} critical)</span>}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
                   <div className="flex min-w-0 flex-wrap items-center gap-2">
                     <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Stack</span>
                     {stackItems.length > 0 ? (
@@ -208,7 +287,22 @@ export default async function ProjectsPage() {
                   <dl className="grid grid-cols-2 gap-3 border-t border-border/70 pt-3 text-xs">
                     <div className="min-w-0">
                       <dt className="mb-1 text-muted-foreground">Latest scan</dt>
-                      <dd><StatusBadge status={project.analyses?.[0]?.status ?? 'no-analysis'} /></dd>
+                      <dd>
+                        <div className="flex flex-col gap-0.5">
+                          <StatusBadge
+                            status={scan.statusKey}
+                            showSpinner={scan.state.startsWith('processing')}
+                          />
+                          {scan.sublabel && (
+                            <span className={cn(
+                              "text-[10px] font-mono",
+                              scan.isDelayed ? "text-amber-500 font-semibold" : "text-muted-foreground"
+                            )}>
+                              {scan.sublabel}
+                            </span>
+                          )}
+                        </div>
+                      </dd>
                     </div>
                     <div className="min-w-0">
                       <dt className="text-muted-foreground">Default branch</dt>

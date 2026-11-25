@@ -62,9 +62,17 @@ describe('project workspace assignment authorization', () => {
       },
       include: expect.objectContaining({
         analyses: {
-          take: 1,
+          take: 6,
           orderBy: { createdAt: 'desc' },
-          select: { status: true, createdAt: true },
+          select: {
+            id: true,
+            status: true,
+            createdAt: true,
+            overallScore: true,
+            findingsCount: true,
+            criticalFindingsCount: true,
+            analysisVersion: true,
+          },
         },
       }),
     }))

@@ -113,10 +113,20 @@ export async function listProjects(userId: string, workspaceId?: string) {
       orderBy: { updatedAt: 'desc' },
       include: {
         _count: { select: { analyses: true } },
+        // The overview shows a short score trend and the latest finding totals.
+        // Only scalar columns are selected; the findings JSON is never loaded here.
         analyses: {
-          take: 1,
+          take: 6,
           orderBy: { createdAt: 'desc' },
-          select: { status: true, createdAt: true },
+          select: {
+            id: true,
+            status: true,
+            createdAt: true,
+            overallScore: true,
+            findingsCount: true,
+            criticalFindingsCount: true,
+            analysisVersion: true,
+          },
         },
       },
     })
@@ -132,10 +142,20 @@ export async function listProjects(userId: string, workspaceId?: string) {
       orderBy: { updatedAt: 'desc' },
       include: {
         _count: { select: { analyses: true } },
+        // The overview shows a short score trend and the latest finding totals.
+        // Only scalar columns are selected; the findings JSON is never loaded here.
         analyses: {
-          take: 1,
+          take: 6,
           orderBy: { createdAt: 'desc' },
-          select: { status: true, createdAt: true },
+          select: {
+            id: true,
+            status: true,
+            createdAt: true,
+            overallScore: true,
+            findingsCount: true,
+            criticalFindingsCount: true,
+            analysisVersion: true,
+          },
         },
       },
     })
@@ -199,6 +219,7 @@ export async function getProjectBySlug(userId: string, slug: string) {
       latestScores: true,
       detectedStack: true,
       lastAnalyzedAt: true,
+      _count: { select: { analyses: true } },
     },
   })
   if (!project) return null
@@ -217,6 +238,8 @@ export async function getProjectBySlug(userId: string, slug: string) {
         durationMs: true,
         errorMessage: true,
         createdAt: true,
+        startedAt: true,
+        completedAt: true,
       },
     }),
     prisma.analysis.findFirst({
@@ -243,11 +266,18 @@ export async function getProjectBySlug(userId: string, slug: string) {
         durationMs: true,
         errorMessage: true,
         createdAt: true,
+        startedAt: true,
+        completedAt: true,
       },
     }),
   ])
 
-  const result = { ...project, analyses, latestCompletedAnalysis }
+  const result = {
+    ...project,
+    analyses,
+    latestCompletedAnalysis,
+    analysesCount: project._count?.analyses ?? analyses.length,
+  }
   appCache.set(cacheKey, result, TTL_PROJECT_DETAIL)
   return result
 }
