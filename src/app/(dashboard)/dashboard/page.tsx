@@ -29,6 +29,8 @@ import { TechStackGroup } from '@/components/dashboard/tech-stack-badge'
 import { StatusBadge } from '@/components/dashboard/status-badge'
 import { SummaryBar } from '@/components/dashboard/summary-bar'
 import { Button as CreateButton, ButtonLabel } from '@/components/ui/createui/button'
+import { getProjectScanPresentation } from '@/lib/analysis-status'
+import { cn } from '@/lib/utils'
 
 export default async function DashboardPage() {
   const session = await getServerSession(authOptions)
@@ -63,14 +65,31 @@ export default async function DashboardPage() {
     const health = project.healthData as { score?: number } | null
     const scores = project.latestScores as { overall?: number } | null
     const effectiveScore = health?.score ?? scores?.overall
+    const scan = getProjectScanPresentation(project)
+
+    if (scan.isDelayed) {
+      attentionItems.push({
+        project,
+        reason: `Scan waiting for ${scan.formattedWait ?? 'an extended time'} — worker may be delayed`,
+        severity: 'warning',
+      })
+    } else if (scan.isFailed) {
+      attentionItems.push({
+        project,
+        reason: `Latest scan failed${scan.hasPreviousReport ? ' (previous report available)' : ''} — action required`,
+        severity: 'critical',
+      })
+    }
 
     if (effectiveScore === undefined || effectiveScore === null) {
       counts.error++
-      attentionItems.push({
-        project,
-        reason: 'No audit run yet — codebase unverified',
-        severity: 'warning',
-      })
+      if (!scan.isDelayed && !scan.isFailed) {
+        attentionItems.push({
+          project,
+          reason: 'No audit run yet — codebase unverified',
+          severity: 'warning',
+        })
+      }
     } else if (effectiveScore >= 80) {
       counts.healthy++
     } else if (effectiveScore >= 60) {
@@ -115,9 +134,11 @@ export default async function DashboardPage() {
       languages?: string[]
       databases?: string[]
     } | null
+    const scan = getProjectScanPresentation(project)
 
     return {
       project,
+      scan,
       effectiveScore: health?.score ?? scores?.overall,
       stackItems: [stack?.framework, ...(stack?.languages ?? []).slice(0, 2), ...(stack?.databases ?? []).slice(0, 1)].filter(Boolean),
     }
@@ -127,11 +148,11 @@ export default async function DashboardPage() {
     <div className="space-y-6">
       {/* Workbench Header */}
       <div className="flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h1 className="font-display text-xl font-semibold tracking-tight">
+        <div className="space-y-0.5">
+          <h1 className="font-display text-xl font-semibold tracking-tight text-label-primary">
             Developer Workbench
           </h1>
-          <p className="text-xs text-muted-foreground">
+          <p className="text-xs text-label-secondary">
             Overview of repository audits, architectural health, and pending issues.
           </p>
         </div>
@@ -171,7 +192,7 @@ export default async function DashboardPage() {
         <div className="space-y-6">
           <Card className="border-border">
             <CardHeader className="py-3 px-4 border-b border-border/80 flex-row items-center justify-between">
-              <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              <CardTitle className="text-xs font-semibold uppercase tracking-wider text-label-secondary">
                 Connected Repositories ({projects.length})
               </CardTitle>
               <Link
@@ -195,7 +216,7 @@ export default async function DashboardPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {visibleProjects.map(({ project, effectiveScore, stackItems }) => (
+                  {visibleProjects.map(({ project, scan, effectiveScore, stackItems }) => (
                       <TableRow key={project.id} className="transition-colors hover:bg-muted/50">
                         <TableCell className="font-medium">
                           <Link
@@ -229,7 +250,20 @@ export default async function DashboardPage() {
                         </TableCell>
 
                         <TableCell>
-                          <StatusBadge status={project.analyses?.[0]?.status ?? 'no-analysis'} />
+                          <div className="flex flex-col gap-0.5">
+                            <StatusBadge
+                              status={scan.statusKey}
+                              showSpinner={scan.state.startsWith('processing')}
+                            />
+                            {scan.sublabel && (
+                              <span className={cn(
+                                "text-[10px] font-mono",
+                                scan.isDelayed ? "text-amber-500 font-semibold" : "text-muted-foreground"
+                              )}>
+                                {scan.sublabel}
+                              </span>
+                            )}
+                          </div>
                         </TableCell>
 
                         <TableCell className="font-mono text-xs text-muted-foreground">
@@ -250,7 +284,7 @@ export default async function DashboardPage() {
                 </Table>
               </div>
               <div className="divide-y divide-border lg:hidden">
-                {visibleProjects.map(({ project, effectiveScore, stackItems }) => (
+                {visibleProjects.map(({ project, scan, effectiveScore, stackItems }) => (
                   <article key={project.id} className="space-y-4 p-4">
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
@@ -276,7 +310,20 @@ export default async function DashboardPage() {
 
                     <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border/70 pt-3 text-xs">
                       <span className="text-muted-foreground">Latest scan</span>
-                      <StatusBadge status={project.analyses?.[0]?.status ?? 'no-analysis'} />
+                      <div className="flex flex-col items-end gap-0.5">
+                        <StatusBadge
+                          status={scan.statusKey}
+                          showSpinner={scan.state.startsWith('processing')}
+                        />
+                        {scan.sublabel && (
+                          <span className={cn(
+                            "text-[10px] font-mono",
+                            scan.isDelayed ? "text-amber-500 font-semibold" : "text-muted-foreground"
+                          )}>
+                            {scan.sublabel}
+                          </span>
+                        )}
+                      </div>
                     </div>
 
                     <div className="flex items-center justify-between gap-3 text-xs">
