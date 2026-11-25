@@ -2,12 +2,13 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { prisma } from '@/lib/prisma'
 import { env } from '@/lib/env'
+import { reconcileQueuedAnalyses } from '@/server/services/analysis-dispatch'
 
 /**
  * Recovers analyses left in indeterminate states due to worker crashes or sudden terminations,
  * and purges leftover clone directories.
  */
-export async function recoverStaleAnalyses(): Promise<number> {
+export async function recoverInterruptedAnalyses(): Promise<number> {
   const staleAfterMs = Math.max(10 * 60 * 1000, env.ANALYSIS_TIMEOUT_MS + 60 * 1000)
   const staleBefore = new Date(Date.now() - staleAfterMs)
 
@@ -60,34 +61,15 @@ export async function recoverStaleAnalyses(): Promise<number> {
     console.log(`[worker:recovery] marked ${systemResult.count} stale system analyses as failed`)
   }
 
-  // 2. Re-enqueue pending work once per analysis. Keep a stable queue id for
-  // deduplication, but remove a retained terminal job before retrying recovery.
-  try {
-    const queuedAnalyses = await prisma.analysis.findMany({
-      where: { status: 'queued' },
-      select: { id: true },
-    })
-    if (queuedAnalyses.length > 0) {
-      const { getAnalysisQueue } = await import('@/server/queue')
-      const queue = getAnalysisQueue()
-      let enqueued = 0
-      for (const item of queuedAnalyses) {
-        const existing = await queue.getJob(item.id)
-        if (existing) {
-          const state = await existing.getState()
-          if (['waiting', 'active', 'delayed', 'paused', 'waiting-children'].includes(state)) continue
-          await existing.remove()
-        }
-        await queue.add('analyze', { analysisId: item.id }, { jobId: item.id })
-        enqueued++
-      }
-      if (enqueued > 0) {
-        console.log(`[worker:recovery] re-enqueued ${enqueued} pending queued analyses`)
-      }
-    }
-  } catch (err: any) {
-    console.warn(`[worker:recovery] warning re-enqueuing queued analyses: ${err.message}`)
-  }
+  return result.count
+}
+
+export async function recoverStaleAnalyses(): Promise<number> {
+  const count = await recoverInterruptedAnalyses()
+  const staleAfterMs = Math.max(10 * 60 * 1000, env.ANALYSIS_TIMEOUT_MS + 60 * 1000)
+  const staleBefore = new Date(Date.now() - staleAfterMs)
+  // Reconcile repository and system jobs, including work lost after Redis restarts.
+  await reconcileQueuedAnalyses()
 
   // 3. Sweep only orphaned analysis-specific clone directories. Other worker
   // processes may still be active, so never delete a directory for a live job.
@@ -116,5 +98,5 @@ export async function recoverStaleAnalyses(): Promise<number> {
     console.warn(`[worker:recovery] warning during clone dir sweep: ${err.message}`)
   }
 
-  return result.count
+  return count
 }

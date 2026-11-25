@@ -7,6 +7,7 @@ const { queueGetJobMock, queueAddMock, failPrMock } = vi.hoisted(() => ({
 }))
 vi.mock('@/server/queue', () => ({
   getAnalysisQueue: () => ({ getJob: queueGetJobMock, add: queueAddMock }),
+  getSystemAnalysisQueue: () => ({ getJob: queueGetJobMock, add: queueAddMock }),
 }))
 vi.mock('@/server/services/pull-request-checks', () => ({
   failPullRequestAnalysis: failPrMock,
@@ -19,17 +20,20 @@ vi.mock('@/lib/env', () => ({
   },
 }))
 
-import { recoverStaleAnalyses } from './recovery'
+import { recoverStaleAnalyses, recoverInterruptedAnalyses } from './recovery'
 import { prisma } from '@/lib/prisma'
 import fs from 'node:fs'
 
 vi.mock('@/lib/prisma', () => ({
   prisma: {
     analysis: {
+      findUnique: vi.fn().mockResolvedValue({ status: 'queued' }),
       updateMany: vi.fn(),
       findMany: vi.fn().mockResolvedValue([]),
     },
     systemAnalysis: {
+      findMany: vi.fn().mockResolvedValue([]),
+      findUnique: vi.fn().mockResolvedValue({ status: 'queued' }),
       updateMany: vi.fn().mockResolvedValue({ count: 0 }),
     },
   },
@@ -109,4 +113,25 @@ describe('Worker Recovery', () => {
     expect(count).toBe(0)
     expect(fs.rmSync).not.toHaveBeenCalled()
   })
+
+  it('re-enqueues a queued system scan whose Redis job was lost', async () => {
+    vi.mocked(prisma.analysis.updateMany).mockResolvedValueOnce({ count: 0 })
+    vi.mocked(prisma.systemAnalysis.findMany).mockResolvedValueOnce([{ id: 'system-lost' }] as any)
+    queueGetJobMock.mockResolvedValueOnce(null)
+    queueAddMock.mockResolvedValueOnce({})
+    vi.mocked(fs.existsSync).mockReturnValueOnce(false)
+
+    await recoverStaleAnalyses()
+
+    expect(queueAddMock).toHaveBeenCalledWith('analyze-system', { systemAnalysisId: 'system-lost' }, { jobId: 'system-lost' })
+  })
+
+  it('does not sweep clone directories during periodic or cron interrupted-job recovery', async () => {
+    vi.mocked(prisma.analysis.updateMany).mockResolvedValueOnce({ count: 0 })
+    await recoverInterruptedAnalyses()
+    expect(fs.existsSync).not.toHaveBeenCalled()
+    expect(fs.rmSync).not.toHaveBeenCalled()
+    expect(queueAddMock).not.toHaveBeenCalled()
+  })
+
 })

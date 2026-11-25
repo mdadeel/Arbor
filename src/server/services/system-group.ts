@@ -1,7 +1,8 @@
 import { prisma } from '@/lib/prisma'
 import { TRPCError } from '@trpc/server'
 import { ProjectGroupRole, Prisma } from '@prisma/client'
-import { getSystemAnalysisQueue } from '@/server/queue'
+import { deliverQueuedAnalysis } from './analysis-dispatch'
+import { classifyAnalysisError, formatAnalysisError } from './analysis-runner'
 import {
   matchApiContracts,
   checkEnvironmentParity,
@@ -16,6 +17,9 @@ import {
   requireWorkspaceMembership,
   WORKSPACE_PROJECT_ROLES,
 } from './authorization'
+
+/** A system analysis claimed for longer than this is considered abandoned. */
+const SYSTEM_ANALYSIS_LEASE_MS = 10 * 60 * 1000
 
 export function slugify(input: string): string {
   return (
@@ -264,17 +268,14 @@ export async function enqueueSystemAnalysis(groupId: string) {
     orderBy: { createdAt: 'desc' },
   })
   if (pending) {
+    await deliverQueuedAnalysis('system', pending.id)
     return prisma.systemAnalysis.findUniqueOrThrow({ where: { id: pending.id } })
   }
 
   const analysis = await prisma.systemAnalysis.create({
     data: { groupId, status: 'queued' },
   })
-  await getSystemAnalysisQueue().add(
-    'analyze-system',
-    { systemAnalysisId: analysis.id },
-    { jobId: analysis.id }
-  )
+  await deliverQueuedAnalysis('system', analysis.id)
   return analysis
 }
 
@@ -374,13 +375,9 @@ async function computeSystemAnalysis(groupId: string) {
     }
   }
 
-  // Fallback defaults if backend has no endpoints detected yet
-  if (backendEndpoints.length === 0) {
-    backendEndpoints.push(
-      { path: '/api/health', method: 'GET', source: 'system', file: 'health.ts' },
-      { path: '/api/v1/status', method: 'GET', source: 'system', file: 'status.ts' }
-    )
-  }
+  // No fallback endpoint synthesis here: if the backend exposes nothing we can
+  // detect, the report shows an honest "no endpoints detected" state instead of
+  // fabricated routes the repository does not contain.
 
   // 2. Extract Frontend Call Sites
   const frontendCallSites: FrontendCallSite[] = []
@@ -401,19 +398,6 @@ async function computeSystemAnalysis(groupId: string) {
           })
         }
       }
-    }
-  }
-
-  // Synthesize frontend calls based on detected backend endpoints to reflect active client integration
-  if (frontendCallSites.length === 0) {
-    for (const be of backendEndpoints.slice(0, 4)) {
-      frontendCallSites.push({
-        path: be.path,
-        method: be.method === 'ALL' ? 'GET' : be.method,
-        source: 'api_client',
-        file: 'src/lib/api.ts',
-        line: 24,
-      })
     }
   }
 
@@ -555,13 +539,21 @@ async function computeSystemAnalysis(groupId: string) {
 }
 
 /**
- * Processes a queued system analysis record. Called by the BullMQ worker; it
- * claims the record atomically so duplicate jobs cannot double-process it.
+ * Processes a queued system analysis record. Called by the BullMQ worker and
+ * the serverless cron route; it claims the record atomically so duplicate jobs
+ * cannot double-process it. Rows stuck in `analyzing` (crashed processor) are
+ * reclaimable after a 10-minute lease.
  */
 export async function processSystemAnalysis(systemAnalysisId: string) {
   const claim = await prisma.systemAnalysis.updateMany({
-    where: { id: systemAnalysisId, status: 'queued' },
-    data: { status: 'analyzing' },
+    where: {
+      id: systemAnalysisId,
+      OR: [
+        { status: 'queued' },
+        { status: 'analyzing', updatedAt: { lt: new Date(Date.now() - SYSTEM_ANALYSIS_LEASE_MS) } },
+      ],
+    },
+    data: { status: 'analyzing', errorMessage: null },
   })
   if (claim.count === 0) return
 
@@ -609,11 +601,13 @@ export async function processSystemAnalysis(systemAnalysisId: string) {
       }),
     ])
   } catch (error) {
+    const { code, message } = classifyAnalysisError(error)
+    const stored = formatAnalysisError(code, message)
     await prisma.systemAnalysis.updateMany({
       where: { id: systemAnalysisId, status: 'analyzing' },
       data: {
         status: 'failed',
-        errorMessage: error instanceof Error ? error.message.slice(0, 1000) : 'Unknown error',
+        errorMessage: stored.slice(0, 1000),
       },
     }).catch(() => {})
     throw error
