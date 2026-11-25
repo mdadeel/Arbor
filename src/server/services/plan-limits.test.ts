@@ -38,6 +38,7 @@ const { checkRateLimitMock, prismaMock } = vi.hoisted(() => {
   return { checkRateLimitMock: rateLimit, prismaMock: db }
 })
 
+vi.mock('@/lib/env', () => ({ env: { ANALYSIS_QUEUE_DRIVER: 'bullmq' } }))
 vi.mock('@/lib/redis', () => ({ checkRateLimit: checkRateLimitMock }))
 vi.mock('@/lib/prisma', () => ({ prisma: prismaMock }))
 vi.mock('@/server/queue', () => ({ getAnalysisQueue: vi.fn() }))

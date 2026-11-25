@@ -18,6 +18,7 @@ vi.mock('@/lib/prisma', () => ({
     $transaction: vi.fn((callback: (client: typeof tx) => unknown) => callback(tx)),
   },
 }))
+vi.mock('@/lib/env', () => ({ env: { ANALYSIS_QUEUE_DRIVER: 'bullmq' } }))
 vi.mock('@/server/queue', () => ({ getAnalysisQueue: () => ({ add: queueAdd }) }))
 vi.mock('./quotas', () => ({ consumeAnalysisQuota }))
 

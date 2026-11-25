@@ -1,5 +1,6 @@
 import { TRPCError } from '@trpc/server'
 import { prisma } from '@/lib/prisma'
+import { env } from '@/lib/env'
 import { getAnalysisQueue } from '@/server/queue'
 import { consumeAnalysisQuota } from './quotas'
 import { PLAN_LIMITS, getEffectiveWorkspacePlan, getPlanLimits } from './plan-limits'
@@ -176,7 +177,9 @@ export async function enqueueDueScheduledScans(now = new Date()) {
     select: { id: true, projectId: true, cadence: true, branch: true, nextRunAt: true },
   })
   let enqueued = 0
-  const queue = getAnalysisQueue()
+  // In serverless/db mode the queued row IS the queue — the fallback processor
+  // claims it directly. Do not construct a BullMQ producer (or require Redis).
+  const queue = env.ANALYSIS_QUEUE_DRIVER === 'db' ? null : getAnalysisQueue()
 
   for (const schedule of schedules) {
     try {
@@ -229,7 +232,7 @@ export async function enqueueDueScheduledScans(now = new Date()) {
         })
       })
       if (!result) continue
-      await queue.add('analyze', { analysisId: result.id }, { jobId: result.id })
+      if (queue) await queue.add('analyze', { analysisId: result.id }, { jobId: result.id })
       enqueued++
     } catch (error) {
       await prisma.scanSchedule.update({

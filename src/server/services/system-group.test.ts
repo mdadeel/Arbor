@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
+vi.mock('@/lib/env', () => ({ env: { ANALYSIS_QUEUE_DRIVER: 'bullmq', ENCRYPTION_SECRET: 'test-secret' } }))
 vi.mock('@/server/queue', () => ({
   getSystemAnalysisQueue: () => ({ add: vi.fn() }),
 }))

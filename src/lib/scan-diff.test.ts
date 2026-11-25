@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { buildGitHubCompareHref, computeScanDiff, type ComparableScanInput } from './scan-diff'
 
+vi.mock('@/lib/env', () => ({ env: { ANALYSIS_QUEUE_DRIVER: 'bullmq' } }))
 vi.mock('@/lib/prisma', () => ({
   prisma: {
     analysis: {
