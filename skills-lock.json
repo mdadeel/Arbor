@@ -13,6 +13,12 @@
       "skillPath": "skills/gpt-tasteskill/SKILL.md",
       "computedHash": "8b112002eb3a784c9e608877c19092374089174ef4cdee7b4be33cd38c2629c4"
     },
+    "stageshow": {
+      "source": "benjitaylor/skills",
+      "sourceType": "github",
+      "skillPath": "stageshow/SKILL.md",
+      "computedHash": "92725a1d58ce8fbc9b80bd117b4a78feefa230e0feb24865b70c9ed1cfdb581b"
+    },
     "vercel-cli-with-tokens": {
       "source": "vercel-labs/agent-skills",
       "sourceType": "github",
