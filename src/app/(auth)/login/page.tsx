@@ -14,6 +14,7 @@ export const metadata = {
   title: 'Sign In',
   description: 'Sign in to Arbor with GitHub to analyze repositories and generate automated architectural audits.',
   alternates: { canonical: '/login' },
+  robots: { index: false, follow: true },
 }
 
 export const dynamic = 'force-dynamic'
@@ -62,20 +63,20 @@ export default async function LoginPage() {
             </Suspense>
 
             <div className="border-t border-border/60 pt-4 text-center">
-              <p className="text-[11px] text-muted-foreground/80 leading-relaxed">
+              <p className="text-[11px] text-label-tertiary leading-relaxed">
                 Temporary working copy · Removed after analysis · Reports contain findings, not source files
               </p>
             </div>
           </div>
 
           {/* Footer Terms */}
-          <p className="text-center text-[11px] leading-relaxed text-muted-foreground/80">
+          <p className="text-center text-[11px] leading-relaxed text-label-secondary">
             By continuing, you agree to our{' '}
-            <Link href="/terms" className="underline underline-offset-2 hover:text-foreground">
+            <Link href="/terms" className="underline underline-offset-2 text-label-primary hover:text-primary">
               Terms of Service
             </Link>{' '}
             and{' '}
-            <Link href="/privacy" className="underline underline-offset-2 hover:text-foreground">
+            <Link href="/privacy" className="underline underline-offset-2 text-label-primary hover:text-primary">
               Privacy Policy
             </Link>
             .
@@ -84,7 +85,7 @@ export default async function LoginPage() {
       </main>
 
       {/* Bottom Spacer */}
-      <footer className="relative z-10 py-5 text-center text-[11px] text-muted-foreground/40">
+      <footer className="relative z-10 py-5 text-center text-[11px] text-label-tertiary">
         Arbor · Automated Repository Intelligence
       </footer>
     </div>

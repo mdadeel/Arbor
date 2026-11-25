@@ -53,17 +53,17 @@ export default function AdminLoginPage() {
             </Suspense>
 
             <div className="border-t border-border/60 pt-4 text-center">
-              <p className="text-[11px] text-muted-foreground/70">
+              <p className="text-[11px] text-label-tertiary">
                 Restricted area. All authentication attempts are logged.
               </p>
             </div>
           </div>
 
-          <div className="text-center text-xs text-muted-foreground/70">
+          <div className="text-center text-xs text-label-secondary">
             <span>Not an administrator? </span>
             <Link
               href="/login"
-              className="inline-flex items-center gap-1 font-medium text-foreground hover:underline transition-colors"
+              className="inline-flex items-center gap-1 font-medium text-label-primary hover:underline transition-colors"
             >
               Sign in with GitHub
               <ArrowRight className="h-3 w-3" />
@@ -73,7 +73,7 @@ export default function AdminLoginPage() {
       </main>
 
       {/* Bottom Footer */}
-      <footer className="relative z-10 py-5 text-center text-[11px] text-muted-foreground/40">
+      <footer className="relative z-10 py-5 text-center text-[11px] text-label-tertiary">
         Arbor · Automated Repository Intelligence
       </footer>
     </div>
