@@ -21,6 +21,10 @@ export const env = createEnv({
     MAX_FILE_SIZE_KB: z.coerce.number().int().positive().default(100),
     MAX_PARSE_FILES: z.coerce.number().int().positive().default(2500),
     ANALYSIS_TIMEOUT_MS: z.coerce.number().int().positive().default(300000),
+    // `bullmq`: deliver queued analyses to Redis/BullMQ for a resident worker
+    // (self-hosted). `db`: skip Redis delivery entirely — the durable DB row is
+    // the queue and the serverless cron route picks it up (Vercel).
+    ANALYSIS_QUEUE_DRIVER: z.enum(['bullmq', 'db']).default('bullmq'),
     ADMIN_EMAILS: z.string().default(''),
     ADMIN_GITHUB_USERNAMES: z.string().default(''),
     // Credential login is disabled unless both values are explicitly configured.
