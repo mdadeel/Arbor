@@ -3,6 +3,34 @@ export interface ModuleNodeData {
   label: string
   fileCount: number
   files: string[]
+  /** Total non-empty source lines across the module's files that have a count. */
+  lines: number
+  /** Per-file line counts, keyed by repository-relative path. */
+  fileLines: Record<string, number>
+}
+
+export interface StructureLineNode {
+  name: string
+  type: 'dir' | 'file'
+  lines?: number
+  children?: StructureLineNode[]
+}
+
+/** Flattens the stored repository tree into a repository-relative file → line map. */
+export function collectFileLineCounts(
+  nodes: StructureLineNode[],
+  prefix = '',
+  counts: Record<string, number> = {}
+): Record<string, number> {
+  for (const node of nodes) {
+    const fullPath = prefix ? `${prefix}/${node.name}` : node.name
+    if (node.type === 'dir') {
+      collectFileLineCounts(node.children ?? [], fullPath, counts)
+    } else if (typeof node.lines === 'number') {
+      counts[fullPath] = node.lines
+    }
+  }
+  return counts
 }
 
 export interface ModuleEdge {
@@ -35,7 +63,11 @@ export function moduleFor(rel: string): string {
   return parts[0]
 }
 
-export function buildModuleGraph(graph: FileGraph, circularDeps: string[][] = []): ModuleGraph {
+export function buildModuleGraph(
+  graph: FileGraph,
+  circularDeps: string[][] = [],
+  lineCounts: Record<string, number> = {}
+): ModuleGraph {
   const filesByModule = new Map<string, string[]>()
   for (const n of graph.nodes) {
     const m = moduleFor(n)
@@ -46,12 +78,25 @@ export function buildModuleGraph(graph: FileGraph, circularDeps: string[][] = []
 
   const modules: ModuleNodeData[] = [...filesByModule.entries()]
     .sort((a, b) => a[0].localeCompare(b[0]))
-    .map(([id, files]) => ({
-      id,
-      label: id === '(root)' ? '(root)' : `${id}/`,
-      fileCount: files.length,
-      files: [...files].sort(),
-    }))
+    .map(([id, files]) => {
+      const fileLines: Record<string, number> = {}
+      let lines = 0
+      for (const file of files) {
+        const count = lineCounts[file]
+        if (typeof count === 'number') {
+          fileLines[file] = count
+          lines += count
+        }
+      }
+      return {
+        id,
+        label: id === '(root)' ? '(root)' : `${id}/`,
+        fileCount: files.length,
+        files: [...files].sort(),
+        lines,
+        fileLines,
+      }
+    })
 
   const pairKey = (a: string, b: string) => `${a}\u0000${b}`
   const rawPairs = new Map<

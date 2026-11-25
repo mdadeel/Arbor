@@ -20,7 +20,7 @@ type Selection =
   | { kind: 'node'; moduleId: string }
   | { kind: 'edge'; source: string; target: string }
 
-function ModuleNode({ data, selected }: NodeProps<{ label: string; fileCount: number }>) {
+function ModuleNode({ data, selected }: NodeProps<{ label: string; fileCount: number; lines: number }>) {
   return (
     <div
       className={`rounded-lg border bg-card px-3 py-2 text-sm shadow-xs transition-colors cursor-pointer hover:border-foreground/50 ${
@@ -31,7 +31,10 @@ function ModuleNode({ data, selected }: NodeProps<{ label: string; fileCount: nu
       <Handle type="target" position={Position.Left} className="!bg-border" />
       <div className="flex items-center justify-between gap-2 font-medium">
         <span className="truncate">{data.label}</span>
-        <span className="shrink-0 font-mono text-xs text-muted-foreground">{data.fileCount}</span>
+        <span className="shrink-0 font-mono text-[11px] text-muted-foreground">
+          {data.fileCount}
+          {data.lines > 0 ? ` · ${data.lines.toLocaleString()} ln` : ''}
+        </span>
       </div>
       <Handle type="source" position={Position.Right} className="!bg-border" />
     </div>
@@ -49,7 +52,7 @@ export default function GraphCanvas({ graph }: { graph: ModuleGraph }) {
       id: m.id,
       type: 'module',
       position: m.position,
-      data: { label: m.label, fileCount: m.fileCount },
+      data: { label: m.label, fileCount: m.fileCount, lines: m.lines },
     }))
     const es: FlowEdge[] = graph.edges.map((e) => ({
       id: e.id,
@@ -79,6 +82,7 @@ export default function GraphCanvas({ graph }: { graph: ModuleGraph }) {
             <span className="font-medium">{m.label}</span>
             <span className="font-mono text-xs text-muted-foreground">
               {m.fileCount} {m.fileCount === 1 ? 'file' : 'files'}
+              {m.lines > 0 ? ` · ${m.lines.toLocaleString()} lines` : ''}
             </span>
           </div>
         ))}
@@ -119,12 +123,14 @@ export default function GraphCanvas({ graph }: { graph: ModuleGraph }) {
             {hidden.label}
             <span className="ml-2 font-mono text-muted-foreground">
               {hidden.fileCount} {hidden.fileCount === 1 ? 'file' : 'files'}
+              {hidden.lines > 0 ? ` · ${hidden.lines.toLocaleString()} lines` : ''}
             </span>
           </p>
           <ul className="grid grid-cols-2 gap-x-4 gap-y-0.5 font-mono text-muted-foreground">
             {hidden.files.slice(0, 20).map((f) => (
               <li key={f} className="truncate">
                 {f}
+                {hidden.fileLines[f] != null ? <span className="text-muted-foreground/70"> — {hidden.fileLines[f].toLocaleString()} ln</span> : null}
               </li>
             ))}
             {hidden.files.length > 20 && <li>… +{hidden.files.length - 20} more</li>}

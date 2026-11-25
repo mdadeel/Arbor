@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildModuleGraph, moduleFor } from './module-graph'
+import { buildModuleGraph, collectFileLineCounts, moduleFor } from './module-graph'
 
 describe('moduleFor', () => {
   it('groups paths by top-level segment', () => {
@@ -76,5 +76,47 @@ describe('buildModuleGraph', () => {
     )
     expect(g.modules.map((m) => m.id)).toEqual(['a', 'b'])
     expect(g.modules[1].files).toEqual(['b/z.ts'])
+  })
+
+  it('aggregates per-file line counts into modules', () => {
+    const g = buildModuleGraph(
+      { nodes: ['a/x.ts', 'a/y.ts', 'b/z.ts'], edges: [] },
+      [],
+      { 'a/x.ts': 12, 'a/y.ts': 8, 'b/z.ts': 40 }
+    )
+
+    const a = g.modules.find((m) => m.id === 'a')
+    expect(a?.lines).toBe(20)
+    expect(a?.fileLines).toEqual({ 'a/x.ts': 12, 'a/y.ts': 8 })
+    expect(g.modules.find((m) => m.id === 'b')?.lines).toBe(40)
+  })
+
+  it('leaves line totals at zero when no counts are supplied', () => {
+    const g = buildModuleGraph({ nodes: ['a/x.ts'], edges: [] }, [])
+    expect(g.modules[0].lines).toBe(0)
+    expect(g.modules[0].fileLines).toEqual({})
+  })
+})
+
+describe('collectFileLineCounts', () => {
+  it('flattens nested directories into repository-relative paths', () => {
+    const counts = collectFileLineCounts([
+      {
+        name: 'src',
+        type: 'dir',
+        children: [
+          { name: 'app', type: 'dir', children: [{ name: 'page.tsx', type: 'file', lines: 42 }] },
+          { name: 'index.ts', type: 'file', lines: 7 },
+          { name: 'empty.ts', type: 'file' },
+        ],
+      },
+      { name: 'README.md', type: 'file', lines: 3 },
+    ])
+
+    expect(counts).toEqual({
+      'src/app/page.tsx': 42,
+      'src/index.ts': 7,
+      'README.md': 3,
+    })
   })
 })
