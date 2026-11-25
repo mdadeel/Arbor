@@ -122,12 +122,18 @@ export function SystemReport({ group }: SystemReportProps) {
 
   const analyze = trpc.system.analyze.useMutation({
     onSuccess: () => router.refresh(),
-    onError: (e) => window.alert(e.message),
+  })
+
+  const processingHealth = trpc.system.processingHealth.useQuery({ slug: group.slug }, {
+    enabled: isRunning, refetchInterval: isRunning ? 15_000 : false, retry: false,
+  })
+  const retryQueued = trpc.system.retryQueued.useMutation({
+    onSuccess: () => { router.refresh(); void processingHealth.refetch() },
   })
 
   useEffect(() => {
     if (!isRunning) return
-    const interval = window.setInterval(() => router.refresh(), 3000)
+    const interval = window.setInterval(() => router.refresh(), 5000)
     return () => window.clearInterval(interval)
   }, [isRunning, router])
 
@@ -181,7 +187,7 @@ export function SystemReport({ group }: SystemReportProps) {
             <span>Fullstack System Group</span>
           </Badge>
 
-          <StatusBadge status={latestAnalysis?.status ?? 'no-analysis'} />
+          <StatusBadge status={latestAnalysis?.status ?? 'no-analysis'} showSpinner={latestAnalysis?.status !== 'queued'} />
           {reportAnalysis?.durationMs && (
             <span className="font-mono text-xs text-muted-foreground">
               {Math.round(reportAnalysis.durationMs / 1000)}s analysis duration
@@ -195,16 +201,23 @@ export function SystemReport({ group }: SystemReportProps) {
           onClick={() => analyze.mutate({ slug: group.slug })}
           className="h-8 gap-1.5 text-xs font-medium"
         >
-          {isRunning || analyze.isPending ? (
+          {(isRunning && latestAnalysis?.status !== 'queued') || analyze.isPending ? (
             <Loader2 className="h-3.5 w-3.5 animate-spin" />
           ) : (
             <RefreshCw className="h-3.5 w-3.5" />
           )}
-          <span>{isRunning ? 'Analysis running…' : analyze.isPending ? 'Starting analysis…' : 'Re-analyze System'}</span>
+          <span>{isRunning ? (latestAnalysis?.status === 'queued' ? 'Waiting to start' : 'Analysis running…') : analyze.isPending ? 'Starting analysis…' : 'Re-analyze System'}</span>
         </Button>
       </div>
 
-      {isRunning && latestAnalysis && <AnalysisProgress status={latestAnalysis.status} />}
+      {analyze.error && <p role="alert" className="rounded-lg border border-red-500/30 bg-red-500/5 p-3 text-sm text-red-600 dark:text-red-300">{analyze.error.message}</p>}
+      {isRunning && latestAnalysis && <AnalysisProgress
+        key={latestAnalysis.id} system status={latestAnalysis.status} createdAt={latestAnalysis.createdAt}
+        analysisId={latestAnalysis.id} errorMessage={latestAnalysis.errorMessage} health={processingHealth.data}
+        onRetry={processingHealth.data?.canRetry ? () => retryQueued.mutate({ slug: group.slug, analysisId: latestAnalysis.id }) : undefined}
+        retrying={retryQueued.isPending} retryError={retryQueued.error?.message}
+        retryMessage={retryQueued.isSuccess ? 'Delivery checked. This scan will start when a processor is available; no duplicate scan was created.' : null}
+      />}
       {latestAnalysis?.status === 'failed' && (
         <div className="rounded-lg border border-red-500/40 bg-red-500/10 p-4 text-xs text-red-300">
           <p className="font-semibold">System analysis failed</p>
@@ -212,6 +225,9 @@ export function SystemReport({ group }: SystemReportProps) {
         </div>
       )}
 
+      {!reportAnalysis && <Card><CardContent className="py-8 text-center text-sm text-muted-foreground">No system report has completed yet. Scores, contract checks, and environment findings will appear after processing.</CardContent></Card>}
+      {reportAnalysis && <>
+      {isRunning && <p className="rounded-lg border border-border p-3 text-sm text-muted-foreground">Showing the last completed system report from {new Date(reportAnalysis.createdAt).toLocaleString()}. The new scan has not produced a report yet.</p>}
       {/* System Scores Matrix */}
       <div className="grid grid-cols-2 gap-px overflow-hidden rounded-lg border border-border bg-border sm:grid-cols-4 lg:grid-cols-5">
         {/* Overall System Score */}
@@ -410,10 +426,19 @@ export function SystemReport({ group }: SystemReportProps) {
             </CardHeader>
             <CardContent className="p-4 space-y-3">
               {envDrift.issues.length === 0 ? (
-                <div className="flex items-center gap-2 text-xs text-emerald-500 py-4">
-                  <CheckCircle2 className="h-4 w-4" />
-                  <span>All environment configurations and CORS declarations are in harmony!</span>
-                </div>
+                (!envDrift.frontendApiUrl && !envDrift.backendPort && (!envDrift.backendCorsOrigins || envDrift.backendCorsOrigins.length === 0)) ? (
+                  <div className="rounded-lg border border-dashed border-border p-6 text-center text-xs text-muted-foreground space-y-1">
+                    <p className="font-medium text-foreground">No environment or CORS configurations detected</p>
+                    <p className="max-w-md mx-auto leading-relaxed">
+                      Arbor checks .env, .env.example, and CORS origin declarations to verify cross-service alignment. Include configuration files in your repository to enable parity checks.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2 text-xs text-emerald-500 py-4">
+                    <CheckCircle2 className="h-4 w-4" />
+                    <span>Evaluated environment variables and CORS headers across services with no detected mismatches.</span>
+                  </div>
+                )
               ) : (
                 envDrift.issues.map((issue, idx) => (
                   <div
@@ -478,6 +503,7 @@ export function SystemReport({ group }: SystemReportProps) {
           )}
         </TabsContent>
       </Tabs>
+      </>}
     </div>
   )
 }

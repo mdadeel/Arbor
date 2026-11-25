@@ -127,29 +127,35 @@ export function FullstackGraph({ graph }: { graph: SystemGraphResult }) {
 
   if (nodes.length === 0) {
     return (
-      <div className="flex h-64 items-center justify-center rounded-lg border border-dashed border-border p-8 text-xs text-muted-foreground">
-        No module architecture available to visualize.
+      <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-border p-8 text-center text-xs text-muted-foreground space-y-2">
+        <p className="font-semibold text-foreground">No cross-service architecture graph available</p>
+        <p className="max-w-md">
+          Fullstack architecture visualization requires both member repositories to complete scans with parsed AST import graphs. Re-run scans on the individual repositories to generate graph data.
+        </p>
       </div>
     )
   }
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between text-xs text-muted-foreground">
-        <div className="flex items-center gap-4">
+      <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-muted-foreground">
+        <div className="flex flex-wrap items-center gap-4">
           <div className="flex items-center gap-1.5">
             <span className="h-2 w-2 rounded-full bg-cyan-400" />
-            <span>Frontend Client Nodes</span>
+            <span>Client Layer Modules (left)</span>
           </div>
           <div className="flex items-center gap-1.5">
             <span className="h-2 w-2 rounded-full bg-emerald-400" />
-            <span>Backend Server Nodes</span>
+            <span>Server Layer Modules (right)</span>
           </div>
           <div className="flex items-center gap-1.5">
-            <span className="h-2 w-4 rounded-full bg-primary animate-pulse" />
-            <span>HTTP API Bridge Boundary</span>
+            <span className="h-1.5 w-4 rounded-full bg-primary animate-pulse" />
+            <span>Inferred HTTP API Boundary</span>
           </div>
         </div>
+        <span className="text-[11px] font-mono text-muted-foreground/80">
+          Nodes = module directories sized by file count · Edges = cross-service API routes
+        </span>
       </div>
 
       <div className="h-[520px] rounded-lg border border-border bg-card/30 overflow-hidden">

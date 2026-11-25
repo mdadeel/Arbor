@@ -45,8 +45,43 @@ export function ContractMatrix({ items = [], summary }: ContractMatrixProps) {
     })
   }, [items, search, statusFilter])
 
+  if (items.length === 0) {
+    return (
+      <Card className="border-dashed">
+        <CardContent className="py-12 text-center text-xs text-muted-foreground space-y-2">
+          <HelpCircle className="h-8 w-8 mx-auto text-muted-foreground/60" />
+          <p className="text-sm font-semibold text-foreground">No API contracts or endpoints detected</p>
+          <p className="max-w-md mx-auto leading-relaxed">
+            Arbor searches member repositories for static HTTP routes, API handlers (e.g. Next.js, Express, Fastify), and fetch/axios callers. If this system uses GraphQL, gRPC, or custom RPC abstractions, static contract detection may not extract them.
+          </p>
+        </CardContent>
+      </Card>
+    )
+  }
+
   return (
     <div className="space-y-4">
+      {/* Status Definitions & Legend */}
+      <details className="rounded-lg border border-border/70 bg-card/35 px-3 py-2 text-xs text-muted-foreground">
+        <summary className="cursor-pointer font-medium text-foreground hover:text-primary">
+          Understanding contract statuses &amp; verification rules
+        </summary>
+        <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2 pt-2 border-t border-border/60 text-[11px] leading-relaxed">
+          <div>
+            <strong className="text-emerald-500 font-semibold">Connected:</strong> Frontend client caller matches an exported backend route and HTTP method.
+          </div>
+          <div>
+            <strong className="text-red-500 font-semibold">Broken (404):</strong> Client invokes a route that has no corresponding backend handler.
+          </div>
+          <div>
+            <strong className="text-purple-400 font-semibold">Method Conflict:</strong> Route path exists on both sides, but the HTTP method (GET/POST/etc.) differs.
+          </div>
+          <div>
+            <strong className="text-amber-400 font-semibold">Orphaned:</strong> Backend endpoint handler exists, but no client-side caller was identified.
+          </div>
+        </div>
+      </details>
+
       {/* Metric filter pills */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <button

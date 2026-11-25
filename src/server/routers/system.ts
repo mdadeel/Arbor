@@ -11,6 +11,10 @@ import {
 } from '@/server/services/system-group'
 import { consumeAnalysisQuota } from '@/server/services/quotas'
 import { logAuditEvent } from '@/server/services/audit'
+import { prisma } from '@/lib/prisma'
+import { checkRateLimit } from '@/lib/redis'
+import { deliverQueuedAnalysis, getProcessingHealth, QUEUE_DELIVERY_ERROR } from '@/server/services/analysis-dispatch'
+import { requireWorkspaceMembership, WORKSPACE_PROJECT_ROLES } from '@/server/services/authorization'
 
 const memberInputSchema = z.object({
   projectId: z.string(),
@@ -72,12 +76,68 @@ export const systemRouter = router({
       return deleted
     }),
 
+  processingHealth: protectedProcedure
+    .input(z.object({ slug: z.string() }))
+    .query(async ({ ctx, input }) => {
+      const group = await getGroupBySlug(ctx.session.user.id, input.slug)
+      if (!group) throw new TRPCError({ code: 'NOT_FOUND', message: 'System group not found' })
+      let canRetry = group.userId === ctx.session.user.id
+      if (group.workspaceId) {
+        try {
+          await requireWorkspaceMembership(ctx.session.user.id, group.workspaceId, WORKSPACE_PROJECT_ROLES)
+          canRetry = true
+        } catch (error) {
+          if (!(error instanceof TRPCError) || error.code !== 'FORBIDDEN') throw error
+          canRetry = false
+        }
+      }
+      return { ...await getProcessingHealth('system'), canRetry }
+    }),
+
+  retryQueued: protectedProcedure
+    .input(z.object({ slug: z.string(), analysisId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const group = await getGroupBySlug(ctx.session.user.id, input.slug)
+      if (!group) throw new TRPCError({ code: 'NOT_FOUND', message: 'System group not found' })
+      if (group.workspaceId) {
+        await requireWorkspaceMembership(ctx.session.user.id, group.workspaceId, WORKSPACE_PROJECT_ROLES)
+      } else if (group.userId !== ctx.session.user.id) {
+        throw new TRPCError({ code: 'FORBIDDEN' })
+      }
+      const analysis = await prisma.systemAnalysis.findFirst({
+        where: { id: input.analysisId, groupId: group.id, status: 'queued' },
+        select: { id: true },
+      })
+      if (!analysis) throw new TRPCError({ code: 'CONFLICT', message: 'This scan is no longer queued. Refresh to see its current status.' })
+      const { allowed } = await checkRateLimit(`rate:analysis-repair:${ctx.session.user.id}`, 6, 60)
+      if (!allowed) throw new TRPCError({ code: 'TOO_MANY_REQUESTS', message: 'Please wait a minute before retrying delivery again.' })
+      if (!await deliverQueuedAnalysis('system', analysis.id)) {
+        throw new TRPCError({ code: 'SERVICE_UNAVAILABLE', message: QUEUE_DELIVERY_ERROR })
+      }
+      return { analysisId: analysis.id }
+    }),
+
   analyze: protectedProcedure
     .input(z.object({ slug: z.string() }))
     .mutation(async ({ ctx, input }) => {
       const group = await getGroupBySlug(ctx.session.user.id, input.slug)
       if (!group) {
         throw new TRPCError({ code: 'NOT_FOUND', message: 'System group not found' })
+      }
+
+      if (group.workspaceId) {
+        await requireWorkspaceMembership(ctx.session.user.id, group.workspaceId, WORKSPACE_PROJECT_ROLES)
+      } else if (group.userId !== ctx.session.user.id) {
+        throw new TRPCError({ code: 'FORBIDDEN' })
+      }
+
+      const pending = await prisma.systemAnalysis.findFirst({
+        where: { groupId: group.id, status: { in: ['queued', 'analyzing'] } },
+        select: { id: true },
+      })
+      if (pending) {
+        await deliverQueuedAnalysis('system', pending.id)
+        return pending
       }
 
       // System scans consume the shared analysis budget and run asynchronously.
