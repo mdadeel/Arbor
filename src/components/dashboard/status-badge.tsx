@@ -1,4 +1,4 @@
-import { Loader2 } from 'lucide-react'
+import { Clock3, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 export type AnalysisStatus = 'queued' | 'cloning' | 'analyzing' | 'completed' | 'failed' | string
@@ -26,13 +26,17 @@ export function StatusBadge({
   className,
   showSpinner = true,
 }: StatusBadgeProps) {
-  const isRunning = ['queued', 'cloning', 'analyzing'].includes(status)
+  const isQueued = status === 'queued'
+  const isProcessing = status === 'cloning' || status === 'analyzing'
+  const isRunning = isQueued || isProcessing
   const isSuccess = ['completed', 'active', 'healthy', 'set'].includes(status)
-  const isWarning = ['warning', 'different', 'archived'].includes(status)
+  const isWarning = ['warning', 'different', 'archived', 'delayed'].includes(status)
   const isError = ['failed', 'critical', 'missing', 'error'].includes(status)
 
-  const styles = isRunning
+  const styles = isProcessing
     ? 'border-sky-500/30 bg-sky-500/10 text-sky-400'
+    : isQueued
+    ? 'border-amber-500/30 bg-amber-500/10 text-amber-400 dark:text-amber-300'
     : isSuccess
     ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400'
     : isWarning
@@ -49,8 +53,11 @@ export function StatusBadge({
         className
       )}
     >
-      {isRunning && showSpinner && (
+      {isProcessing && showSpinner && (
         <Loader2 className="h-3 w-3 animate-spin text-current" />
+      )}
+      {isQueued && (
+        <Clock3 className="h-3 w-3 text-current" />
       )}
       {!isRunning && (
         <span

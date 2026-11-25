@@ -27,7 +27,7 @@ const TabsTrigger = React.forwardRef<
     ref={ref}
     data-slot="tabs-trigger"
     className={cn(
-      'relative inline-flex min-h-10 shrink-0 items-center justify-center gap-2 border-b-2 border-transparent px-3 text-sm font-medium text-muted-foreground outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background data-[state=active]:border-primary data-[state=active]:text-foreground disabled:pointer-events-none disabled:opacity-50',
+      'relative inline-flex min-h-10 shrink-0 items-center justify-center gap-2 border-b-2 border-transparent px-3 text-sm font-medium text-label-secondary outline-none transition-colors hover:text-label-primary focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background data-[state=active]:border-primary data-[state=active]:text-label-primary disabled:pointer-events-none disabled:opacity-50',
       className
     )}
     {...props}

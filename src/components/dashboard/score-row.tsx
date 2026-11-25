@@ -55,17 +55,17 @@ export function ScoreRow({ scores, running = false, className }: ScoreRowProps) 
             key={key}
             className={cn(
               'group relative flex flex-col justify-between p-3.5 transition-colors bg-card hover:bg-muted/40',
-              isPrimary ? 'bg-accent/20 hover:bg-accent/35 col-span-2 sm:col-span-2 lg:col-span-1' : ''
+              isPrimary ? 'bg-primary/[0.06] hover:bg-primary/[0.10] col-span-2 sm:col-span-2 lg:col-span-1' : ''
             )}
             title={hint}
           >
             <div>
-              <div className="flex items-center justify-between gap-1 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-                <span className={cn(isPrimary ? 'font-semibold text-foreground' : '')}>{label}</span>
+              <div className="flex items-center justify-between gap-1 text-[11px] font-medium uppercase tracking-wider text-label-secondary">
+                <span className={cn(isPrimary ? 'font-semibold text-label-primary' : '')}>{label}</span>
                 {value != null && (
                   <span
                     className={cn(
-                      'inline-flex items-center gap-1 rounded-full border border-border/80 px-1.5 py-0.2 text-[9px] font-mono capitalize tracking-normal text-muted-foreground',
+                      'inline-flex items-center gap-1 rounded-full border border-border/80 px-1.5 py-0.2 text-[9px] font-mono capitalize tracking-normal text-label-secondary',
                       tier.label === 'Optimal' ? 'text-emerald-400 border-emerald-500/30' : '',
                       tier.label === 'Needs Work' ? 'text-red-400 border-red-500/30' : ''
                     )}
@@ -75,7 +75,7 @@ export function ScoreRow({ scores, running = false, className }: ScoreRowProps) 
                   </span>
                 )}
               </div>
-              <p className="mt-1 text-[10px] text-muted-foreground/75 leading-tight line-clamp-1">
+              <p className="mt-1 text-[10px] text-label-tertiary leading-tight line-clamp-1">
                 {hint}
               </p>
             </div>
@@ -83,7 +83,7 @@ export function ScoreRow({ scores, running = false, className }: ScoreRowProps) 
             <div className="mt-3">
               <div className="flex items-baseline gap-1">
                 {running && value == null ? (
-                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                  <Loader2 className="h-6 w-6 animate-spin text-label-tertiary" />
                 ) : (
                   <span
                     className={cn(
@@ -96,7 +96,7 @@ export function ScoreRow({ scores, running = false, className }: ScoreRowProps) 
                   </span>
                 )}
                 {value != null && (
-                  <span className="text-xs text-muted-foreground/70 font-mono">/100</span>
+                  <span className="text-xs text-label-tertiary font-mono">/100</span>
                 )}
               </div>
 

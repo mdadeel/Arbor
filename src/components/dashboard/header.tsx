@@ -34,7 +34,7 @@ export function Header({ projects = [], user }: HeaderProps) {
 
   return (
     <>
-      <header className="sticky top-0 z-30 flex h-12 shrink-0 items-center justify-between border-b border-border bg-background/95 backdrop-blur px-3 sm:px-6 gap-3 sm:gap-6">
+      <header className="sticky top-0 z-30 flex h-12 shrink-0 items-center justify-between border-b border-border bg-background/95 backdrop-blur px-3 sm:px-6 gap-3 sm:gap-6 select-none">
         {/* Left: Mobile hamburger & Dynamic Breadcrumbs */}
         <div className="flex items-center gap-2 sm:gap-3 min-w-0 shrink-0">
           {user && (
@@ -42,7 +42,7 @@ export function Header({ projects = [], user }: HeaderProps) {
               variant="ghost"
               size="icon"
               onClick={() => setMobileNavOpen(true)}
-              className="h-8 w-8 md:hidden text-muted-foreground hover:text-foreground shrink-0"
+              className="h-8 w-8 md:hidden text-muted-foreground hover:text-foreground shrink-0 rounded-md hover:bg-muted"
               aria-label="Open menu"
             >
               <Menu className="h-4 w-4" />
@@ -50,56 +50,50 @@ export function Header({ projects = [], user }: HeaderProps) {
           )}
 
           {/* Dynamic Breadcrumbs */}
-          <nav aria-label="Breadcrumb" className="flex items-center gap-1.5 text-xs text-muted-foreground truncate">
+          <nav aria-label="Breadcrumb" className="flex items-center gap-1.5 text-xs text-label-secondary truncate">
             <Link
               href="/dashboard"
-              className="inline-flex items-center gap-1.5 transition-colors hover:text-foreground font-medium cursor-pointer"
+              className="inline-flex items-center gap-1.5 transition-colors hover:text-label-primary font-medium cursor-pointer"
             >
               <Logo size="xs" />
-              <span className="font-semibold text-foreground">Arbor</span>
+              <span className="font-semibold text-label-primary">Arbor</span>
             </Link>
 
             {!isDashboard && (
               <>
-                <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/40 shrink-0" />
+                <ChevronRight className="h-3.5 w-3.5 text-label-quaternary shrink-0" />
                 {segments[0] === 'projects' && (
                   <Link
                     href="/projects"
                     className={cn(
                       'transition-colors cursor-pointer',
-                      segments.length === 1 ? 'text-foreground font-semibold' : 'hover:text-foreground'
+                      segments.length === 1 ? 'text-label-primary font-semibold' : 'hover:text-label-primary'
                     )}
                   >
                     Projects
                   </Link>
                 )}
-                {segments[0] === 'projects' && segments[1] === 'new' && (
-                  <>
-                    <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/40 shrink-0" />
-                    <span className="font-semibold text-foreground">New</span>
-                  </>
-                )}
                 {segments[0] === 'projects' && segments[1] && segments[1] !== 'new' && (
                   <>
-                    <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/40 shrink-0" />
-                    <span className="font-mono font-semibold text-foreground truncate max-w-[120px] sm:max-w-[180px]">
+                    <ChevronRight className="h-3.5 w-3.5 text-label-quaternary shrink-0" />
+                    <span className="font-mono font-semibold text-label-primary truncate max-w-[120px] sm:max-w-[180px]">
                       {segments[1]}
                     </span>
                   </>
                 )}
                 {segments[0] === 'settings' && (
-                  <span className="font-semibold text-foreground">Settings</span>
+                  <span className="font-semibold text-label-primary">Settings</span>
                 )}
                 {segments[0] === 'admin' && (
-                  <span className="font-semibold text-foreground">Admin Panel</span>
+                  <span className="font-semibold text-label-primary">Admin Panel</span>
                 )}
               </>
             )}
 
             {isDashboard && (
               <>
-                <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/40 shrink-0" />
-                <span className="font-semibold text-foreground">Dashboard</span>
+                <ChevronRight className="h-3.5 w-3.5 text-label-quaternary shrink-0" />
+                <span className="font-semibold text-label-primary">Dashboard</span>
               </>
             )}
           </nav>
@@ -111,13 +105,13 @@ export function Header({ projects = [], user }: HeaderProps) {
             variant="outline"
             size="sm"
             onClick={() => setCommandOpen(true)}
-            className="h-8 w-full justify-between border-border/80 bg-muted/30 px-2.5 text-xs text-muted-foreground hover:bg-muted/80 hover:border-foreground/30 hover:text-foreground transition-all duration-150 cursor-pointer"
+            className="h-8 w-full justify-between rounded-lg border border-border/80 bg-muted/60 px-3 text-xs text-label-secondary hover:bg-muted hover:border-border-strong hover:text-label-primary transition-all duration-150 cursor-pointer"
           >
             <div className="flex items-center gap-2 truncate">
-              <Search className="h-3.5 w-3.5 shrink-0" />
+              <Search className="h-3.5 w-3.5 shrink-0 text-label-tertiary" />
               <span className="truncate">Search repositories, findings...</span>
             </div>
-            <kbd className="pointer-events-none hidden rounded border border-border/60 bg-muted px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground sm:inline-block shrink-0">
+            <kbd className="pointer-events-none hidden rounded border border-border/80 bg-background/80 px-1.5 py-0.5 font-mono text-[10px] text-label-tertiary sm:inline-block shrink-0">
               ⌘K
             </kbd>
           </Button>
@@ -128,7 +122,7 @@ export function Header({ projects = [], user }: HeaderProps) {
           {user && <NotificationCenter />}
           <ThemeToggle />
 
-          <Button asChild variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:bg-muted hover:text-foreground" aria-label="Settings">
+          <Button asChild variant="ghost" size="icon" className="h-8 w-8 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground" aria-label="Settings">
             <Link href="/settings">
               <Settings className="h-4 w-4" />
             </Link>

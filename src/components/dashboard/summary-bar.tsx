@@ -24,17 +24,17 @@ export function SummaryBar({ counts, className }: SummaryBarProps) {
       )}
     >
       <div className="flex items-center gap-2">
-        <span className="font-mono text-sm font-semibold text-foreground">
+        <span className="font-mono text-sm font-semibold text-label-primary">
           {counts.total}
         </span>
-        <span className="text-muted-foreground">Projects</span>
+        <span className="text-label-secondary">Projects</span>
       </div>
 
       {counts.avgScore !== undefined && (
         <>
           <span className="hidden h-3.5 w-px bg-border sm:inline-block" />
           <div className="flex items-center gap-2">
-            <span className="text-muted-foreground">Avg Health:</span>
+            <span className="text-label-secondary">Avg Health:</span>
             <span
               className={cn(
                 'font-mono text-sm font-semibold',
@@ -58,17 +58,17 @@ export function SummaryBar({ counts, className }: SummaryBarProps) {
         <span className="font-mono text-sm font-semibold text-emerald-400">
           {counts.healthy}
         </span>
-        <span className="text-muted-foreground">Healthy</span>
+        <span className="text-label-secondary">Healthy</span>
       </div>
 
       <span className="hidden h-3.5 w-px bg-border sm:inline-block" />
 
       <div className="flex items-center gap-2">
         <span className="h-2 w-2 rounded-full bg-amber-400" />
-        <span className="font-mono text-sm font-semibold text-amber-300">
+        <span className="font-mono text-sm font-semibold text-amber-400">
           {counts.warning}
         </span>
-        <span className="text-muted-foreground">Warning</span>
+        <span className="text-label-secondary">Warning</span>
       </div>
 
       <span className="hidden h-3.5 w-px bg-border sm:inline-block" />
@@ -78,7 +78,7 @@ export function SummaryBar({ counts, className }: SummaryBarProps) {
         <span className="font-mono text-sm font-semibold text-red-400">
           {counts.error}
         </span>
-        <span className="text-muted-foreground">Needs Attention</span>
+        <span className="text-label-secondary">Needs Attention</span>
       </div>
 
       {counts.failingBuilds !== undefined && counts.failingBuilds > 0 && (

@@ -109,7 +109,7 @@ export default async function SystemsPage() {
                   {systemData && (
                     <div className="flex items-center gap-4 rounded-md border border-border/60 bg-muted/20 p-2.5 font-mono text-xs text-muted-foreground">
                       <div>
-                        <span className="text-[10px] uppercase text-muted-foreground/70">Routes</span>
+                        <span className="text-[10px] uppercase text-label-tertiary">Routes</span>
                         <p className="font-semibold text-foreground">{systemData.totalEndpoints ?? 0}</p>
                       </div>
                       <div className="h-6 w-px bg-border/60" />

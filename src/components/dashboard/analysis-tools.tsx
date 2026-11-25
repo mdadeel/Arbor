@@ -236,7 +236,7 @@ export function ShareReportControl({ slug, analysisId }: { slug: string; analysi
               placeholder="Acme Corp Engineering"
               value={clientName}
               onChange={(event) => setClientName(event.target.value)}
-              className="ml-2 h-8 w-44 rounded-md border border-border bg-background px-2 text-xs text-foreground placeholder:text-muted-foreground/60"
+              className="ml-2 h-8 w-44 rounded-md border border-border bg-background px-2 text-xs text-label-primary placeholder:text-label-tertiary"
             />
           </label>
           <label className="space-y-1 text-[11px] text-muted-foreground">

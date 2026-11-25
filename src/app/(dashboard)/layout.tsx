@@ -45,7 +45,7 @@ export default async function DashboardLayout({
   const projects = await caller.project.list().catch(() => [])
 
   return (
-    <div className="flex flex-col h-screen overflow-hidden bg-background font-sans antialiased">
+    <div className="flex flex-col h-screen overflow-hidden bg-background font-sans antialiased selection:bg-primary/20 selection:text-primary" suppressHydrationWarning>
       {impersonationPayload && (
         <ImpersonationBanner
           targetName={impersonationPayload.targetUserName}
@@ -53,7 +53,7 @@ export default async function DashboardLayout({
           operatorEmail={impersonationPayload.originalAdminEmail}
         />
       )}
-      <div className="flex flex-1 overflow-hidden min-w-0 min-h-0">
+      <div className="flex flex-1 overflow-hidden min-w-0 min-h-0" suppressHydrationWarning>
         <Sidebar user={effectiveUser} projects={projects} className="hidden md:flex" />
         <div className="flex flex-1 flex-col overflow-hidden min-w-0 min-h-0">
           <Header projects={projects} user={effectiveUser} />

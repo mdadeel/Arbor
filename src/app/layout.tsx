@@ -97,18 +97,22 @@ const jsonLd = {
         price: '0',
         priceCurrency: 'USD',
       },
-      author: {
-        '@type': 'Organization',
-        name: 'Arbor',
-        url: appUrl,
-      },
+      author: { '@id': `${appUrl}/#organization` },
+    },
+    {
+      '@type': 'Organization',
+      '@id': `${appUrl}/#organization`,
+      name: 'Arbor',
+      url: appUrl,
+      logo: `${appUrl}/logo.svg`,
+      sameAs: ['https://github.com/arborgit'],
     },
   ],
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`dark ${GeistSans.variable} ${GeistMono.variable}`} suppressHydrationWarning>
+    <html lang="en" data-scroll-behavior="smooth" className={`dark ${GeistSans.variable} ${GeistMono.variable}`} suppressHydrationWarning>
       <head>
         <script
           type="application/ld+json"

@@ -77,7 +77,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
         aria-invalid={invalid ?? ariaInvalid}
         disabled={disabled || loading}
         className={cn(
-          'h-full min-w-0 flex-1 bg-transparent text-foreground outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-60',
+          'h-full min-w-0 flex-1 bg-transparent text-label-primary outline-none placeholder:text-label-tertiary disabled:cursor-not-allowed disabled:opacity-60',
           className
         )}
         {...props}

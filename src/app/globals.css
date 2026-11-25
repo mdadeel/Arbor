@@ -4,109 +4,177 @@
 
 @layer base {
   :root {
-    /* Arbor Light Palette — Quiet Precision (Paper & Forest) */
-    --background: 75 16% 96%; /* #f5f6f1 */
-    --foreground: 135 15% 7%; /* #111512 */
-    --card: 0 0% 100%; /* #ffffff */
-    --card-foreground: 135 15% 7%;
+    /* macOS 26/27 (Tahoe / Liquid Glass & Apple HIG) Light Palette */
+    --background: 240 11% 96%; /* #f5f5f7 macOS Window Ground */
+    --foreground: 240 6% 12%; /* #1d1d1f Apple Primary Label */
+    --card: 0 0% 100%; /* #ffffff Control Surface */
+    --card-foreground: 240 6% 12%;
     --popover: 0 0% 100%;
-    --popover-foreground: 135 15% 7%;
-    --primary: 146 48% 29%; /* #266d45 */
-    --primary-foreground: 135 100% 98%;
-    --secondary: 86 16% 91%; /* #eaede5 */
-    --secondary-foreground: 135 15% 7%;
-    --muted: 86 16% 91%;
-    --muted-foreground: 136 6% 36%; /* #566159 */
-    --accent: 146 48% 29%;
-    --accent-foreground: 135 100% 98%;
-    --destructive: 18 69% 39%; /* #a8481f */
-    --destructive-foreground: 0 0% 98%;
-    --border: 113 9% 81%; /* #cbd2c9 */
-    --border-strong: 135 6% 51%; /* #7d8980 */
-    --input: 113 9% 81%;
-    --ring: 146 48% 29%;
-    --radius: 0.5rem;
+    --popover-foreground: 240 6% 12%;
+    --primary: 211 100% 50%; /* #007aff Apple System Blue */
+    --primary-foreground: 0 0% 100%; /* #ffffff */
+    --secondary: 240 7% 93%; /* #ececee Grouped Well */
+    --secondary-foreground: 240 6% 12%;
+    --muted: 240 7% 93%;
+    --muted-foreground: 240 4% 35%; /* #55555c Secondary Label (>=6.5:1) */
+    --accent: 211 100% 50%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 4 90% 58%; /* #ff3b30 Apple System Red */
+    --destructive-foreground: 0 0% 100%;
+    --border: 240 6% 86%; /* #d9d9de */
+    --border-strong: 240 5% 68%; /* #ababb2 */
+    --input: 240 6% 86%;
+    --ring: 211 100% 50%;
+    --radius: 0.625rem;
 
-    /* Quiet Precision Tokens */
-    --accent-raw: #266d45;
-    --accent-ink: #f8fff9;
-    --acid: #c6f36b;
-    --line: #cbd2c9;
-    --line-strong: #7d8980;
-    --grid: rgba(17, 21, 18, 0.07);
+    /* macOS 27 Semantic Label & Separator Hierarchy (Light) */
+    --label-primary: 240 6% 12%; /* #1d1d1f Titles, Primary Values */
+    --label-secondary: 240 4% 33%; /* #515157 Subtitles, Descriptions, Headers */
+    --label-tertiary: 240 3% 44%; /* #6e6e73 Metadata, Eyebrows, Placeholders */
+    --label-quaternary: 240 3% 54%; /* #86868d Subtle Icons, Footers */
+    --separator: 0 0% 0% / 0.09;
+    --separator-strong: 0 0% 0% / 0.22;
 
-    /* Accent status tints — dark-enough for light mode */
-    --amber-200: 39 84% 38%;
-    --amber-300: 39 84% 38%;
-    --amber-400: 32 95% 44%;
-    --amber-500: 26 90% 37%;
-    --blue-400: 221 83% 53%;
-    --blue-500: 224 76% 38%;
-    --cyan-400: 189 82% 31%;
-    --cyan-500: 189 90% 27%;
-    --emerald-300: 146 48% 29%;
-    --emerald-400: 146 48% 29%;
-    --emerald-500: 146 48% 25%;
-    --orange-500: 18 69% 39%;
-    --red-400: 0 72% 51%;
-    --red-500: 0 73% 41%;
-    --sky-400: 201 96% 39%;
-    --sky-500: 201 90% 27%;
-    --yellow-400: 47 96% 40%;
+    /* Apple System Colors */
+    --apple-blue: #007aff;
+    --apple-green: #34c759;
+    --apple-indigo: #5856d6;
+    --apple-orange: #ff9500;
+    --apple-red: #ff3b30;
+    --apple-purple: #af52de;
+    --apple-teal: #5ac8fa;
+    --apple-gray-1: #8e8e93;
+    --apple-gray-2: #aeaeb2;
+    --apple-gray-3: #c7c7cc;
+    --apple-gray-4: #d1d1d6;
+    --apple-gray-5: #e5e5ea;
+    --apple-gray-6: #f2f2f7;
+
+    /* Tahoe Glass Ground Gradients & Glass Materials */
+    --tahoe-ground: radial-gradient(110% 80% at 10% 0%, #cfe0f7 0%, rgba(207, 224, 247, 0) 62%),
+      radial-gradient(90% 110% at 100% 100%, #2f6fd0 0%, rgba(47, 111, 208, 0) 72%),
+      linear-gradient(165deg, #b4ccf0 0%, #7ea6e6 50%, #4f86dc 100%);
+
+    --glass-window-bg: rgba(255, 255, 255, 0.84);
+    --glass-sidebar-bg: rgba(245, 245, 247, 0.78);
+    --glass-card-bg: rgba(255, 255, 255, 0.82);
+    --glass-border: rgba(255, 255, 255, 0.65);
+    --glass-border-subtle: rgba(0, 0, 0, 0.09);
+
+    /* Stageshow Tokens */
+    --accent-raw: #007aff;
+    --accent-ink: #ffffff;
+    --acid: #34c759;
+    --line: rgba(60, 60, 67, 0.14);
+    --line-strong: rgba(60, 60, 67, 0.28);
+    --grid: rgba(0, 122, 255, 0.06);
+
+    /* Apple Status Tints (Light — WCAG AA on white/light surfaces) */
+    --amber-200: 35 92% 40%;
+    --amber-300: 32 95% 36%;
+    --amber-400: 30 95% 34%;
+    --amber-500: 28 95% 32%;
+    --blue-400: 211 100% 45%;
+    --blue-500: 211 100% 42%;
+    --cyan-400: 198 93% 36%;
+    --cyan-500: 198 93% 32%;
+    --emerald-300: 142 72% 34%;
+    --emerald-400: 142 72% 31%;
+    --emerald-500: 142 72% 28%;
+    --orange-500: 24 95% 42%;
+    --red-400: 4 82% 46%;
+    --red-500: 4 84% 42%;
+    --sky-400: 199 89% 38%;
+    --sky-500: 199 89% 34%;
+    --yellow-400: 40 96% 34%;
 
     color-scheme: light;
   }
 
   .dark {
-    /* Arbor Dark Palette — Quiet Precision (Canopy & Acid Green) */
-    --background: 135 15% 5.1%; /* #0b0f0c */
-    --foreground: 130 20% 94%; /* #edf4ee */
-    --card: 140 15% 7.8%; /* #111713 */
-    --card-foreground: 130 20% 94%;
-    --popover: 140 15% 7.8%;
-    --popover-foreground: 130 20% 94%;
-    --primary: 85 79% 67%; /* #b7ed69 */
-    --primary-foreground: 135 21% 7%; /* #11170f */
-    --secondary: 120 12% 11.2%; /* #192019 */
-    --secondary-foreground: 130 20% 94%;
-    --muted: 120 12% 11.2%;
-    --muted-foreground: 136 7% 68%; /* #a7b2aa */
-    --accent: 85 79% 67%;
-    --accent-foreground: 135 21% 7%;
-    --destructive: 18 100% 72%; /* #ff9b70 */
-    --destructive-foreground: 0 0% 98%;
-    --border: 135 12% 20%; /* #2d3930 */
-    --border-strong: 136 5% 42%; /* #657168 */
-    --input: 135 12% 20%;
-    --ring: 85 79% 67%;
-    --radius: 0.5rem;
+    /* macOS 26/27 (Tahoe / Liquid Glass & Apple HIG) Dark Palette */
+    --background: 240 6% 9%; /* #161618 Neutral Deep Charcoal */
+    --foreground: 240 12% 96%; /* #f5f5f7 Apple Primary Label Dark */
+    --card: 240 6% 13%; /* #1f1f23 Elevated Neutral Surface */
+    --card-foreground: 240 12% 96%;
+    --popover: 240 6% 14%; /* #222226 */
+    --popover-foreground: 240 12% 96%;
+    --primary: 211 100% 52%; /* #0a84ff Apple System Blue Dark */
+    --primary-foreground: 0 0% 100%; /* #ffffff */
+    --secondary: 240 6% 17%; /* #28282d */
+    --secondary-foreground: 240 12% 96%;
+    --muted: 240 6% 17%;
+    --muted-foreground: 240 5% 70%; /* #b0b0b8 Secondary Label (>=7.0:1) */
+    --accent: 211 100% 52%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 4 100% 61%; /* #ff453a Apple System Red Dark */
+    --destructive-foreground: 0 0% 100%;
+    --border: 240 5% 22%; /* #35353b */
+    --border-strong: 240 5% 34%; /* #53535c */
+    --input: 240 5% 22%;
+    --ring: 211 100% 52%;
+    --radius: 0.625rem;
 
-    /* Quiet Precision Tokens */
-    --accent-raw: #b7ed69;
-    --accent-ink: #11170f;
-    --acid: #b7ed69;
-    --line: #2d3930;
-    --line-strong: #657168;
-    --grid: rgba(237, 244, 238, 0.055);
+    /* macOS 27 Semantic Label & Separator Hierarchy (Dark) */
+    --label-primary: 240 12% 96%; /* #f5f5f7 Titles, Primary Values */
+    --label-secondary: 240 5% 72%; /* #b4b4bc Subtitles, Descriptions, Headers */
+    --label-tertiary: 240 4% 58%; /* #909098 Metadata, Eyebrows, Placeholders */
+    --label-quaternary: 240 3% 43%; /* #6b6b72 Subtle Icons, Footers */
+    --separator: 0 0% 100% / 0.10;
+    --separator-strong: 0 0% 100% / 0.22;
 
-    /* Accent status tints — bright neon tones for dark mode */
-    --amber-200: 48 96% 89%;
-    --amber-300: 45 96% 65%;
-    --amber-400: 43 96% 56%;
-    --amber-500: 38 92% 50%;
-    --blue-400: 214 95% 69%;
-    --blue-500: 217 91% 60%;
-    --cyan-400: 189 94% 57%;
-    --cyan-500: 190 90% 50%;
-    --emerald-300: 85 79% 75%;
-    --emerald-400: 85 79% 67%;
-    --emerald-500: 85 79% 55%;
-    --orange-500: 18 100% 72%;
-    --red-400: 0 91% 71%;
-    --red-500: 0 84% 60%;
-    --sky-400: 199 89% 60%;
-    --sky-500: 200 98% 48%;
-    --yellow-400: 47 95% 53%;
+    /* Apple System Colors (Dark) */
+    --apple-blue: #0a84ff;
+    --apple-green: #30d158;
+    --apple-indigo: #5e5ce6;
+    --apple-orange: #ff9f0a;
+    --apple-red: #ff453a;
+    --apple-purple: #bf5af2;
+    --apple-teal: #64d2ff;
+    --apple-gray-1: #8e8e93;
+    --apple-gray-2: #636366;
+    --apple-gray-3: #48484a;
+    --apple-gray-4: #3a3a3c;
+    --apple-gray-5: #2c2c2e;
+    --apple-gray-6: #1c1c1e;
+
+    /* Tahoe Glass Ground Gradients & Glass Materials (Dark) */
+    --tahoe-ground: radial-gradient(110% 80% at 10% 0%, #1e2e4a 0%, rgba(30, 46, 74, 0) 62%),
+      radial-gradient(90% 110% at 100% 100%, #0c1a32 0%, rgba(12, 26, 50, 0) 72%),
+      linear-gradient(165deg, #0e1526 0%, #131f38 50%, #09101f 100%);
+
+    --glass-window-bg: rgba(24, 24, 27, 0.80);
+    --glass-sidebar-bg: rgba(20, 20, 23, 0.78);
+    --glass-card-bg: rgba(31, 31, 35, 0.75);
+    --glass-border: rgba(255, 255, 255, 0.12);
+    --glass-border-subtle: rgba(255, 255, 255, 0.08);
+
+    /* Stageshow Tokens */
+    --accent-raw: #0a84ff;
+    --accent-ink: #ffffff;
+    --acid: #30d158;
+    --line: rgba(255, 255, 255, 0.12);
+    --line-strong: rgba(255, 255, 255, 0.25);
+    --grid: rgba(10, 132, 255, 0.08);
+
+    /* Accent status tints (Dark — high legibility on #161618 / #1f1f23) */
+    --amber-200: 48 96% 78%;
+    --amber-300: 45 96% 68%;
+    --amber-400: 40 98% 60%;
+    --amber-500: 36 95% 54%;
+    --blue-400: 211 100% 66%;
+    --blue-500: 211 100% 58%;
+    --cyan-400: 198 94% 64%;
+    --cyan-500: 198 90% 54%;
+    --emerald-300: 142 74% 66%;
+    --emerald-400: 142 72% 56%;
+    --emerald-500: 142 71% 48%;
+    --orange-500: 30 98% 60%;
+    --red-400: 4 98% 66%;
+    --red-500: 4 92% 60%;
+    --sky-400: 199 90% 66%;
+    --sky-500: 200 98% 58%;
+    --yellow-400: 45 95% 60%;
 
     color-scheme: dark;
   }
@@ -117,7 +185,7 @@
 
   body {
     @apply bg-background text-foreground;
-    font-family: var(--font-geist-sans), ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", var(--font-geist-sans), system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
   }
 
@@ -133,6 +201,27 @@
 }
 
 @layer utilities {
+  .text-label-primary {
+    color: hsl(var(--label-primary));
+  }
+  .text-label-secondary {
+    color: hsl(var(--label-secondary));
+  }
+  .text-label-tertiary {
+    color: hsl(var(--label-tertiary));
+  }
+  .text-label-quaternary {
+    color: hsl(var(--label-quaternary));
+  }
+  .placeholder\:text-label-tertiary::placeholder {
+    color: hsl(var(--label-tertiary));
+  }
+  .hover\:text-label-primary:hover {
+    color: hsl(var(--label-primary));
+  }
+  .group:hover .group-hover\:text-label-primary {
+    color: hsl(var(--label-primary));
+  }
   .tabular-nums {
     font-variant-numeric: tabular-nums;
   }
@@ -147,6 +236,83 @@
       linear-gradient(90deg, var(--grid) 1px, transparent 1px);
     background-size: 28px 28px;
     background-position: -1px -1px;
+  }
+
+  /* Finder · Frosted Glass Core Utilities */
+  .bg-tahoe-ground {
+    background: var(--tahoe-ground);
+  }
+
+  .glass-window {
+    background: var(--glass-window-bg);
+    backdrop-filter: blur(28px) saturate(1.8);
+    -webkit-backdrop-filter: blur(28px) saturate(1.8);
+    box-shadow:
+      0 0 0 0.5px rgba(0, 0, 0, 0.12),
+      inset 0 0.5px 0 rgba(255, 255, 255, 0.7),
+      0 24px 60px -10px rgba(10, 30, 80, 0.3),
+      0 8px 20px -10px rgba(10, 30, 80, 0.18);
+  }
+
+  .dark .glass-window {
+    box-shadow:
+      0 0 0 0.5px rgba(255, 255, 255, 0.15),
+      inset 0 0.5px 0 rgba(255, 255, 255, 0.1),
+      0 30px 70px -15px rgba(0, 0, 0, 0.6),
+      0 10px 25px -10px rgba(0, 0, 0, 0.4);
+  }
+
+  .glass-sidebar {
+    background: var(--glass-sidebar-bg);
+    backdrop-filter: blur(24px) saturate(1.6);
+    -webkit-backdrop-filter: blur(24px) saturate(1.6);
+    box-shadow:
+      0 0 0 0.5px rgba(0, 0, 0, 0.06),
+      inset 0 0.5px 0 rgba(255, 255, 255, 0.8),
+      0 3px 14px rgba(20, 35, 70, 0.06);
+  }
+
+  .dark .glass-sidebar {
+    box-shadow:
+      0 0 0 0.5px rgba(255, 255, 255, 0.08),
+      inset 0 0.5px 0 rgba(255, 255, 255, 0.06),
+      0 3px 14px rgba(0, 0, 0, 0.35);
+  }
+
+  .glass-card {
+    background: var(--glass-card-bg);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    box-shadow:
+      0 0 0 0.5px rgba(0, 0, 0, 0.06),
+      inset 0 0.5px 0 rgba(255, 255, 255, 0.8),
+      0 2px 8px rgba(15, 25, 45, 0.04);
+  }
+
+  .dark .glass-card {
+    box-shadow:
+      0 0 0 0.5px rgba(255, 255, 255, 0.08),
+      inset 0 0.5px 0 rgba(255, 255, 255, 0.04),
+      0 2px 8px rgba(0, 0, 0, 0.25);
+  }
+
+  .glass-capsule {
+    border-radius: 9999px;
+    background: rgba(255, 255, 255, 0.8);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    box-shadow:
+      0 0 0 0.5px rgba(0, 0, 0, 0.08),
+      inset 0 0.5px 0 rgba(255, 255, 255, 1),
+      0 1px 3px rgba(20, 30, 60, 0.06);
+  }
+
+  .dark .glass-capsule {
+    background: rgba(36, 36, 42, 0.82);
+    box-shadow:
+      0 0 0 0.5px rgba(255, 255, 255, 0.12),
+      inset 0 0.5px 0 rgba(255, 255, 255, 0.08),
+      0 1px 3px rgba(0, 0, 0, 0.3);
   }
   .shadow-offset-accent {
     box-shadow: 14px 14px 0 var(--accent-raw);

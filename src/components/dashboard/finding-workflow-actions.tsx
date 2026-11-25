@@ -78,7 +78,7 @@ export function FindingWorkflowActions({ finding, slug, analysisId }: {
         </label>
         <label className="min-w-0 flex-1 space-y-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
           Audit note <span className="font-normal normal-case tracking-normal">(optional)</span>
-          <input value={note} onChange={(event) => setNote(event.target.value)} maxLength={4000} placeholder="Context or follow-up…" className="h-8 w-full rounded-md border border-border bg-background px-2 text-[11px] font-normal normal-case tracking-normal text-foreground placeholder:text-muted-foreground/60" />
+          <input value={note} onChange={(event) => setNote(event.target.value)} maxLength={4000} placeholder="Context or follow-up…" className="h-8 w-full rounded-md border border-border bg-background px-2 text-[11px] font-normal normal-case tracking-normal text-label-primary placeholder:text-label-tertiary" />
         </label>
         <Button variant="neutral-light" appearance="outline" size="sm" loading={saveTriage.isPending} onClick={() => saveTriage.mutate({
           slug,
