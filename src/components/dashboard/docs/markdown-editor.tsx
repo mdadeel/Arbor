@@ -32,12 +32,15 @@ interface MarkdownEditorProps {
   initialTitle?: string
   initialContent?: string
   initialCategory?: DocCategory
+  /** ISO date (YYYY-MM-DD) shown in the review-date field. */
+  initialReviewDate?: string
   isNew?: boolean
   onSave: (data: {
     title: string
     content: string
     category: DocCategory
     changeNote?: string
+    reviewDate?: string | null
   }) => Promise<void>
   onCancel: () => void
   isSaving?: boolean
@@ -47,6 +50,7 @@ export function MarkdownEditor({
   initialTitle = '',
   initialContent = '',
   initialCategory = 'general',
+  initialReviewDate = '',
   isNew = false,
   onSave,
   onCancel,
@@ -55,7 +59,12 @@ export function MarkdownEditor({
   const [title, setTitle] = useState(initialTitle)
   const [content, setContent] = useState(initialContent)
   const [category, setCategory] = useState<DocCategory>(initialCategory)
+  const [reviewDate, setReviewDate] = useState(initialReviewDate)
   const [changeNote, setChangeNote] = useState('')
+
+  const reviewDatePayload = reviewDate
+    ? new Date(`${reviewDate}T00:00:00.000Z`).toISOString()
+    : null
   const [viewMode, setViewMode] = useState<'split' | 'edit' | 'preview'>('split')
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
@@ -83,13 +92,13 @@ export function MarkdownEditor({
       if ((e.ctrlKey || e.metaKey) && e.key === 's') {
         e.preventDefault()
         if (title.trim() && !isSaving) {
-          onSave({ title: title.trim(), content, category, changeNote: changeNote.trim() || undefined })
+          onSave({ title: title.trim(), content, category, changeNote: changeNote.trim() || undefined, reviewDate: reviewDatePayload })
         }
       }
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [title, content, category, changeNote, isSaving, onSave])
+  }, [title, content, category, changeNote, isSaving, onSave, reviewDatePayload])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -99,6 +108,7 @@ export function MarkdownEditor({
       content,
       category,
       changeNote: changeNote.trim() || undefined,
+      reviewDate: reviewDatePayload,
     })
   }
 
@@ -175,6 +185,21 @@ export function MarkdownEditor({
             {isSaving ? 'Saving...' : isNew ? 'Create Doc' : 'Save Changes'}
           </Button>
         </div>
+      </div>
+
+      {/* Review schedule */}
+      <div className="flex flex-wrap items-center gap-3 border-b border-border/70 pb-3 text-xs text-muted-foreground">
+        <label htmlFor="doc-review-date" className="font-medium text-foreground">
+          Next review
+        </label>
+        <input
+          id="doc-review-date"
+          type="date"
+          value={reviewDate}
+          onChange={(e) => setReviewDate(e.target.value)}
+          className="h-8 rounded-md border border-border bg-background px-2 text-xs text-foreground"
+        />
+        <span>Optional. After this date the document is flagged as stale on the next staleness check.</span>
       </div>
 
       {/* Formatting Toolbar */}

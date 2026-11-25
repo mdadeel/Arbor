@@ -27,6 +27,12 @@ interface DocHubProps {
   slug: string
 }
 
+function toDateInput(value: Date | string | null | undefined): string {
+  if (!value) return ''
+  const date = new Date(value)
+  return Number.isNaN(date.getTime()) ? '' : date.toISOString().slice(0, 10)
+}
+
 export function DocHub({ slug }: DocHubProps) {
   const treeQuery = trpc.document.tree.useQuery({ slug })
   const checkStaleMutation = trpc.document.checkStaleness.useMutation({
@@ -116,12 +122,14 @@ export function DocHub({ slug }: DocHubProps) {
     title: string
     content: string
     category: DocCategory
+    reviewDate?: string | null
   }) => {
     await createDoc.mutateAsync({
       slug,
       title: data.title,
       content: data.content,
       category: data.category,
+      reviewDate: data.reviewDate ?? null,
     })
   }
 
@@ -130,6 +138,7 @@ export function DocHub({ slug }: DocHubProps) {
     content: string
     category: DocCategory
     changeNote?: string
+    reviewDate?: string | null
   }) => {
     if (!doc) return
     await updateDoc.mutateAsync({
@@ -139,6 +148,7 @@ export function DocHub({ slug }: DocHubProps) {
       content: data.content,
       category: data.category,
       changeNote: data.changeNote,
+      reviewDate: data.reviewDate === undefined ? null : data.reviewDate,
     })
   }
 
@@ -218,6 +228,7 @@ export function DocHub({ slug }: DocHubProps) {
               initialTitle={doc.title}
               initialContent={doc.content}
               initialCategory={doc.category}
+              initialReviewDate={toDateInput(doc.reviewDate)}
               onSave={handleSaveUpdate}
               onCancel={() => setIsEditing(false)}
               isSaving={updateDoc.isPending}
@@ -249,6 +260,19 @@ export function DocHub({ slug }: DocHubProps) {
                       <Clock className="h-3 w-3" />
                       Updated {new Date(doc.updatedAt).toLocaleDateString()}
                     </span>
+                    {doc.reviewDate && (
+                      <span
+                        className={
+                          new Date(doc.reviewDate) <= new Date()
+                            ? 'flex items-center gap-1 font-mono text-amber-400'
+                            : 'flex items-center gap-1 font-mono'
+                        }
+                      >
+                        <Calendar className="h-3 w-3" />
+                        Next review {new Date(doc.reviewDate).toLocaleDateString()}
+                        {new Date(doc.reviewDate) <= new Date() ? ' · overdue' : ''}
+                      </span>
+                    )}
                     {doc.parent && (
                       <span className="text-muted-foreground">
                         Parent: <span className="font-semibold text-foreground">{doc.parent.title}</span>
