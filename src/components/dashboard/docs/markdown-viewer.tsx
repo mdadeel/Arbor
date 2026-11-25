@@ -1,9 +1,65 @@
 'use client'
 
 import React, { useMemo } from 'react'
-import { marked } from 'marked'
+import { Marked, Renderer } from 'marked'
 import { Copy, Check, Hash } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+}
+
+function isSafeUrl(rawUrl: string | null | undefined, allowMailto = false): boolean {
+  if (!rawUrl) return false
+  const trimmed = rawUrl.trim()
+  if (!trimmed) return false
+  if (trimmed.startsWith('#') || trimmed.startsWith('/') || trimmed.startsWith('./') || trimmed.startsWith('../')) {
+    return !trimmed.startsWith('//')
+  }
+  try {
+    const parsed = new URL(trimmed)
+    const allowed = allowMailto ? ['http:', 'https:', 'mailto:'] : ['http:', 'https:']
+    return allowed.includes(parsed.protocol)
+  } catch {
+    return false
+  }
+}
+
+function createSafeMarked(): Marked {
+  const renderer = new Renderer()
+  renderer.html = ({ text }) => escapeHtml(text)
+  renderer.link = function ({ href, title, tokens }) {
+    const text = this.parser.parseInline(tokens)
+    if (!isSafeUrl(href, true)) {
+      return text
+    }
+    const safeHref = escapeHtml(href)
+    const titleAttr = title ? ` title="${escapeHtml(title)}"` : ''
+    return `<a href="${safeHref}"${titleAttr} rel="noopener noreferrer">${text}</a>`
+  }
+  renderer.image = ({ href, title, text }) => {
+    if (!isSafeUrl(href, false)) {
+      return escapeHtml(text || '')
+    }
+    const safeSrc = escapeHtml(href)
+    const safeAlt = escapeHtml(text || '')
+    const titleAttr = title ? ` title="${escapeHtml(title)}"` : ''
+    return `<img src="${safeSrc}" alt="${safeAlt}"${titleAttr} />`
+  }
+
+  return new Marked({
+    gfm: true,
+    breaks: true,
+    renderer,
+  })
+}
+
+const safeMarked = createSafeMarked()
 
 interface MarkdownViewerProps {
   content: string
@@ -38,10 +94,7 @@ export function MarkdownViewer({ content }: MarkdownViewerProps) {
 
   const html = useMemo(() => {
     try {
-      return marked.parse(content || '*No content provided.*', {
-        gfm: true,
-        breaks: true,
-      }) as string
+      return safeMarked.parse(content || '*No content provided.*') as string
     } catch {
       return '<p class="text-destructive">Failed to render markdown content.</p>'
     }

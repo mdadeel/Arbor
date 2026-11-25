@@ -79,7 +79,7 @@ describe('AnalysisProgress', () => {
     const view = render(<AnalysisProgress status={status} />)
     const content = view.container.textContent ?? ''
     expect(view.container.querySelector('[role="status"]')).not.toBeNull()
-    expect(content).toContain('Analysis in progress')
+    expect(content).toContain(status === 'queued' ? 'Waiting to start' : 'Analysis in progress')
     expect(content).toContain(stage)
     expect(content).toContain('No percentage or completion time is estimated')
   })
@@ -142,5 +142,25 @@ This is a sample guide.`}
     )
     expect(screen.getByText('System Overview')).toBeDefined()
     expect(screen.getByText('This is a sample guide.')).toBeDefined()
+  })
+
+  it('escapes raw HTML tags and blocks javascript: links to prevent XSS', () => {
+    const { container } = render(
+      <MarkdownViewer
+        content={`<script>window.__xss=1</script>
+
+<img src=x onerror="window.__xss=2" />
+
+[Click me](javascript:alert(1))
+
+[Safe link](https://example.com)`}
+      />
+    )
+    expect(container.querySelector('script')).toBeNull()
+    expect(container.querySelector('img')).toBeNull()
+    const links = Array.from(container.querySelectorAll('a'))
+    expect(links).toHaveLength(1)
+    expect(links[0].getAttribute('href')).toBe('https://example.com')
+    expect(links[0].getAttribute('rel')).toBe('noopener noreferrer')
   })
 })
