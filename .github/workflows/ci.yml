@@ -23,3 +23,41 @@ jobs:
         run: npm run lint
       - name: Unit tests
         run: npm run test
+
+  # A database built from migrations alone must match schema.prisma. This catches
+  # columns/tables added with `db push` but never captured in a migration, which
+  # would otherwise make fresh environments diverge from production.
+  schema-drift:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: arbor
+          POSTGRES_PASSWORD: arbor
+          POSTGRES_DB: arbor_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U arbor -d arbor_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      DATABASE_URL: postgresql://arbor:arbor@localhost:5432/arbor_ci
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Apply migrations to an empty database
+        run: npx prisma migrate deploy
+      - name: Fail if the migrated database differs from schema.prisma
+        run: >-
+          npx prisma migrate diff
+          --from-url "$DATABASE_URL"
+          --to-schema-datamodel prisma/schema.prisma
+          --script --exit-code

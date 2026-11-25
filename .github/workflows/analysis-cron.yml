@@ -1,0 +1,46 @@
+# Serverless analysis driver. Vercel Hobby crons run at most once per day, so a
+# resident worker cannot be assumed; this workflow calls the idempotent
+# processor endpoint every 5 minutes instead. Each request processes queued
+# analyses for up to 240s with atomic DB claims, so overlapping runs are safe
+# (GitHub's */5 schedules can jitter by a few minutes — acceptable for scans).
+name: analysis-cron
+
+on:
+  schedule:
+    - cron: '*/5 * * * *'
+  workflow_dispatch: {}
+
+concurrency:
+  group: analysis-cron
+  cancel-in-progress: false
+
+jobs:
+  process:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - name: Process queued analyses
+        env:
+          APP_URL: ${{ secrets.APP_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          set -euo pipefail
+          base="${APP_URL:-https://arborgit.vercel.app}"
+          if [ -z "$CRON_SECRET" ]; then
+            echo "::error::CRON_SECRET secret is not configured on this repository."
+            exit 1
+          fi
+          http=$(curl -sS --fail-with-body --max-time 330 \
+            -o response.json -w '%{http_code}' \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            "$base/api/worker/process") || {
+              echo "::error::Processor request failed (network error)."
+              exit 1
+            }
+          echo "HTTP $http"
+          cat response.json
+          # 401 means the configured CRON_SECRET does not match the deployment.
+          if [ "$http" = "401" ]; then
+            echo "::error::Processor returned 401 — CRON_SECRET does not match the deployment's CRON_SECRET env."
+            exit 1
+          fi
