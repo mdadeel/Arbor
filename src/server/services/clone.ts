@@ -44,13 +44,26 @@ async function assertRepositoryWithinSizeLimit(repoFullName: string, token?: str
       response = await requestMetadata()
     }
 
+    if (response.status === 404) {
+      await response.body?.cancel()
+      // A missing repository will fail the clone anyway — fail fast with the
+      // clearer cause instead of a generic clone error.
+      throw new Error(`Repository not found on GitHub (HTTP 404). Check the repository URL and access permissions.`)
+    }
     if (!response.ok) {
-      throw new Error(`Could not verify repository size with GitHub (HTTP ${response.status}).`)
+      // Rate limits (403) and GitHub incidents (5xx) are transient and do not
+      // mean the repository is too large. Warn and let the clone proceed — it
+      // has its own timeout, and file-count/size caps bound the analysis.
+      await response.body?.cancel()
+      const hint = response.status === 403 ? 'rate limit' : `HTTP ${response.status}`
+      console.warn(`[clone] Skipping GitHub size pre-check for ${repoPath} (${hint}); relying on clone timeout and file caps.`)
+      return
     }
 
     const metadata = (await response.json()) as { size?: unknown }
     if (typeof metadata.size !== 'number' || !Number.isFinite(metadata.size) || metadata.size < 0) {
-      throw new Error('GitHub returned invalid repository size metadata.')
+      console.warn(`[clone] GitHub returned invalid repository size metadata for ${repoPath}; skipping size pre-check.`)
+      return
     }
 
     const maxKilobytes = env.MAX_REPO_SIZE_MB * 1024
@@ -83,27 +96,38 @@ export async function cloneRepo(opts: CloneRepoOptions): Promise<CloneResult> {
   const timeoutOptions = {
     timeout: { block: env.CLONE_TIMEOUT * 1000 },
     maxConcurrentProcesses: 1,
+    // simple-git v4 blocks GIT_* env vars unless explicitly allowlisted.
+    allowEnvironment: ['GIT_TERMINAL_PROMPT', 'GIT_ASKPASS', 'GIT_CONFIG_COUNT', 'GIT_CONFIG_KEY_0', 'GIT_CONFIG_VALUE_0'],
+    unsafe: { allowUnsafeAskPass: true, allowUnsafeConfigEnvCount: true },
+  }
+  // Some hosts (e.g. an IDE terminal) provide GIT_ASKPASS for credential
+  // lookup. simple-git replaces the child env, so forward it explicitly.
+  const baseGitEnv = {
+    PATH: process.env.PATH ?? '',
+    HOME: process.env.HOME ?? '',
+    ...(process.env.GIT_ASKPASS ? { GIT_ASKPASS: process.env.GIT_ASKPASS } : {}),
+    GIT_TERMINAL_PROMPT: '0',
   }
   const credentialEnv = opts.token
     ? {
-        GIT_TERMINAL_PROMPT: '0',
+        ...baseGitEnv,
         GIT_CONFIG_COUNT: '1',
         GIT_CONFIG_KEY_0: 'http.https://github.com/.extraheader',
         GIT_CONFIG_VALUE_0: `AUTHORIZATION: basic ${Buffer.from(`x-access-token:${opts.token}`).toString('base64')}`,
       }
-    : { GIT_TERMINAL_PROMPT: '0' }
+    : baseGitEnv
 
   const cloneAttempt = async (useCredential: boolean): Promise<string> => {
     fs.rmSync(opts.destination, { recursive: true, force: true })
     fs.mkdirSync(opts.destination, { recursive: true })
-    const cloneGit = simpleGit(timeoutOptions).env(useCredential ? credentialEnv : { GIT_TERMINAL_PROMPT: '0' })
+    const cloneGit = simpleGit(timeoutOptions).env(useCredential ? credentialEnv : baseGitEnv)
 
     if (opts.pullRequestNumber) {
       // GitHub exposes pull request heads through this fixed ref even when the PR
       // comes from a fork. The number and requested SHA were validated above.
       await cloneGit.clone(repoUrl, opts.destination, ['--depth', '50', '--no-tags'])
       const repoGit = simpleGit(opts.destination, timeoutOptions).env(
-        useCredential ? credentialEnv : { GIT_TERMINAL_PROMPT: '0' }
+        useCredential ? credentialEnv : baseGitEnv
       )
       await repoGit.fetch(['--depth=50', 'origin', `refs/pull/${opts.pullRequestNumber}/head`])
       await repoGit.checkout(['--detach', 'FETCH_HEAD'])
@@ -129,7 +153,7 @@ export async function cloneRepo(opts: CloneRepoOptions): Promise<CloneResult> {
       '--branch', opts.branch,
     ])
     const repoGit = simpleGit(opts.destination, timeoutOptions).env(
-      useCredential ? credentialEnv : { GIT_TERMINAL_PROMPT: '0' }
+      useCredential ? credentialEnv : baseGitEnv
     )
     const actualSha = (await repoGit.revparse(['HEAD'])).trim()
     if (opts.requestedCommitSha && actualSha.toLowerCase() !== opts.requestedCommitSha.toLowerCase()) {
