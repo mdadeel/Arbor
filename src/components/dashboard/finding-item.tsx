@@ -1,4 +1,6 @@
 import { FindingWorkflowActions } from './finding-workflow-actions'
+import { FindingCodeContext } from './finding-code-context'
+import { findingDetectionMethod, findingRuleId } from '@/lib/finding-meta'
 import {
   AlertCircle,
   AlertTriangle,
@@ -76,6 +78,8 @@ export function FindingItem({ finding, repoUrl, commitSha, projectSlug, analysis
     ? `vscode://file/${finding.file.split('/').map(encodeURIComponent).join('/')}${finding.line ? `:${finding.line}` : ''}`
     : null
   const hasDetails = Boolean(finding.explanation || finding.impact || finding.recommendation || finding.evidence?.length || finding.paths?.length)
+  const detectionMethod = findingDetectionMethod(finding)
+  const ruleId = findingRuleId(finding)
 
   return (
     <article
@@ -139,26 +143,37 @@ export function FindingItem({ finding, repoUrl, commitSha, projectSlug, analysis
             </div>
           )}
 
+          <div className="flex flex-wrap items-center gap-2 pt-1 text-[10px] text-label-tertiary">
+            <span className="inline-flex items-center gap-1 rounded-full border border-border/70 bg-muted/40 px-2 py-0.5">
+              <span className="text-label-tertiary">Detected by</span>
+              <span className="font-medium text-label-primary">{detectionMethod}</span>
+            </span>
+            <span className="inline-flex min-w-0 items-center gap-1 rounded-full border border-border/70 bg-muted/40 px-2 py-0.5">
+              <span className="text-label-tertiary">Rule</span>
+              <span className="max-w-[min(60vw,22rem)] truncate font-mono text-label-primary">{ruleId}</span>
+            </span>
+          </div>
+
           {hasDetails && (
             <details className="group/details overflow-hidden rounded-lg border border-border/70 bg-background/35">
-              <summary className="flex min-h-10 cursor-pointer list-none items-center justify-between gap-3 px-3 py-2 text-xs font-medium text-foreground marker:hidden [&::-webkit-details-marker]:hidden">
+              <summary className="flex min-h-10 cursor-pointer list-none items-center justify-between gap-3 px-3 py-2 text-xs font-medium text-label-primary marker:hidden [&::-webkit-details-marker]:hidden">
                 <span className="inline-flex items-center gap-2">
                   <Lightbulb className="h-3.5 w-3.5 text-primary" aria-hidden="true" />
                   Why this matters &amp; what to do
                 </span>
-                <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-open/details:rotate-180" aria-hidden="true" />
+                <ChevronDown className="h-4 w-4 shrink-0 text-label-secondary transition-transform group-open/details:rotate-180" aria-hidden="true" />
               </summary>
               <div className="grid gap-3 border-t border-border/60 px-3 py-3 sm:grid-cols-2">
                 {finding.explanation && (
                   <section className="space-y-1">
-                    <h5 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Why flagged</h5>
-                    <p className="text-xs leading-relaxed text-foreground/85">{finding.explanation}</p>
+                    <h5 className="text-[10px] font-semibold uppercase tracking-wider text-label-tertiary">Why flagged</h5>
+                    <p className="text-xs leading-relaxed text-label-secondary">{finding.explanation}</p>
                   </section>
                 )}
                 {finding.impact && (
                   <section className="space-y-1">
-                    <h5 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Potential impact</h5>
-                    <p className="text-xs leading-relaxed text-foreground/85">{finding.impact}</p>
+                    <h5 className="text-[10px] font-semibold uppercase tracking-wider text-label-tertiary">Potential impact</h5>
+                    <p className="text-xs leading-relaxed text-label-secondary">{finding.impact}</p>
                   </section>
                 )}
                 {finding.recommendation && (
@@ -166,12 +181,12 @@ export function FindingItem({ finding, repoUrl, commitSha, projectSlug, analysis
                     <h5 className="inline-flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-primary">
                       <Wrench className="h-3 w-3" aria-hidden="true" /> Suggested next step
                     </h5>
-                    <p className="text-xs leading-relaxed text-foreground/85">{finding.recommendation}</p>
+                    <p className="text-xs leading-relaxed text-label-primary">{finding.recommendation}</p>
                   </section>
                 )}
                 {finding.confidence && (
-                  <p className="text-[10px] text-muted-foreground sm:col-span-2">
-                    Static-scan confidence: <span className="font-medium capitalize text-foreground/80">{finding.confidence}</span>. Confirm in project context before making changes.
+                  <p className="text-[10px] text-label-tertiary sm:col-span-2">
+                    Static-scan confidence: <span className="font-medium capitalize text-label-secondary">{finding.confidence}</span>. Confirm in project context before making changes.
                   </p>
                 )}
                 {(finding.evidence?.length || finding.paths?.length) && (
@@ -188,6 +203,16 @@ export function FindingItem({ finding, repoUrl, commitSha, projectSlug, analysis
                 )}
               </div>
             </details>
+          )}
+
+          {projectSlug && analysisId && finding.fingerprint && finding.file && finding.line && (
+            <FindingCodeContext
+              slug={projectSlug}
+              analysisId={analysisId}
+              fingerprint={finding.fingerprint}
+              file={finding.file}
+              line={finding.line}
+            />
           )}
 
           {projectSlug && <FindingWorkflowActions finding={finding} slug={projectSlug} analysisId={analysisId} />}
