@@ -102,7 +102,7 @@ Arbor parses codebases using deterministic AST analysis (Babel AST), dependency 
 
 ## Tech Stack
 
-- **Framework:** Next.js 15 (App Router, `15.5.27`), React 18 (`18.2.0`), TypeScript `5.9.3` (`strict: true`)
+- **Framework:** Next.js 15 (App Router, `15.5.29`), React 18 (`18.2.0`), TypeScript `5.9.3` (`strict: true`)
 - **API:** tRPC v11 (`11.19.0`) + TanStack React Query v5 (`5.105.0`) + Zod (`3.22.4`)
 - **Database:** PostgreSQL 16 + Prisma 5 (`5.22.0`)
 - **Auth:** NextAuth.js v4 (GitHub OAuth; optional allowlisted admin credentials for non-production use)
@@ -189,6 +189,7 @@ For self-hosting, phase-by-phase backend architecture notes, SARIF Code Scanning
 - **Self-hosted Docker Compose (`Dockerfile` + `docker-compose.yml`):** Run `cp .env.example .env && docker compose up -d --build` to launch bundled `postgres` and `redis` (controlled via `COMPOSE_PROFILES="postgres,redis"`), schema sync (`migrate`), `app` (`npm run start`), and `worker` (`npm run worker`) from the single `Dockerfile`. See [`docs/self-hosting.md`](docs/self-hosting.md).
 - **Fly.io or Railway:** Build from the root `Dockerfile` with start command `npm run worker`, pointing `REDIS_URL`, `DATABASE_URL`, and `ENCRYPTION_SECRET` at the **exact same instances** configured on your Next.js web deployment so queued jobs are picked up continuously. Step-by-step instructions and `fly.worker.toml` config live in [`docs/worker-deployment.md`](docs/worker-deployment.md).
 - **Serverless cron (`ANALYSIS_QUEUE_DRIVER=db` + `/api/worker/process`):** `.github/workflows/analysis-cron.yml` runs every 5 minutes (`*/5`) and `vercel.json` retains the daily `0 3 * * *` UTC cron (`Authorization: Bearer $CRON_SECRET`, `maxDuration = 300`), processing up to 12 queued jobs per invocation within a bounded runtime.
+- **Production migrations:** apply committed migrations before deploying the app, then backfill historical finding counters. See [`docs/migration-deployment.md`](docs/migration-deployment.md).
 
 ## Development & Verification
 
@@ -208,8 +209,8 @@ npm run build
   - `npx prisma generate` & `npx prisma validate`: valid schema (`30` Prisma models, Prisma CLI `5.22.0`).
   - `npm run typecheck` (`tsc --noEmit` with TypeScript `5.9.3`, `strict: true`): `0` diagnostics.
   - `npm run lint` (ESLint CLI across files, `--max-warnings 0`): `0` errors, `0` warnings.
-  - `npm test -- --run` (Vitest + Testing Library): `87` test files, `452` tests passing.
-  - `npm run build`: Next.js `15.5.27` production build succeeds (including `/api/health`, `/report/[token]`, `/api/webhooks/lemonsqueezy`, and `/api/projects/[slug]/analyses/[analysisId]/sarif`).
+  - `npm test -- --run` (Vitest + Testing Library): `88` test files, `455` tests passing.
+  - `npm run build`: Next.js `15.5.29` production build succeeds (including `/api/health`, `/report/[token]`, `/api/webhooks/lemonsqueezy`, and `/api/projects/[slug]/analyses/[analysisId]/sarif`).
   - `npm run analyze:local -- . --sarif <file>`: computes per-file Babel AST cyclomatic complexity crossed with `simple-git` `git log` churn (`hotspots`), per-top-level-directory bus factors + copy-ready `.github/CODEOWNERS` ownership map (`ownership`), and OASIS SARIF 2.1.0 validated at runtime against `sarif-schema-2.1.0.json`.
   - `npm run report:pdf -- <token>`: verified end-to-end against PostgreSQL + `next start` + headless Chromium, producing an 8-page A4 consultant audit PDF (`docs/examples/arbor-audit-mdadeel-arbor.pdf`) with cover metadata, deterministic top-5 recommended actions, severity-grouped `file:line` findings, dependency risk inventory, per-page commit SHA watermark, and HTTP `404` on expired/revoked tokens.
 - **GitHub Actions CI (`verify` and `build` jobs):** `unverified` — `.github/workflows/ci.yml` is authored with `postgres:16` and `redis:7` service containers, `npx prisma migrate deploy`, typecheck, lint, tests, and production build, and the CI badge above remains commented out until a maintainer with `workflows` GitHub permission pushes `.github/workflows/ci.yml` and confirms both jobs green.

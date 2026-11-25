@@ -91,6 +91,7 @@ project plans
 !/docs/backend-review-feature-roadmap.md
 !/docs/typecheck-baseline.md
 !/docs/worker-deployment.md
+!/docs/migration-deployment.md
 !/docs/sarif-github-code-scanning.md
 !/docs/self-hosting.md
 !/docs/examples/
