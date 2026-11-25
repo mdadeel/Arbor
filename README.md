@@ -1,10 +1,33 @@
 # Arbor
 
-<!-- [![CI](https://github.com/mdadeel/Arbor/actions/workflows/ci.yml/badge.svg)](https://github.com/mdadeel/Arbor/actions/workflows/ci.yml) -->
+> **Deterministic Codebase Architecture Intelligence & Health Platform**  
+> Turn any GitHub repository into an inspectable architecture map, interactive full-stack dependency graph, and audit report.
 
-Connect a GitHub repository to generate an inspectable architecture map, six-dimension health score, and evidence-linked findings.
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue.svg?style=flat&logo=typescript)](https://www.typescriptlang.org/)
+[![Next.js](https://img.shields.io/badge/Next.js-15.5-black.svg?style=flat&logo=next.js)](https://nextjs.org/)
+[![tRPC](https://img.shields.io/badge/tRPC-v11-2596be.svg?style=flat&logo=trpc)](https://trpc.io/)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind-3.4-38bdf8.svg?style=flat&logo=tailwindcss)](https://tailwindcss.com/)
+[![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-orange.svg)](https://www.gnu.org/licenses/agpl-3.0)
 
-Arbor's core analysis is deterministic: it shallow-clones a temporary working copy, parses supported source files with Babel AST and rule-based static checks, records derived metrics and findings, and removes the clone when processing finishes. Optional AI explanations and unified-diff patch suggestions are bring-your-own-key (BYOK) and review-only — Arbor never writes commits or opens pull requests on your behalf.
+Arbor parses codebases using deterministic AST analysis (Babel AST), dependency graphing, and static checks to surface actionable technical debt, security hotspots, circular dependencies, and supply chain risks. All core analysis runs without external AI dependencies, with optional Bring-Your-Own-Key (BYOK) AI explanations.
+
+---
+
+### Key Architectural Highlights
+- **Deterministic AST Analysis:** AST parser generates cyclomatic complexity, circular dependencies, and maintainability metrics across JavaScript/TypeScript without executing untrusted code.
+- **Enterprise-Grade Distributed Architecture:** Dual execution pipeline supporting dedicated long-lived BullMQ workers or serverless cron dispatch on Vercel.
+- **OASIS SARIF 2.1.0 Compatible:** Native exporter formats findings for GitHub Code Scanning and Security tabs.
+- **Consultant-Grade PDF Reports:** Headless Playwright integration renders audit-ready A4 reports with watermarks and executive summaries.
+- **Strict Cryptographic Boundaries:** User-provided BYOK keys and GitHub tokens are encrypted at rest using AES-256-GCM.
+
+---
+
+## Live Demo & Showcase
+
+- **Web Application:** [https://arborgit.vercel.app](https://arborgit.vercel.app)
+- **Sample Audit Report:** [`docs/examples/arbor-audit-mdadeel-arbor.pdf`](docs/examples/arbor-audit-mdadeel-arbor.pdf)
+
+---
 
 ## Self-Hosted Quick Start (Docker Compose)
 
@@ -163,7 +186,7 @@ For self-hosting, phase-by-phase backend architecture notes, SARIF Code Scanning
 
 - **Self-hosted Docker Compose (`Dockerfile` + `docker-compose.yml`):** Run `cp .env.example .env && docker compose up -d --build` to launch bundled `postgres` and `redis` (controlled via `COMPOSE_PROFILES="postgres,redis"`), schema sync (`migrate`), `app` (`npm run start`), and `worker` (`npm run worker`) from the single `Dockerfile`. See [`docs/self-hosting.md`](docs/self-hosting.md).
 - **Fly.io or Railway:** Build from the root `Dockerfile` with start command `npm run worker`, pointing `REDIS_URL`, `DATABASE_URL`, and `ENCRYPTION_SECRET` at the **exact same instances** configured on your Next.js web deployment so queued jobs are picked up continuously. Step-by-step instructions and `fly.worker.toml` config live in [`docs/worker-deployment.md`](docs/worker-deployment.md).
-- **Serverless cron fallback (`/api/worker/process`):** `vercel.json` retains the daily `0 3 * * *` UTC cron (`Authorization: Bearer $CRON_SECRET`, `maxDuration = 300`) as a zero-infrastructure fallback when no long-lived worker is active.
+- **Serverless cron fallback (`/api/worker/process`):** `vercel.json` retains the daily `0 3 * * *` UTC cron (`Authorization: Bearer $CRON_SECRET`, `maxDuration = 300`) as a zero-infrastructure fallback when no long-lived worker is active. It attempts up to five repository/system jobs per invocation within a bounded runtime; it is not an immediate queue consumer.
 
 ## Development & Verification
 
@@ -182,10 +205,10 @@ npm run build
 - **Verified by local verification command:**
   - `npx prisma generate` & `npx prisma validate`: valid schema (`30` Prisma models, Prisma CLI `5.22.0`).
   - `npm run typecheck` (`tsc --noEmit` with TypeScript `5.9.3`, `strict: true`): `0` diagnostics.
-  - `npm run lint` (ESLint CLI across `303` files, `--max-warnings 0`): `0` errors, `0` warnings.
-  - `npm test -- --run` (Vitest + Testing Library): `68` test files, `315` tests passing.
+  - `npm run lint` (ESLint CLI across files, `--max-warnings 0`): `0` errors, `0` warnings.
+  - `npm test -- --run` (Vitest + Testing Library): `80` test files, `410` tests passing.
   - `npm run build`: Next.js `15.5.27` production build succeeds (including `/api/health`, `/report/[token]`, `/api/webhooks/lemonsqueezy`, and `/api/projects/[slug]/analyses/[analysisId]/sarif`).
-  - `npm run analyze:local -- . --sarif <file>`: computes per-file Babel AST cyclomatic complexity crossed with `simple-git` `git log` churn (`hotspots`), per-top-level-directory bus factors + copy-ready `.github/CODEOWNERS` ownership map (`ownership`), and OASIS SARIF 2.1.0 validated at runtime against `sarif-schema-2.1.0.json` (`1.5s` cold analysis across 3 runs vs `1.8s` baseline — `0%` slowdown, well inside the `<20%` budget).
+  - `npm run analyze:local -- . --sarif <file>`: computes per-file Babel AST cyclomatic complexity crossed with `simple-git` `git log` churn (`hotspots`), per-top-level-directory bus factors + copy-ready `.github/CODEOWNERS` ownership map (`ownership`), and OASIS SARIF 2.1.0 validated at runtime against `sarif-schema-2.1.0.json`.
   - `npm run report:pdf -- <token>`: verified end-to-end against PostgreSQL + `next start` + headless Chromium, producing an 8-page A4 consultant audit PDF (`docs/examples/arbor-audit-mdadeel-arbor.pdf`) with cover metadata, deterministic top-5 recommended actions, severity-grouped `file:line` findings, dependency risk inventory, per-page commit SHA watermark, and HTTP `404` on expired/revoked tokens.
 - **GitHub Actions CI (`verify` and `build` jobs):** `unverified` — `.github/workflows/ci.yml` is authored with `postgres:16` and `redis:7` service containers, `npx prisma migrate deploy`, typecheck, lint, tests, and production build, and the CI badge above remains commented out until a maintainer with `workflows` GitHub permission pushes `.github/workflows/ci.yml` and confirms both jobs green.
 - **Unit-tested only (`unverified` against live external services):**
@@ -196,7 +219,7 @@ npm run build
   - Resend email delivery (`RESEND_API_KEY`), live OSV advisory queries, and official CycloneDX schema validation (SBOM checks are currently structural only).
 - **Known gaps & unbuilt capabilities:**
   - **Migration drift:** `prisma/schema.prisma` defines `30` models, whereas the `11` SQL migrations in `prisma/migrations/` create `25` tables (`AdminEmail`, `ProjectGroup`, `ProjectGroupMember`, `SystemAnalysis`, `WaitlistLead`, and `User` admin/plan fields are not yet in a SQL migration; use `npm run db:push` on fresh local databases).
-  - **Serverless fallback latency:** When deployed without the long-lived `worker` container (`Dockerfile` / `docker-compose.yml` / Fly.io / Railway), `vercel.json` triggers `/api/worker/process` once daily at `03:00 UTC` (`maxDuration = 300`).
+  - **Serverless fallback latency:** When deployed without the long-lived `worker` container (`Dockerfile` / `docker-compose.yml` / Fly.io / Railway), `vercel.json` triggers `/api/worker/process` once daily at `03:00 UTC` (`maxDuration = 300`, at most five repository/system jobs per invocation). Continuous processing and scheduled scan dispatch require the separate worker. See the [stalled-scan troubleshooting guide](docs/worker-deployment.md#5-diagnosing-a-scan-that-stays-queued).
   - **Container runtime execution:** Single-`Dockerfile` structure, `scripts/docker-entrypoint.sh` POSIX shell syntax (`sh -n`), `/api/health` readiness/liveness route, and `docker-compose.yml` `postgres`/`redis` profiles (`migrate`, `app`, and `worker` services) are verified by `src/worker/container-config.test.ts` and `src/app/api/health/route.test.ts`, while live `docker build` / `docker compose up` daemon execution is `unverified` in sandbox environments without a Docker daemon.
   - **Browser E2E suite:** `@playwright/test` powers `npm run report:pdf`, but no `playwright.config` or automated UI E2E spec suite exists yet (`unverified`).
 
