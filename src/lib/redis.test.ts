@@ -10,11 +10,9 @@ import { checkRateLimit, getRedisClient } from './redis'
 
 vi.mock('ioredis', () => {
   return {
-    default: vi.fn().mockImplementation(() => ({
-      status: 'ready',
-      connect: vi.fn(),
-      eval: vi.fn(),
-    })),
+    default: vi.fn().mockImplementation(function () {
+      return { status: 'ready', connect: vi.fn(), eval: vi.fn() }
+    }),
   }
 })
 
