@@ -5,7 +5,7 @@ vi.mock('@/lib/env', () => ({ env: { REDIS_URL: 'redis://example.test:6379' } })
 vi.mock('ioredis', () => ({ default: m.redis }))
 vi.mock('bullmq', async () => {
   const { EventEmitter } = await import('node:events')
-  m.queue.mockImplementation(() => new EventEmitter())
+  m.queue.mockImplementation(function () { return new EventEmitter() })
   return { Queue: m.queue }
 })
 
@@ -13,7 +13,7 @@ describe('HTTP queue producers', () => {
   beforeEach(() => {
     vi.resetModules()
     vi.clearAllMocks()
-    m.redis.mockImplementation(() => ({ disconnect: m.disconnect }))
+    m.redis.mockImplementation(function () { return { disconnect: m.disconnect } })
   })
 
   it('shares one producer per queue and keeps finite command retries', async () => {

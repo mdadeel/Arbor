@@ -48,9 +48,9 @@ describe('self-hosted single Dockerfile, Compose profiles & worker deployment co
 
     const dockerfilePath = path.join(repoRoot, 'Dockerfile')
     const dockerfile = fs.readFileSync(dockerfilePath, 'utf8')
-    expect(dockerfile).toContain('FROM node:20-bookworm-slim AS deps')
-    expect(dockerfile).toContain('FROM node:20-bookworm-slim AS builder')
-    expect(dockerfile).toContain('FROM node:20-bookworm-slim AS runner')
+    expect(dockerfile).toContain('FROM node:22-bookworm-slim AS deps')
+    expect(dockerfile).toContain('FROM node:22-bookworm-slim AS builder')
+    expect(dockerfile).toContain('FROM node:22-bookworm-slim AS runner')
     expect(dockerfile).toContain('git')
     expect(dockerfile).toContain('openssl')
     expect(dockerfile).toContain('COPY --from=builder --chown=arbor:arbor /app/src ./src')

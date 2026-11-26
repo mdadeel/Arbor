@@ -30,17 +30,24 @@ jobs:
             echo "::error::CRON_SECRET secret is not configured on this repository."
             exit 1
           fi
-          http=$(curl -sS --fail-with-body --max-time 330 \
+          http=$(curl -sS --max-time 330 \
             -o response.json -w '%{http_code}' \
             -H "Authorization: Bearer $CRON_SECRET" \
             "$base/api/worker/process") || {
-              echo "::error::Processor request failed (network error)."
+              echo "::error::Processor request failed (network error or timeout)."
               exit 1
             }
           echo "HTTP $http"
           cat response.json
-          # 401 means the configured CRON_SECRET does not match the deployment.
-          if [ "$http" = "401" ]; then
-            echo "::error::Processor returned 401 — CRON_SECRET does not match the deployment's CRON_SECRET env."
-            exit 1
-          fi
+          case "$http" in
+            2??) ;;
+            401)
+              # 401 means the configured CRON_SECRET does not match the deployment.
+              echo "::error::Processor returned 401 — CRON_SECRET does not match the deployment's CRON_SECRET env."
+              exit 1
+              ;;
+            *)
+              echo "::error::Processor returned HTTP $http."
+              exit 1
+              ;;
+          esac
