@@ -233,3 +233,7 @@ Arbor is licensed under the [GNU Affero General Public License v3.0](LICENSE) (`
 - **Self-hosting and modification are free** under the terms of the AGPL-3.0.
 - **Network use:** Offering a modified version of Arbor as a network service requires publishing your complete corresponding source modifications under the AGPL-3.0.
 - **Commercial licensing:** A commercial licence is available for white-label deployments or closed-source hosting — contact [shahnawasadeel@gmail.com](mailto:shahnawasadeel@gmail.com).
+
+---
+
+_Dummy commit: push pipeline check (2026-11-27)._
