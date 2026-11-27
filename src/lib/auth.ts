@@ -22,7 +22,8 @@ export const authOptions: NextAuthOptions = {
   secret: env.NEXTAUTH_SECRET,
   // ponytail: JWT sessions, no adapter tables — keeps the 3-table v1 schema
   session: { strategy: 'jwt' },
-  debug: Boolean(process.env.NODE_ENV === 'development' || process.env.VERCEL),
+  // ponytail: NextAuth debug logs OAuth tokens and client secrets — opt in explicitly.
+  debug: process.env.NEXTAUTH_DEBUG === 'true',
   providers: [
     GitHubProvider({
       clientId: env.GITHUB_CLIENT_ID,
